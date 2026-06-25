@@ -2589,8 +2589,65 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             done
           done
         done
-      subgoal 
-        sorry
+      subgoal for os_incr'
+        apply (clarsimp simp add: increment_op_logic_def if_splits)
+        apply (intro exI conjI relcomppI)
+           apply (rule rtranclp.rtrancl_refl)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def[simplified])
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(2 := os_incr')\<close>])
+        apply (rule exI[of _ os_label_prop])
+        apply (rule exI[of _ cbufs])
+        apply (rule exI[of _ sg])
+        apply (intro conjI)
+                         apply (simp add: dataflow_tree_to_operator_def os_inv(1))
+                        apply (simp add: csets_inv buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def cimage_cUn)
+                       apply (rule subgraph_inv(1))
+                      apply (rule subgraph_inv(2))
+        using os_inv(2) apply simp
+        using os_inv(3) apply simp
+        using os_inv(4) apply force
+        using os_inv(1,5) apply simp
+                 apply (rule os_inv(6))
+        using os_inv(7) apply force
+        using os_inv(7,8) apply (clarsimp simp add: input_ocaps_inv_def drop_caps_def produces_def raw_summary_def filter_False)
+        subgoal
+          using dataplane_tracker_inv_produces_drops[OF D refl refl refl refl refl _ _ _ _ G subgraph_inv(2) dataplane_inv,
+              where nid=2 and drops=\<open>(\<lambda>_. [])(1 := ocaps (os 2) 1)\<close> and produs=\<open>map (\<lambda>(_, t). (1, t + MyPair 0 1, 1)) (input (os 2) 1)\<close>
+                and oputs=\<open>(\<lambda>_. [])(1 := map (\<lambda>(d, t). (d, t + MyPair 0 1)) (input (os 2) 1))\<close>]
+          apply -
+          apply (drule meta_mp)
+           apply simp
+          apply (drule meta_mp)
+          using os_inv(7,8) apply (clarsimp simp add: split_beta input_ocaps_inv_def raw_summary_def)
+          apply (drule meta_mp)
+          using os_inv(7,8) apply (fastforce simp add: split_beta input_ocaps_inv_def raw_summary_def)
+          apply (drule meta_mp)
+           apply (clarsimp simp add: comp_def split_beta filter_True filter_False)
+          apply (subst dataplane_tracker_inv_clean_input)
+           defer
+           apply assumption
+          apply (clarsimp simp add: drop_caps_def produces_def comp_def split_beta fun_eq_iff)
+          apply (rule conjI; clarsimp)
+          subgoal for p
+            by (cases \<open>p = 1\<close>; clarsimp dest!: num2_neq(2) simp add: filter_True filter_False comp_def)
+          subgoal for p
+            by (cases \<open>p = 1\<close>; clarsimp simp add: filter_True filter_False)
+          done
+        using input_stream_inv apply simp
+             apply (rule label_prop_inv(1))
+        using label_prop_inv(2) apply simp
+        using label_prop_inv(3) apply simp
+        using label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
+         apply (rule label_prop_inv(5))
+        using label_prop_inv(6) apply simp
+        done
       subgoal 
         sorry
       subgoal 
