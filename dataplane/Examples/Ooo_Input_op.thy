@@ -304,6 +304,12 @@ lemma step_ooo_input_op_Write_None[intro]:
   shows \<open>step io (ooo_input_op ops os) op\<close>
   using assms unfolding ooo_input_op_def by auto
 
+lemma step_ooo_input_op_Write_None_alt[intro]:
+  assumes \<open>io = Out None (Inl (Inl (snd (obtain_progress os))))\<close>
+    and \<open>op = ooo_input_op ops (fst (obtain_progress os))\<close>
+  shows \<open>step io (ooo_input_op ops os) op\<close>
+  by (rule step_ooo_input_op_Write_None[OF assms(1) _ assms(2)]) (rule prod.collapse)
+
 lemma step_ooo_input_op_Write_Some[intro]:
   assumes \<open>io = Out (Some p) (Inr x)\<close>
     and \<open>p |\<in>| ops\<close>

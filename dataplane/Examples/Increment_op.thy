@@ -76,6 +76,12 @@ lemma step_increment_op_Write_None[intro]:
   shows \<open>step io (increment_op ip op inc os) op'\<close>
   using assms unfolding increment_op_def by auto
 
+lemma step_increment_op_Write_None_alt[intro]:
+  assumes \<open>io = Out None (Inl (Inl (snd (obtain_progress os))))\<close>
+    and \<open>op' = increment_op ip op inc (fst (obtain_progress os))\<close>
+  shows \<open>step io (increment_op ip op inc os) op'\<close>
+  by (rule step_increment_op_Write_None[OF assms(1) _ assms(2)]) (rule prod.collapse)
+
 lemma step_increment_op_Write_Some[intro]:
   assumes \<open>io = Out (Some op) (Inr x)\<close>
     and \<open>outpu os op = x # xs\<close>

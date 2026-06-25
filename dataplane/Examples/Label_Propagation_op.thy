@@ -3413,6 +3413,12 @@ lemma step_label_propagation_op_Write_None[intro]:
   shows \<open>step io (label_propagation_op os) op\<close>
   using assms unfolding label_propagation_op_def by auto
 
+lemma step_label_propagation_op_Write_None_alt[intro]:
+  assumes \<open>io = Out None (Inl (Inl (snd (obtain_progress os))))\<close>
+    and \<open>op = label_propagation_op (fst (obtain_progress os))\<close>
+  shows \<open>step io (label_propagation_op os) op\<close>
+  by (rule step_label_propagation_op_Write_None[OF assms(1) _ assms(2)]) (rule prod.collapse)
+
 lemma step_label_propagation_op_Write_Some[intro]:
   assumes \<open>io = Out (Some p) (Inr x)\<close>
     and \<open>outpu os p = x # xs\<close>
