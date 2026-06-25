@@ -1597,6 +1597,59 @@ proof -
 qed
 
 
+lemma label_prop_input1_batched_snd_member_strict_updateD:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes member: \<open>(x, cap) \<in> set (snd (label_prop_input1_batched os msgs))\<close>
+    and INV: \<open>label_prop_upd_inv os\<close>
+    and msgs_input: \<open>set msgs \<subseteq> set (input os 1)\<close>
+  obtains pre d t post os_pre v l where
+    \<open>msgs = pre @ (d, t) # post\<close>
+    \<open>os_pre = fst (label_prop_input1_batched os pre)\<close>
+    \<open>de1 os_pre d = (v, l)\<close>
+    \<open>myfst t \<in> set (timestamps os)\<close>
+    \<open>l < min_label os_pre (myfst t) v\<close>
+    \<open>min_label
+      (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l)
+      (myfst t) v < min_label os_pre (myfst t) v\<close>
+proof -
+  obtain pre d t post os_pre where msgs_eq: \<open>msgs = pre @ (d, t) # post\<close>
+    and os_pre_eq: \<open>os_pre = fst (label_prop_input1_batched os pre)\<close>
+    and step_batch_member: \<open>(x, cap) \<in> set (label_prop_input1_step_batch os_pre d t)\<close>
+    using member by (elim label_prop_input1_batched_batch_memberD)
+  have step_batch_nonempty: \<open>label_prop_input1_step_batch os_pre d t \<noteq> []\<close>
+    using step_batch_member by auto
+  have dt_in_msgs: \<open>(d, t) \<in> set msgs\<close>
+    using msgs_eq by simp
+  have dt_in_input: \<open>(d, t) \<in> set (input os 1)\<close>
+    using dt_in_msgs msgs_input by auto
+  have ts_t_os: \<open>myfst t \<in> set (timestamps os)\<close>
+    using dt_in_input INV unfolding label_prop_upd_inv_def by metis
+  have ts_t_pre: \<open>myfst t \<in> set (timestamps os_pre)\<close>
+    using ts_t_os os_pre_eq by simp
+  obtain v l where de1_eq: \<open>de1 os_pre d = (v, l)\<close>
+    and strict: \<open>l < min_label os_pre (myfst t) v\<close>
+    and update_strict:
+    \<open>min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l)
+        (myfst t) v < min_label os_pre (myfst t) v\<close>
+    using step_batch_nonempty ts_t_pre
+    by (elim label_prop_input1_step_batch_nonempty_strict_updateD)
+  show ?thesis
+    using that[OF msgs_eq os_pre_eq de1_eq ts_t_os strict update_strict] .
+qed
+
+lemma min_label_fst_label_prop_input1_batched_strict_timestamped_if_snd_member:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes member: \<open>(x, cap) \<in> set (snd (label_prop_input1_batched os msgs))\<close>
+    and INV: \<open>label_prop_upd_inv os\<close>
+    and msgs_input: \<open>set msgs \<subseteq> set (input os 1)\<close>
+  obtains q v where
+    \<open>q \<in> set (timestamps os)\<close>
+    \<open>v \<in> edge_vertices (all_edges os q)\<close>
+    \<open>min_label (fst (label_prop_input1_batched os msgs)) q v < min_label os q v\<close>
+  oops
+
+
+
 lemma label_prop_input1_batched_outpu_nonempty_strict_updateD:
   fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
   assumes \<open>outpu os 1 = []\<close>
@@ -1775,6 +1828,100 @@ next
   finally show ?case using unfold by simp
 qed
 
+
+lemma labels_inv_label_prop_input1_step_stateI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes labels: \<open>\<And>q. labels_inv (all_edges os q) (min_label os q)\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+    and input1: \<open>input os 1 = (d, t) # xs\<close>
+  shows \<open>labels_inv (all_edges (label_prop_input1_step_state os d t) q)
+    (min_label (label_prop_input1_step_state os d t) q)\<close>
+proof -
+  obtain v l where de1_eq: \<open>de1 os d = (v, l)\<close>
+    by (cases \<open>de1 os d\<close>)
+  let ?t1 = \<open>myfst t\<close>
+  let ?os'' = \<open>label_prop_label_record_update (input_tl os 1) ?t1 v
+    (min (min_label os ?t1 v) l)\<close>
+  have step_eq: \<open>label_prop_input1_step_state os d t =
+    release_caps (drop_caps (produces (add_caps ?os''
+      (map snd (label_prop_label_batch os ?os'' ?t1 v l t)))
+      (label_prop_label_batch os ?os'' ?t1 v l t))
+      (map snd (label_prop_label_batch os ?os'' ?t1 v l t))) 1\<close>
+    using de1_eq unfolding label_prop_input1_step_state_def Let_def by simp
+  have \<open>labels_inv (all_edges ?os'' q) (min_label ?os'' q)\<close>
+    by (rule labels_inv_input1_preserved_record_update_tl[OF labels inv _ de1_eq refl refl])
+      (use input1 in simp)
+  then show ?thesis
+    unfolding step_eq by simp
+qed
+
+lemma label_prop_upd_inv_label_prop_input1_step_stateI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes inv: \<open>label_prop_upd_inv os\<close>
+    and input1: \<open>input os 1 = (d, t) # xs\<close>
+  shows \<open>label_prop_upd_inv (label_prop_input1_step_state os d t)\<close>
+proof -
+  obtain v l where de1_eq: \<open>de1 os d = (v, l)\<close>
+    by (cases \<open>de1 os d\<close>)
+  let ?t1 = \<open>myfst t\<close>
+  let ?os'' = \<open>label_prop_label_record_update (input_tl os 1) ?t1 v
+    (min (min_label os ?t1 v) l)\<close>
+  have step_eq: \<open>label_prop_input1_step_state os d t =
+    release_caps (drop_caps (produces (add_caps ?os''
+      (map snd (label_prop_label_batch os ?os'' ?t1 v l t)))
+      (label_prop_label_batch os ?os'' ?t1 v l t))
+      (map snd (label_prop_label_batch os ?os'' ?t1 v l t))) 1\<close>
+    using de1_eq unfolding label_prop_input1_step_state_def Let_def by simp
+  have os''_inv: \<open>label_prop_upd_inv ?os''\<close>
+    by (rule label_prop_upd_inv_input1_preserved[OF inv input1 _ de1_eq refl])
+      (use input1 in \<open>simp_all add: label_prop_label_record_update_def input_tl_def\<close>)
+
+  then show ?thesis
+    unfolding step_eq by simp
+qed
+
+lemma labels_inv_fst_label_prop_input1_batched_prefixI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes input_eq: \<open>input os 1 = msgs @ rest\<close>
+    and labels: \<open>\<And>q. labels_inv (all_edges os q) (min_label os q)\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+  shows \<open>labels_inv (all_edges (fst (label_prop_input1_batched os msgs)) q)
+    (min_label (fst (label_prop_input1_batched os msgs)) q)\<close>
+  using input_eq labels inv
+proof (induct msgs arbitrary: os)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons msg msgs)
+  obtain d t where msg_eq: \<open>msg = (d, t)\<close>
+    by (cases msg)
+  have input1: \<open>input os 1 = (d, t) # (msgs @ rest)\<close>
+    using Cons.prems(1) msg_eq by simp
+  let ?step = \<open>label_prop_input1_step_state os d t\<close>
+  have labels_step: \<open>\<And>q. labels_inv (all_edges ?step q) (min_label ?step q)\<close>
+    by (rule labels_inv_label_prop_input1_step_stateI[OF Cons.prems(2) Cons.prems(3) input1])
+  have inv_step: \<open>label_prop_upd_inv ?step\<close>
+    by (rule label_prop_upd_inv_label_prop_input1_step_stateI[OF Cons.prems(3) input1])
+  have input_step: \<open>input ?step 1 = msgs @ rest\<close>
+    using input1 by simp
+  have ih: \<open>labels_inv (all_edges (fst (label_prop_input1_batched ?step msgs)) q)
+    (min_label (fst (label_prop_input1_batched ?step msgs)) q)\<close>
+    by (rule Cons.hyps[OF input_step labels_step inv_step])
+  then show ?case
+    using msg_eq
+    by (cases \<open>label_prop_input1_batched ?step msgs\<close>) simp
+
+qed
+
+lemma labels_inv_fst_label_prop_input1_batched_inputI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes labels: \<open>\<And>q. labels_inv (all_edges os q) (min_label os q)\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+  shows \<open>labels_inv (all_edges (fst (label_prop_input1_batched os (input os 1))) q)
+    (min_label (fst (label_prop_input1_batched os (input os 1))) q)\<close>
+  by (rule labels_inv_fst_label_prop_input1_batched_prefixI[where rest=Nil])
+    (use assms in simp_all)
+
 lemma fst_label_prop_input1_batched_append:
   \<open>fst (label_prop_input1_batched os (xs @ ys)) =
    fst (label_prop_input1_batched (fst (label_prop_input1_batched os xs)) ys)\<close>
@@ -1900,50 +2047,6 @@ proof -
     using that[OF ts_t v_in_edge strict_full] .
 qed
 
-(* NOTE: strict_lift_to_Max is structurally false without strong invariants
-   (counterexample: label os t' v = 3, label os q v = 5, label os Max v = 1.
-    Modifying label at q to 2 gives strict drop at q (3 -> 2) but no change at Max (1)).
-   Keeping as sorry — needs proof under labels_inv preservation or different assumptions. *)
-lemma min_label_fst_label_prop_input1_batched_strict_lift_to_Max:
-  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-  assumes \<open>timestamps os \<noteq> []\<close>
-    and \<open>q \<in> set (timestamps os)\<close>
-    and \<open>v \<in> edge_vertices (all_edges os q)\<close>
-    and \<open>min_label (fst (label_prop_input1_batched os msgs)) q v < min_label os q v\<close>
-  shows \<open>v \<in> edge_vertices (all_edges os (Max (set (timestamps os))))\<close>
-    and \<open>min_label (fst (label_prop_input1_batched os msgs)) (Max (set (timestamps os))) v
-      < min_label os (Max (set (timestamps os))) v\<close>
-  sorry
-
-lemma min_label_fst_label_prop_input1_batched_strict_at_Max_if_output_nonempty:
-  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-  assumes \<open>timestamps os \<noteq> []\<close>
-    and \<open>outpu os 1 = []\<close>
-    and \<open>outpu (fst (label_prop_input1_batched os msgs)) 1 \<noteq> []\<close>
-    and \<open>label_prop_upd_inv os\<close>
-    and \<open>set msgs \<subseteq> set (input os 1)\<close>
-  obtains v where
-    \<open>v \<in> edge_vertices (all_edges os (Max (set (timestamps os))))\<close>
-    \<open>min_label (fst (label_prop_input1_batched os msgs)) (Max (set (timestamps os))) v
-      < min_label os (Max (set (timestamps os))) v\<close>
-proof -
-  obtain q v where q_in: \<open>q \<in> set (timestamps os)\<close>
-    and v_in: \<open>v \<in> edge_vertices (all_edges os q)\<close>
-    and strict: \<open>min_label (fst (label_prop_input1_batched os msgs)) q v < min_label os q v\<close>
-    using min_label_fst_label_prop_input1_batched_strict_timestamped_if_output_nonempty
-      [OF assms(2,3,4,5)]
-    by blast
-  have v_max: \<open>v \<in> edge_vertices (all_edges os (Max (set (timestamps os))))\<close>
-    and strict_max: \<open>min_label (fst (label_prop_input1_batched os msgs)) (Max (set (timestamps os))) v
-      < min_label os (Max (set (timestamps os))) v\<close>
-    using min_label_fst_label_prop_input1_batched_strict_lift_to_Max
-      [OF assms(1) q_in v_in strict]
-    by simp_all
-  show ?thesis
-    using that[OF v_max strict_max] .
-qed
-
-
 lemma labels_measure_strict_decrease_if_pointwise_le_and_less:
   fixes A :: \<open>(nat \<times> nat) set\<close>
     and l l' :: \<open>nat \<Rightarrow> nat\<close>
@@ -2008,94 +2111,192 @@ proof -
     using finite_all_vertices[of os t] by (rule finite_subset)
 qed
 
-lemma labels_measure_fst_label_prop_input1_batched_context:
-  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-  assumes \<open>timestamps os \<noteq> []\<close>
-    and \<open>outpu os 1 = []\<close>
-    and \<open>outpu (fst (label_prop_input1_batched os msgs)) 1 \<noteq> []\<close>
-    and labels_os: \<open>\<And>t. labels_inv (all_edges os t) (min_label os t)\<close>
-    and labels_os': \<open>\<And>t. labels_inv (all_edges (fst (label_prop_input1_batched os msgs)) t)
-                          (min_label (fst (label_prop_input1_batched os msgs)) t)\<close>
-  shows \<open>finite (edge_vertices (all_edges os (Max (set (timestamps os)))))\<close>
-    and \<open>labels_inv (all_edges os (Max (set (timestamps os))))
-      (min_label os (Max (set (timestamps os))))\<close>
-    and \<open>labels_inv (all_edges os (Max (set (timestamps os))))
-      (min_label (fst (label_prop_input1_batched os msgs)) (Max (set (timestamps os))))\<close>
+lemma labels_measure_le_if_pointwise_le_same_edges:
+  fixes A A' :: \<open>(nat \<times> nat) set\<close>
+    and l l' :: \<open>nat \<Rightarrow> nat\<close>
+  assumes finite_edges: \<open>finite (edge_vertices A)\<close>
+    and edges_eq: \<open>A' = A\<close>
+    and le: \<open>\<And>v. v \<in> edge_vertices A \<Longrightarrow> l' v \<le> l v\<close>
+  shows \<open>labels_measure A' l' \<le> labels_measure A l\<close>
 proof -
-  show \<open>finite (edge_vertices (all_edges os (Max (set (timestamps os)))))\<close>
-    by (rule finite_edge_vertices_all_edges)
-next
-  show \<open>labels_inv (all_edges os (Max (set (timestamps os))))
-          (min_label os (Max (set (timestamps os))))\<close>
-    using labels_os .
-next
-  have edges_eq: \<open>all_edges (fst (label_prop_input1_batched os msgs)) = all_edges os\<close>
-    by simp
-  show \<open>labels_inv (all_edges os (Max (set (timestamps os))))
-          (min_label (fst (label_prop_input1_batched os msgs)) (Max (set (timestamps os))))\<close>
-    using labels_os'[of \<open>Max (set (timestamps os))\<close>] edges_eq by simp
+  have rank_le: \<open>\<And>v. v \<in> edge_vertices A \<Longrightarrow> rank A (l' v) \<le> rank A (l v)\<close>
+    using le finite_edges
+    unfolding rank_def
+    by (intro card_mono; force)
+  have \<open>(\<Sum>v\<in>edge_vertices A. rank A (l' v)) \<le> (\<Sum>v\<in>edge_vertices A. rank A (l v))\<close>
+    by (rule sum_mono) (auto intro: rank_le)
+  then show ?thesis
+    using edges_eq unfolding labels_measure_def by simp
+
 qed
 
-lemma labels_measure_fst_label_prop_input1_batched_decreases_if_output_nonempty:
-  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+
+lemma labels_measure_fst_label_prop_input1_batched_le_at_timestamp:
+  fixes os os' :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
     and msgs :: \<open>('d \<times> (nat, nat) myprod) list\<close>
-  assumes \<open>os' = fst (label_prop_input1_batched os msgs)\<close>
-    and \<open>timestamps os \<noteq> []\<close>
-    and \<open>outpu os 1 = []\<close>
-    and \<open>outpu os' 1 \<noteq> []\<close>
+  assumes os'_def: \<open>os' = fst (label_prop_input1_batched os msgs)\<close>
+  shows \<open>labels_measure (all_edges os' t) (min_label os' t)
+      \<le> labels_measure (all_edges os t) (min_label os t)\<close>
+proof -
+  have edges_eq: \<open>all_edges os' t = all_edges os t\<close>
+    using os'_def by simp
+  have finite_edges: \<open>finite (edge_vertices (all_edges os t))\<close>
+    by (rule finite_edge_vertices_all_edges)
+  have pointwise:
+    \<open>\<And>v. v \<in> edge_vertices (all_edges os t) \<Longrightarrow> min_label os' t v \<le> min_label os t v\<close>
+    using os'_def min_label_fst_label_prop_input1_batched_le[of os msgs t]
+    by simp
+  show ?thesis
+    by (rule labels_measure_le_if_pointwise_le_same_edges
+        [OF finite_edges edges_eq pointwise])
+qed
+
+
+lemma labels_measure_fst_label_prop_input1_batched_strict_at_some_timestamp_if_output_nonempty:
+  fixes os os' :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and msgs :: \<open>('d \<times> (nat, nat) myprod) list\<close>
+  assumes os'_def: \<open>os' = fst (label_prop_input1_batched os msgs)\<close>
+    and out_empty: \<open>outpu os 1 = []\<close>
+    and out_nonempty: \<open>outpu os' 1 \<noteq> []\<close>
     and INV: \<open>label_prop_upd_inv os\<close>
     and msgs_input: \<open>set msgs \<subseteq> set (input os 1)\<close>
     and labels_os: \<open>\<And>t. labels_inv (all_edges os t) (min_label os t)\<close>
-    and labels_os': \<open>\<And>t. labels_inv (all_edges (fst (label_prop_input1_batched os msgs)) t)
-                          (min_label (fst (label_prop_input1_batched os msgs)) t)\<close>
-  shows \<open>labels_measure (all_edges os' (Max (set (timestamps os'))))
-      (min_label os' (Max (set (timestamps os'))))
-    < labels_measure (all_edges os (Max (set (timestamps os))))
-      (min_label os (Max (set (timestamps os))))\<close>
+    and labels_os': \<open>\<And>t. labels_inv (all_edges os' t) (min_label os' t)\<close>
+  obtains q where
+    \<open>q \<in> set (timestamps os)\<close>
+    \<open>labels_measure (all_edges os' q) (min_label os' q)
+      < labels_measure (all_edges os q) (min_label os q)\<close>
 proof -
-  let ?t = \<open>Max (set (timestamps os))\<close>
-  have ts_eq: \<open>timestamps os' = timestamps os\<close>
-    using assms(1) by simp
-  have outpu_batch: \<open>outpu (fst (label_prop_input1_batched os msgs)) 1 \<noteq> []\<close>
-    using assms(1,4) by simp
-  obtain v where v_in: \<open>v \<in> edge_vertices (all_edges os ?t)\<close>
-    and strict: \<open>min_label (fst (label_prop_input1_batched os msgs)) ?t v < min_label os ?t v\<close>
-    using min_label_fst_label_prop_input1_batched_strict_at_Max_if_output_nonempty
-      [OF assms(2,3) outpu_batch INV msgs_input]
+  have out_batch: \<open>outpu (fst (label_prop_input1_batched os msgs)) 1 \<noteq> []\<close>
+    using os'_def out_nonempty by simp
+  obtain q v where q_in: \<open>q \<in> set (timestamps os)\<close>
+    and v_in: \<open>v \<in> edge_vertices (all_edges os q)\<close>
+    and strict_v: \<open>min_label (fst (label_prop_input1_batched os msgs)) q v < min_label os q v\<close>
+    using min_label_fst_label_prop_input1_batched_strict_timestamped_if_output_nonempty
+      [OF out_empty out_batch INV msgs_input]
     by blast
   have pointwise:
-    \<open>\<And>v. v \<in> edge_vertices (all_edges os ?t) \<Longrightarrow> min_label os' ?t v \<le> min_label os ?t v\<close>
-    using assms(1) min_label_fst_label_prop_input1_batched_le[of os msgs ?t]
+    \<open>\<And>v. v \<in> edge_vertices (all_edges os q) \<Longrightarrow> min_label os' q v \<le> min_label os q v\<close>
+    using os'_def min_label_fst_label_prop_input1_batched_le[of os msgs q]
     by simp
-  have strict': \<open>\<exists>v\<in>edge_vertices (all_edges os ?t). min_label os' ?t v < min_label os ?t v\<close>
-    using assms(1) v_in strict by auto
-  have edges_eq: \<open>all_edges os' ?t = all_edges os ?t\<close>
-    using assms(1) by simp
-  have finite_edges: \<open>finite (edge_vertices (all_edges os ?t))\<close>
-    and labels: \<open>labels_inv (all_edges os ?t) (min_label os ?t)\<close>
-    and labels'_fst: \<open>labels_inv (all_edges os ?t)
-      (min_label (fst (label_prop_input1_batched os msgs)) ?t)\<close>
-    using labels_measure_fst_label_prop_input1_batched_context[OF assms(2) assms(3) outpu_batch labels_os labels_os']
-    by simp_all
-  have labels': \<open>labels_inv (all_edges os ?t) (min_label os' ?t)\<close>
-    using assms(1) labels'_fst by simp
-  have \<open>labels_measure (all_edges os' ?t) (min_label os' ?t) <
-      labels_measure (all_edges os ?t) (min_label os ?t)\<close>
+  have strict_ex:
+    \<open>\<exists>v\<in>edge_vertices (all_edges os q). min_label os' q v < min_label os q v\<close>
+    using os'_def v_in strict_v by auto
+  have edges_eq: \<open>all_edges os' q = all_edges os q\<close>
+    using os'_def by simp
+  have finite_edges: \<open>finite (edge_vertices (all_edges os q))\<close>
+    by (rule finite_edge_vertices_all_edges)
+  have labels: \<open>labels_inv (all_edges os q) (min_label os q)\<close>
+    using labels_os .
+  have labels': \<open>labels_inv (all_edges os q) (min_label os' q)\<close>
+    using labels_os'[of q] edges_eq by simp
+  have strict_measure:
+    \<open>labels_measure (all_edges os' q) (min_label os' q)
+      < labels_measure (all_edges os q) (min_label os q)\<close>
     by (rule labels_measure_strict_decrease_if_pointwise_le_and_less_same_edges
-        [OF finite_edges labels labels' edges_eq pointwise strict'])
+        [OF finite_edges labels labels' edges_eq pointwise strict_ex])
+  show ?thesis
+    using that[OF q_in strict_measure] .
+qed
+
+
+lemma sum_list_strict_mono_ex1:
+  fixes xs :: \<open>'a list\<close>
+    and f g :: \<open>'a \<Rightarrow> nat\<close>
+  assumes le: \<open>\<And>x. x \<in> set xs \<Longrightarrow> f x \<le> g x\<close>
+    and strict: \<open>\<exists>x\<in>set xs. f x < g x\<close>
+  shows \<open>sum_list (map f xs) < sum_list (map g xs)\<close>
+  using assms
+proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  have le_a: \<open>f a \<le> g a\<close>
+    using Cons.prems(1) by simp
+  have le_tail: \<open>\<And>x. x \<in> set xs \<Longrightarrow> f x \<le> g x\<close>
+    using Cons.prems(1) by simp
+  have tail_le: \<open>sum_list (map f xs) \<le> sum_list (map g xs)\<close>
+    using le_tail
+  proof (induct xs)
+    case Nil
+    then show ?case by simp
+  next
+    case (Cons b ys)
+    have head_le: \<open>f b \<le> g b\<close>
+      using Cons.prems by simp
+    have tail_le': \<open>sum_list (map f ys) \<le> sum_list (map g ys)\<close>
+      using Cons.hyps Cons.prems by simp
+    show ?case
+      using head_le tail_le' by simp
+  qed
+
+  from Cons.prems(2) consider (head) \<open>f a < g a\<close> | (tail) \<open>\<exists>x\<in>set xs. f x < g x\<close>
+    by auto
+  then show ?case
+  proof cases
+    case head
+    then show ?thesis
+      using tail_le by simp
+  next
+    case tail
+    have tail_strict: \<open>sum_list (map f xs) < sum_list (map g xs)\<close>
+      using Cons.hyps[OF le_tail tail] .
+    then show ?thesis
+      using le_a by simp
+  qed
+qed
+
+
+lemma labels_measure_sum_fst_label_prop_input1_batched_decreases_if_output_nonempty:
+  fixes os os' :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and msgs :: \<open>('d \<times> (nat, nat) myprod) list\<close>
+  assumes os'_def: \<open>os' = fst (label_prop_input1_batched os msgs)\<close>
+    and out_empty: \<open>outpu os 1 = []\<close>
+    and out_nonempty: \<open>outpu os' 1 \<noteq> []\<close>
+    and INV: \<open>label_prop_upd_inv os\<close>
+    and msgs_input: \<open>set msgs \<subseteq> set (input os 1)\<close>
+    and labels_os: \<open>\<And>t. labels_inv (all_edges os t) (min_label os t)\<close>
+    and labels_os': \<open>\<And>t. labels_inv (all_edges os' t) (min_label os' t)\<close>
+  shows \<open>sum_list (map (\<lambda>t. labels_measure (all_edges os' t) (min_label os' t))
+          (timestamps os'))
+      < sum_list (map (\<lambda>t. labels_measure (all_edges os t) (min_label os t))
+          (timestamps os))\<close>
+proof -
+  have ts_eq: \<open>timestamps os' = timestamps os\<close>
+    using os'_def by simp
+  have pointwise:
+    \<open>\<And>t. t \<in> set (timestamps os) \<Longrightarrow>
+      labels_measure (all_edges os' t) (min_label os' t)
+        \<le> labels_measure (all_edges os t) (min_label os t)\<close>
+    using labels_measure_fst_label_prop_input1_batched_le_at_timestamp[OF os'_def]
+    by simp
+  obtain q where q_in: \<open>q \<in> set (timestamps os)\<close>
+    and strict_q: \<open>labels_measure (all_edges os' q) (min_label os' q)
+      < labels_measure (all_edges os q) (min_label os q)\<close>
+    using labels_measure_fst_label_prop_input1_batched_strict_at_some_timestamp_if_output_nonempty
+      [OF os'_def out_empty out_nonempty INV msgs_input labels_os labels_os']
+    by blast
+  have strict_ex:
+    \<open>\<exists>t\<in>set (timestamps os). labels_measure (all_edges os' t) (min_label os' t)
+      < labels_measure (all_edges os t) (min_label os t)\<close>
+    using q_in strict_q by blast
+  have \<open>sum_list (map (\<lambda>t. labels_measure (all_edges os' t) (min_label os' t))
+          (timestamps os))
+      < sum_list (map (\<lambda>t. labels_measure (all_edges os t) (min_label os t))
+          (timestamps os))\<close>
+    by (rule sum_list_strict_mono_ex1[OF pointwise strict_ex])
   then show ?thesis
     using ts_eq by simp
 qed
 
-find_theorems label_prop_upd_inv consumes
 
-lemma label_prop_input1_loop_updates_measure_decrease_if_label_output_nonempty:
+lemma labels_inv_label_prop_input1_loop_updatesI:
   fixes os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
     and os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
     and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
-  assumes \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-    and \<open>timestamps os_label_prop \<noteq> []\<close>
-    and \<open>outpu os_label_prop' 1 \<noteq> []\<close>
+  assumes UPDATES: \<open>(cbufs', os_label_prop', os') =
+      label_prop_input1_loop_updates cbufs os_label_prop os\<close>
     and INV: \<open>label_prop_upd_inv os_label_prop\<close>
     and msgs_inv: \<open>\<And>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
             map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
@@ -2105,91 +2306,108 @@ lemma label_prop_input1_loop_updates_measure_decrease_if_label_output_nonempty:
       (\<forall>q. myfst t \<le> q \<longrightarrow>
         snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))\<close>
     and labels_os: \<open>\<And>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
-    and labels_os'_all: \<open>\<And>t. labels_inv (all_edges os_label_prop' t) (min_label os_label_prop' t)\<close>
-  shows \<open>labels_measure
-      (all_edges os_label_prop' (Max (set (timestamps os_label_prop'))))
-      (min_label os_label_prop' (Max (set (timestamps os_label_prop'))))
-    < labels_measure
-      (all_edges os_label_prop (Max (set (timestamps os_label_prop))))
-      (min_label os_label_prop (Max (set (timestamps os_label_prop))))\<close>
+  shows \<open>labels_inv (all_edges os_label_prop' t) (min_label os_label_prop' t)\<close>
 proof -
   let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
     map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
       (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
-  let ?os_consumed = \<open>CONSUMES 1 ?msgs (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
+  let ?base = \<open>os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>\<close>
+  let ?consumed = \<open>CONSUMES 1 ?msgs ?base\<close>
   have os_label_prop'_eq:
-    \<open>os_label_prop' = fst (label_prop_input1_batched ?os_consumed (input ?os_consumed 1))\<close>
-    using assms(1)
+    \<open>os_label_prop' = fst (label_prop_input1_batched ?consumed (input ?consumed 1))\<close>
+    using UPDATES
     unfolding label_prop_input1_loop_updates_def Let_def
     by (auto split: prod.splits)
-  have consumed_ts: \<open>timestamps ?os_consumed \<noteq> []\<close>
-    using assms(2)
-    unfolding fold_consumes
-    by simp
-  have consumed_outpu: \<open>outpu ?os_consumed 1 = []\<close>
-    unfolding fold_consumes
-    by simp
-  have msgs_input_self: \<open>set (input ?os_consumed 1) \<subseteq> set (input ?os_consumed 1)\<close>
-    by simp
-  have inv_consumed: \<open>label_prop_upd_inv ?os_consumed\<close>
+  have inv_consumed: \<open>label_prop_upd_inv ?consumed\<close>
   proof (rule label_prop_upd_inv_CONSUMES_port1I)
-    show \<open>label_prop_upd_inv (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
+    show \<open>label_prop_upd_inv ?base\<close>
       using INV by simp
   next
     fix d t
     assume m: \<open>(d, t) \<in> set ?msgs\<close>
-    have ts_eq: \<open>set (timestamps (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)) =
-                 set (timestamps os_label_prop)\<close>
-      by simp
-    have de1_eq: \<open>de1 (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) = de1 os_label_prop\<close>
-      by simp
-    have all_v_eq: \<open>\<And>t'. all_vertices (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) t' =
-                          all_vertices os_label_prop t'\<close>
-      by simp
-    have all_e_eq: \<open>\<And>t'. all_edges (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) t' =
-                          all_edges os_label_prop t'\<close>
-      by simp
-    show \<open>myfst t \<in> set (timestamps (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)) \<and>
-          fst (de1 (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) d)
-            \<in> all_vertices (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) (myfst t) \<and>
-          (\<forall>q. myfst t \<le> q \<longrightarrow>
-            snd (de1 (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) d) \<in>
-              cc_of (all_edges (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) q)
-                (fst (de1 (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) d)))\<close>
-      using msgs_inv[OF m] ts_eq de1_eq all_v_eq all_e_eq by simp
+    show \<open>myfst t \<in> set (timestamps ?base) \<and>
+      fst (de1 ?base d) \<in> all_vertices ?base (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 ?base d) \<in> cc_of (all_edges ?base q) (fst (de1 ?base d)))\<close>
+      using msgs_inv[OF m] by simp
   qed
-  have labels_consumed: \<open>\<And>t. labels_inv (all_edges ?os_consumed t) (min_label ?os_consumed t)\<close>
+  have labels_consumed: \<open>\<And>t. labels_inv (all_edges ?consumed t) (min_label ?consumed t)\<close>
     using labels_os by simp
-  have labels_os'_at_batched: \<open>\<And>t. labels_inv
-      (all_edges (fst (label_prop_input1_batched ?os_consumed (input ?os_consumed 1))) t)
-      (min_label (fst (label_prop_input1_batched ?os_consumed (input ?os_consumed 1))) t)\<close>
-    using labels_os'_all os_label_prop'_eq by simp
+  show ?thesis
+    using os_label_prop'_eq labels_inv_fst_label_prop_input1_batched_inputI
+      [OF labels_consumed inv_consumed, of t]
+    by simp
+qed
+
+lemma label_prop_input1_loop_updates_sum_measure_decrease_if_label_output_nonempty:
+  fixes os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
+  assumes UPDATES: \<open>(cbufs', os_label_prop', os') =
+      label_prop_input1_loop_updates cbufs os_label_prop os\<close>
+    and out_nonempty: \<open>outpu os_label_prop' 1 \<noteq> []\<close>
+    and INV: \<open>label_prop_upd_inv os_label_prop\<close>
+    and msgs_inv: \<open>\<And>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<Longrightarrow>
+      myfst t \<in> set (timestamps os_label_prop) \<and>
+      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow>
+        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))\<close>
+    and labels_os: \<open>\<And>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+  shows \<open>sum_list (map (\<lambda>t. labels_measure (all_edges os_label_prop' t) (min_label os_label_prop' t))
+          (timestamps os_label_prop'))
+      < sum_list (map (\<lambda>t. labels_measure (all_edges os_label_prop t) (min_label os_label_prop t))
+          (timestamps os_label_prop))\<close>
+proof -
+  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
+    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+  let ?base = \<open>os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>\<close>
+  let ?consumed = \<open>CONSUMES 1 ?msgs ?base\<close>
+  have os_label_prop'_eq:
+    \<open>os_label_prop' = fst (label_prop_input1_batched ?consumed (input ?consumed 1))\<close>
+    using UPDATES
+    unfolding label_prop_input1_loop_updates_def Let_def
+    by (auto split: prod.splits)
+  have consumed_outpu: \<open>outpu ?consumed 1 = []\<close>
+    unfolding fold_consumes by simp
+  have msgs_input_self: \<open>set (input ?consumed 1) \<subseteq> set (input ?consumed 1)\<close>
+    by simp
+  have inv_consumed: \<open>label_prop_upd_inv ?consumed\<close>
+  proof (rule label_prop_upd_inv_CONSUMES_port1I)
+    show \<open>label_prop_upd_inv ?base\<close>
+      using INV by simp
+  next
+    fix d t
+    assume m: \<open>(d, t) \<in> set ?msgs\<close>
+    show \<open>myfst t \<in> set (timestamps ?base) \<and>
+      fst (de1 ?base d) \<in> all_vertices ?base (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 ?base d) \<in> cc_of (all_edges ?base q) (fst (de1 ?base d)))\<close>
+      using msgs_inv[OF m] by simp
+  qed
+  have labels_consumed: \<open>\<And>t. labels_inv (all_edges ?consumed t) (min_label ?consumed t)\<close>
+    using labels_os by simp
+  have labels_os': \<open>\<And>t. labels_inv (all_edges os_label_prop' t) (min_label os_label_prop' t)\<close>
+    by (rule labels_inv_label_prop_input1_loop_updatesI[OF UPDATES INV msgs_inv labels_os])
   have consumed_decrease:
-    \<open>labels_measure
-        (all_edges os_label_prop' (Max (set (timestamps os_label_prop'))))
-        (min_label os_label_prop' (Max (set (timestamps os_label_prop'))))
-      < labels_measure
-        (all_edges ?os_consumed (Max (set (timestamps ?os_consumed))))
-        (min_label ?os_consumed (Max (set (timestamps ?os_consumed))))\<close>
-    using labels_measure_fst_label_prop_input1_batched_decreases_if_output_nonempty
-      [of os_label_prop' ?os_consumed \<open>input ?os_consumed 1\<close>]
-      os_label_prop'_eq consumed_ts consumed_outpu assms(3) inv_consumed msgs_input_self
-      labels_consumed labels_os'_at_batched
+    \<open>sum_list (map (\<lambda>t. labels_measure (all_edges os_label_prop' t) (min_label os_label_prop' t))
+        (timestamps os_label_prop'))
+      < sum_list (map (\<lambda>t. labels_measure (all_edges ?consumed t) (min_label ?consumed t))
+        (timestamps ?consumed))\<close>
+    using labels_measure_sum_fst_label_prop_input1_batched_decreases_if_output_nonempty
+      [of os_label_prop' ?consumed \<open>input ?consumed 1\<close>]
+      os_label_prop'_eq consumed_outpu out_nonempty inv_consumed msgs_input_self labels_consumed labels_os'
     by simp
   have consumed_same:
-    \<open>labels_measure
-        (all_edges ?os_consumed (Max (set (timestamps ?os_consumed))))
-        (min_label ?os_consumed (Max (set (timestamps ?os_consumed)))) =
-      labels_measure
-        (all_edges os_label_prop (Max (set (timestamps os_label_prop))))
-        (min_label os_label_prop (Max (set (timestamps os_label_prop))))\<close>
+    \<open>sum_list (map (\<lambda>t. labels_measure (all_edges ?consumed t) (min_label ?consumed t))
+        (timestamps ?consumed)) =
+      sum_list (map (\<lambda>t. labels_measure (all_edges os_label_prop t) (min_label os_label_prop t))
+        (timestamps os_label_prop))\<close>
     unfolding fold_consumes min_label_def all_edges_def all_vertices_def neighbors_def
     by simp
   show ?thesis
     using consumed_decrease consumed_same by simp
 qed
-
-
 
 
 
@@ -2338,26 +2556,20 @@ function loop_updates where
    )"
   by auto
 termination
-  apply (relation "measure (\<lambda>(cbufs, os_label_prop, os). labels_measure (all_edges os_label_prop (Max (set (timestamps os_label_prop)))) (min_label os_label_prop (Max (set (timestamps os_label_prop)))))")
+  apply (relation "measure (\<lambda>(cbufs, os_label_prop, os). sum_list (map (\<lambda> t. labels_measure (all_edges os_label_prop t) (min_label os_label_prop t)) (timestamps os_label_prop))) ")
    apply simp
   subgoal for cbufs os_label_prop os x cbufs' y os_label_prop' os'
-    (*     apply (cases "label_prop_upd_inv os_label_prop \<and> timestamps os_label_prop \<noteq> [] \<and> (\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))")
-    subgoal *)
     apply (clarsimp del: disjCI split: prod.splits)
-    apply (rule label_prop_input1_loop_updates_measure_decrease_if_label_output_nonempty[rotated, where cbufs'=cbufs' and cbufs=cbufs and os=os])
-          defer
-          apply (metis label_prop_input1_loop_updates_clears(3))
+    apply (rule label_prop_input1_loop_updates_sum_measure_decrease_if_label_output_nonempty[rotated, where cbufs'=cbufs' and cbufs=cbufs and os=os])
+         subgoal
+      apply (rule ccontr)
+      apply (metis label_prop_input1_loop_updates_clears(3))
+           done
          apply simp_all
     subgoal sorry
-    subgoal
-      sorry
-    subgoal
-      apply (rule ccontr)
-      apply clarsimp
-      apply (metis label_prop_input1_loop_updates_clears(3))
-      done
     done
-  done
+  done 
+
 
 declare loop_updates.simps[simp del]
 
