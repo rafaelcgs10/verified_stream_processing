@@ -7,8 +7,6 @@ imports
   Dataplane.Timely_Dataflow_Op
 begin
 
-(* FIXME: BROKEN because I modified it to use release_caps *)
-
 (* TODO Move. *)
 lemma lshift_append_lshift:
   \<open>xs @@- (ys @ zs) @@- lxs = (xs @ ys) @@- zs @@- lxs\<close>
