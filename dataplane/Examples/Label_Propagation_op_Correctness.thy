@@ -4875,7 +4875,7 @@ next
                 apply simp
                 apply simp
                 apply (rule refl)+
-                apply (simp only: append_assoc flip: change_multiplicities_append_alt)
+                apply (simp only: fst_loop_updates append_assoc flip: change_multiplicities_append_alt)
                 sorry
               done
             done
