@@ -43,7 +43,7 @@ Note: At the start of any session, first confirm the MCP connection to Isabelle/
   - **In lemma statements**, use a `fixes` clause (`fixes x :: "'a list" and y :: "('b :: linorder) set"`) to pin both the type variables AND their sort/class constraints. This is preferable to letting Isabelle infer fresh polymorphic types that won't unify with the proof context.
   - **In Isar `have` statements**, when introducing a fact whose body mentions a free variable whose type matters (e.g., `have foo: "P x"`), give the variable an explicit type with `for x :: "'a list"` or annotate inline (`have foo: "P (x :: 'a list)"`), so the IH or hypotheses unify cleanly.
   - **In `obtain` and `proof (cases …)`**, type-annotate the introduced variables (`obtain x :: "'a list" where …`) if the inferred type is a fresh variable that won't match anything else.
-
+- Always do a check to remove not used assumptions after finishing a proof.
 ## Tools
 
 - The AI only uses Sledgehammer for smaller subgoals, and never for the entire lemma.

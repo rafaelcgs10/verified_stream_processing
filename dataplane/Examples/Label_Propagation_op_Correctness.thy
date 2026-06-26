@@ -254,7 +254,7 @@ proof (intro allI ballI)
     using orig unfolding input_tl_def by simp
 qed
 
-declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del] 
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 declare if_cong[cong]
 declare list_emb_Nil2[simp del] BULK_BENQ_right_empty[simp del] BULK_BENQ_left_empty[simp del]
@@ -1221,6 +1221,10 @@ lemma CONSUMES_CONSUMES:
   unfolding fold_consumes
   by simp
 
+
+lemma intsum_CONSUMES[simp]:
+  \<open>intsum (CONSUMES p xs os) = intsum os\<close>
+  by (induct xs arbitrary: os) (auto split: prod.splits)
 lemma timestamps_CONSUMES[simp]:
   \<open>timestamps (CONSUMES p xs os) = timestamps os\<close>
   unfolding fold_consumes by simp
@@ -3092,8 +3096,1297 @@ proof -
     by (smt (verit, del_insts) append.assoc in_set_conv_decomp label_prop_input1_batched_produced_memberD)
 qed
 
+(* ============================================================================
+   Auxiliary lemmas needed for label_prop_input1_loop_updates_preserves_dataplane_tracker_inv.
+
+   Auxiliary 1 (outpu -> cbuf -> drain): combine
+     dataplane_tracker_inv_update_outputs (Outputs.thy:167)  -- moves outpu to cbuf
+     dataplane_tracker_inv_fold_consumes (Consumes.thy:1302) -- drains a cbuf prefix
+
+   Use case in the step: nid_up = 1, p_up = 1, nid_dn = 2, p_dn = 1.
+   Effect: outpu (os 1) 1 is appended onto cbufs (2, 1), then the entire (extended)
+   cbufs (2, 1) is fed into (os 2) at port 1 via fold-consumes. Net state has
+   outpu (os 1) 1 = [], cbufs (2, 1) = [], and os 2 = CONSUMES 1 L (os 2) where
+   L = cbufs (2, 1) @ outpu (os 1) 1.
+*)
+lemma dataplane_tracker_inv_outpu_then_fold_consumes:
+  fixes os :: \<open>'nid :: {linorder,enum} \<Rightarrow> ('p :: {linorder,enum}, 'd, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) operator_state\<close>
+    and cbufs :: \<open>'nid \<times> 'p \<Rightarrow> ('d \<times> 't) buf\<close>
+    and sg :: \<open>('nid, 'p, 't) subgraph\<close>
+  assumes Inv: \<open>dataplane_tracker_inv os cbufs sg\<close>
+    and D: \<open>dataflow_topology (summ sg) (-+-)\<close>
+    and GR: \<open>graph_summar_nt (summ sg) (nxt sg) os\<close>
+    and Nxt: \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+    and edge: \<open>summ sg (Loc nid_up (Src p_up)) (Loc nid_dn (Trg p_dn)) \<noteq> {}\<^sub>A\<close>
+    and nid_neq: \<open>nid_up \<noteq> nid_dn\<close>
+  shows
+    \<open>dataplane_tracker_inv
+       (os(nid_up := (os nid_up)\<lparr>outpu := (outpu (os nid_up))(p_up := [])\<rparr>,
+           nid_dn := fold (\<lambda>(d, t) s. consumes s p_dn t d)
+                       (cbufs (nid_dn, p_dn) @ outpu (os nid_up) p_up)
+                       (os nid_dn)))
+       (cbufs((nid_dn, p_dn) := []))
+       sg\<close>
+proof -
+  let ?os1 = "os(nid_up := (os nid_up)\<lparr>outpu := (outpu (os nid_up))(p_up := [])\<rparr>)"
+  let ?cb1 = "cbufs((nid_dn, p_dn) := cbufs (nid_dn, p_dn) @ outpu (os nid_up) p_up)"
+  have outpu_split: "outpu (os nid_up) p_up = outpu (os nid_up) p_up @ []"
+    by simp
+  have os1_eq: "?os1 = os(nid_up := (os nid_up)\<lparr>outpu :=
+                 (\<lambda>p'. if p' = p_up then [] else outpu (os nid_up) p')\<rparr>)"
+    by (auto simp: fun_upd_def)
+  have inv1: "dataplane_tracker_inv ?os1 ?cb1 sg"
+    apply (rule dataplane_tracker_inv_update_outputs
+        [where nid=nid_up and p=p_up and xs="outpu (os nid_up) p_up" and ys="[]"
+          and nid'=nid_dn and p'=p_dn])
+    apply (rule Inv)
+    apply (rule outpu_split)
+    apply (simp add: fun_upd_def)
+    apply simp
+    apply (rule edge)
+    apply (rule GR)
+    done
+  have GR1: "graph_summar_nt (summ sg) (nxt sg) ?os1"
+    using GR by (auto simp: graph_summar_nt_def)
+  let ?L = "cbufs (nid_dn, p_dn) @ outpu (os nid_up) p_up"
+  let ?os2 = "?os1(nid_dn := fold (\<lambda>(d, t) s. consumes s p_dn t d) ?L (?os1 nid_dn))"
+  let ?cb2 = "(\<lambda>(nid', p'). if nid' = nid_dn \<and> p' = p_dn then drop (length ?L) (?cb1 (nid_dn, p_dn))
+                            else ?cb1 (nid', p'))"
+  have len_le: "length ?L \<le> length (?cb1 (nid_dn, p_dn))"
+    by simp
+  have inv2: "dataplane_tracker_inv ?os2 ?cb2 sg"
+    apply (rule dataplane_tracker_inv_fold_consumes
+        [where os="?os1" and cbufs="?cb1" and nid=nid_dn and p=p_dn and n="length ?L"])
+    apply (rule inv1)
+    apply (rule D)
+    apply (rule GR1)
+    apply (rule len_le)
+    apply (rule refl)
+    apply simp
+    done
+  have take_all_eq: "take (length ?L) (?cb1 (nid_dn, p_dn)) = ?L"
+    by (simp add: take_all)
+  have drop_all_eq: "drop (length ?L) (?cb1 (nid_dn, p_dn)) = []"
+    by simp
+  have cb2_eq: "?cb2 = cbufs((nid_dn, p_dn) := [])"
+    using drop_all_eq nid_neq
+    by (auto simp: fun_eq_iff fun_upd_def split: prod.splits)
+  have os1_dn: "?os1 nid_dn = os nid_dn"
+    using nid_neq by simp
+  have os2_eq: "?os2 = os(nid_up := (os nid_up)\<lparr>outpu := (outpu (os nid_up))(p_up := [])\<rparr>,
+                          nid_dn := fold (\<lambda>(d, t) s. consumes s p_dn t d) ?L (os nid_dn))"
+    using os1_dn by (simp add: fun_upd_def fun_eq_iff)
+  show ?thesis
+    using inv2 unfolding os2_eq cb2_eq .
+qed
+
+(* ----------------------------------------------------------------------------
+   Aux 2a: variant of dataplane_tracker_inv_produces_drops whose ninter is
+   already shaped as drop_caps would shape it (a single map over the
+   caps_to_drop list), rather than the enum-concat form. With this, the wrapper
+   below is a thin rule application.
+
+   The proof goes via produces_drops + clean_reorder_inter, and uses an inline
+   helper `group_drops_mset` to bridge the two inter shapes.
+*)
+lemma dataplane_tracker_inv_produces_drops_dropcaps_shape:
+  fixes caps_to_drop :: \<open>('p :: {enum,linorder}, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) capability list\<close>
+  assumes D: \<open>dataflow_topology (summ sg) (-+-)\<close>
+  shows
+    \<open>noutput = (\<lambda>p. outpu (os nid) p @ oputs p) \<Longrightarrow>
+     nocaps = (\<lambda>p. list_diff (ocaps (os nid) p)
+                              (map capability.time (filter (\<lambda>c. out c = p) caps_to_drop))) \<Longrightarrow>
+     ninput = (\<lambda>p. filter (\<lambda>(_, t). t \<notin> set (map capability.time (filter (\<lambda>c. out c = p) caps_to_drop)))
+                          (input (os nid) p)) \<Longrightarrow>
+     nprodu = produ (os nid) @ produs \<Longrightarrow>
+     ninter = operator_state.inter (os nid)
+              @ map (\<lambda>cap. (out cap, capability.time cap, - 1)) caps_to_drop \<Longrightarrow>
+     (\<forall>p'. mset (map capability.time (filter (\<lambda>c. out c = p') caps_to_drop))
+            \<subseteq># mset (ocaps (os nid) p')) \<Longrightarrow>
+     (\<forall>(p, t, m) \<in> set produs. m > 0 \<and> t \<in> set (ocaps (os nid) p)) \<Longrightarrow>
+     (\<forall>p. snd ` set (oputs p) \<subseteq> set (ocaps (os nid) p)) \<Longrightarrow>
+     (\<forall>p. to_zmset (map snd (oputs p)) = zmset (map snd (filter (\<lambda>x. p = fst x) produs))) \<Longrightarrow>
+     graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
+     nxt sg = graph_to_nxt (summ sg) \<Longrightarrow>
+     dataplane_tracker_inv os cbufs sg \<Longrightarrow>
+     dataplane_tracker_inv (os(nid := os nid \<lparr>outpu := noutput, ocaps := nocaps,
+        input := ninput, produ := nprodu, inter := ninter\<rparr>)) cbufs sg\<close>
+proof -
+  assume NOut: "noutput = (\<lambda>p. outpu (os nid) p @ oputs p)"
+  assume NOcaps: "nocaps = (\<lambda>p. list_diff (ocaps (os nid) p)
+                                  (map capability.time (filter (\<lambda>c. out c = p) caps_to_drop)))"
+  assume NInput: "ninput = (\<lambda>p. filter (\<lambda>(_, t). t \<notin> set (map capability.time
+                                          (filter (\<lambda>c. out c = p) caps_to_drop)))
+                                       (input (os nid) p))"
+  assume NProdu: "nprodu = produ (os nid) @ produs"
+  assume NInter: "ninter = operator_state.inter (os nid)
+                          @ map (\<lambda>cap. (out cap, capability.time cap, - 1)) caps_to_drop"
+  assume Drops: "\<forall>p'. mset (map capability.time (filter (\<lambda>c. out c = p') caps_to_drop))
+                       \<subseteq># mset (ocaps (os nid) p')"
+  assume Produs: "\<forall>(p, t, m) \<in> set produs. m > 0 \<and> t \<in> set (ocaps (os nid) p)"
+  assume Oputs: "\<forall>p. snd ` set (oputs p) \<subseteq> set (ocaps (os nid) p)"
+  assume OPZ: "\<forall>p. to_zmset (map snd (oputs p)) = zmset (map snd (filter (\<lambda>x. p = fst x) produs))"
+  assume G: "graph_summar_nt (summ sg) (nxt sg) os"
+  assume Nxt: "nxt sg = graph_to_nxt (summ sg)"
+  assume Inv: "dataplane_tracker_inv os cbufs sg"
+
+  define drops :: "'p \<Rightarrow> 't list"
+    where "drops = (\<lambda>p. map capability.time (filter (\<lambda>c. out c = p) caps_to_drop))"
+
+  let ?ninter_concat = "operator_state.inter (os nid)
+                        @ concat (map (\<lambda>p. map (\<lambda>t. (p, t, - 1 :: int)) (drops p)) Enum.enum)"
+
+  let ?osPD = "os(nid := (os nid)\<lparr>outpu := noutput, ocaps := nocaps,
+                                   input := ninput, produ := nprodu, inter := ?ninter_concat\<rparr>)"
+
+  have NOcaps': "nocaps = (\<lambda>p. list_diff (ocaps (os nid) p) (drops p))"
+    using NOcaps by (simp add: drops_def)
+  have NInput': "ninput = (\<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drops p)) (input (os nid) p))"
+    using NInput by (simp add: drops_def)
+  have Drops': "\<forall>p. mset (drops p) \<subseteq># mset (ocaps (os nid) p)"
+    using Drops by (simp add: drops_def)
+
+  have inv_PD: "dataplane_tracker_inv ?osPD cbufs sg"
+    by (rule dataplane_tracker_inv_produces_drops[OF D NOut NOcaps' NInput' NProdu refl
+            Drops' Produs Oputs OPZ G Nxt Inv])
+
+  have group_caps:
+    "mset (concat (map (\<lambda>p. map (\<lambda>t. (p, t, - 1 :: int))
+                           (map capability.time (filter (\<lambda>c. out c = p) cs))) Enum.enum)) =
+     mset (map (\<lambda>cap. (out cap, capability.time cap, - 1)) cs)" for cs :: "('p, 't) capability list"
+  proof (induct cs)
+    case Nil
+    show ?case by simp
+  next
+    case (Cons c cs)
+    let ?f = "\<lambda>p. map (\<lambda>t. (p, t, - 1 :: int)) (map capability.time (filter (\<lambda>c'. out c' = p) cs))"
+    have rewrite:
+      "concat (map (\<lambda>p. map (\<lambda>t. (p, t, - 1 :: int))
+                            (map capability.time (filter (\<lambda>c'. out c' = p) (c # cs)))) Enum.enum)
+       = concat (map (\<lambda>p. (if out c = p then [(p, capability.time c, - 1 :: int)] else []) @ ?f p)
+                      Enum.enum)"
+      by (rule arg_cong[where f=concat], rule map_cong[OF refl], simp)
+    have enum_pick:
+      "mset (concat (map (\<lambda>p :: 'p. if out c = p then [(p, capability.time c, - 1 :: int)] else [])
+                          Enum.enum))
+       = {#(out c, capability.time c, - 1)#}"
+    proof -
+      have aux: "distinct ps \<Longrightarrow> out c \<in> set ps \<Longrightarrow>
+        mset (concat (map (\<lambda>p :: 'p. if out c = p then [(p, capability.time c, - 1 :: int)] else []) ps))
+        = {#(out c, capability.time c, - 1)#}" for ps
+        by (induct ps) auto
+      show ?thesis
+        by (rule aux[OF Enum.enum_class.enum_distinct Enum.enum_class.in_enum])
+    qed
+    show ?case
+    proof -
+      have split_mset_aux:
+        "mset (concat (map (\<lambda>p. A p @ B p) ps)) =
+         mset (concat (map A ps)) + mset (concat (map B ps))" for A B and ps :: "'p list"
+        by (induct ps) simp_all
+      have split_mset:
+        "mset (concat (map (\<lambda>p. (if out c = p then [(p, capability.time c, - 1 :: int)] else []) @ ?f p) Enum.enum)) =
+         mset (concat (map (\<lambda>p. if out c = p then [(p, capability.time c, - 1 :: int)] else []) Enum.enum)) +
+         mset (concat (map ?f Enum.enum))"
+        by (rule split_mset_aux)
+
+      have "mset (concat (map (\<lambda>p. map (\<lambda>t. (p, t, - 1 :: int))
+                            (map capability.time (filter (\<lambda>c'. out c' = p) (c # cs)))) Enum.enum)) =
+        mset (concat (map (\<lambda>p. (if out c = p then [(p, capability.time c, - 1 :: int)] else []) @ ?f p)
+                      Enum.enum))"
+        using rewrite by simp
+      also have "... = {#(out c, capability.time c, - 1)#} +
+        mset (map (\<lambda>cap. (out cap, capability.time cap, - 1)) cs)"
+        using split_mset enum_pick Cons.hyps by simp
+      also have "... = mset (map (\<lambda>cap. (out cap, capability.time cap, - 1)) (c # cs))"
+        by simp
+      finally show ?thesis .
+    qed
 
 
+  qed
+
+  have inter_mset_eq:
+    "mset (operator_state.inter (?osPD nid)) = mset (operator_state.inter (?osPD nid \<lparr>inter := ninter\<rparr>))"
+    using group_caps[of caps_to_drop] NInter by (simp add: drops_def)
+
+  let ?osTarget = "os(nid := (os nid)\<lparr>outpu := noutput, ocaps := nocaps,
+                                       input := ninput, produ := nprodu, inter := ninter\<rparr>)"
+
+  have all_fields_match:
+    "\<forall>nid'. intsum (?osTarget nid') = intsum (?osPD nid') \<and>
+            ocaps (?osTarget nid') = ocaps (?osPD nid') \<and>
+            consu (?osTarget nid') = consu (?osPD nid') \<and>
+            mset (operator_state.inter (?osTarget nid')) = mset (operator_state.inter (?osPD nid')) \<and>
+            produ (?osTarget nid') = produ (?osPD nid') \<and>
+            outpu (?osTarget nid') = outpu (?osPD nid') \<and>
+            front (?osTarget nid') = front (?osPD nid')"
+    apply (intro allI conjI)
+    subgoal for nid' by simp
+    subgoal for nid' by simp
+    subgoal for nid' by simp
+    subgoal for nid' using group_caps[of caps_to_drop] NInter
+      by (cases "nid' = nid") (simp_all add: drops_def)
+    subgoal for nid' by simp
+    subgoal for nid' by simp
+    subgoal for nid' by simp
+    done
+
+  show ?thesis
+    using inv_PD dataplane_tracker_inv_clean_reorder_inter[OF all_fields_match]
+    by blast
+qed
+
+(* ============================================================================
+   Auxiliary 2 (produces-then-drop on a state already known to satisfy
+   dataplane_tracker_inv -- e.g. the post-fold-consumes state from Auxiliary 1).
+   This wraps dataplane_tracker_inv_produces_drops (Produces.thy:249), packaged
+   to take produces' batch and drop_caps' caps_to_drop as separate, related lists.
+
+   The outpu(p) := [] / input(p) := [] reset that label_prop_input1_loop_updates
+   performs at the end is NOT included here -- it has to be justified separately,
+   either by a no-downstream assumption on (nid, Src p) (then use
+   dataplane_tracker_inv_update_outputs_outside) or by shifting outpu(nid)(p) to
+   a downstream cbuf first (dataplane_tracker_inv_update_outputs) and then
+   reasoning about the shifted state.
+
+   Assumption shape, mirroring dataplane_tracker_inv_produces_drops:
+     - batch_caps_exact: each batch cap has its time IN ocaps s1 (out cap)
+       (stronger than just "<=", which is what produces_drops needs);
+     - drops_subset_per_port: per port, drops' timestamps are a sub-multiset of
+       ocaps s1 at that port; this is implied by drops_port + drops_subset for
+       the single-port case but stated per-port for generality;
+     - drops_disjoint_input: drops' timestamps at each port don't overlap with
+       timestamps already in input s1 at that port (required so the input filter
+       in produces_drops is a no-op, matching the fact that drop_caps doesn't
+       actually touch input);
+     - produs_oputs_match: the standard zmset matching between produces' outpu
+       additions and produ additions per port (this holds by construction of
+       produces).
+*)
+lemma dataplane_tracker_inv_produces_drop:
+  fixes os :: \<open>'nid :: {linorder,enum} \<Rightarrow> ('p :: {linorder,enum}, 'd, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) operator_state\<close>
+    and cbufs :: \<open>'nid \<times> 'p \<Rightarrow> ('d \<times> 't) buf\<close>
+    and sg :: \<open>('nid, 'p, 't) subgraph\<close>
+  assumes Inv: \<open>dataplane_tracker_inv (os(nid := s1)) cbufs sg\<close>
+    and D: \<open>dataflow_topology (summ sg) (-+-)\<close>
+    and GR: \<open>graph_summar_nt (summ sg) (nxt sg) (os(nid := s1))\<close>
+    and Nxt: \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+    and batch_caps_exact:
+      \<open>\<And>x cap. (x, cap) \<in> set batch \<Longrightarrow>
+        capability.time cap \<in> set (ocaps s1 (out cap))\<close>
+    and drops_subset_per_port:
+      \<open>\<And>p'. mset (map capability.time (filter (\<lambda>c. out c = p') caps_to_drop)) \<subseteq>#
+            mset (ocaps s1 p')\<close>
+    and drops_disjoint_input:
+      \<open>\<And>p'. set (map capability.time (filter (\<lambda>c. out c = p') caps_to_drop)) \<inter>
+            snd ` set (input s1 p') = {}\<close>
+  shows
+    \<open>dataplane_tracker_inv
+       (os(nid := drop_caps (produces s1 batch) caps_to_drop))
+       cbufs sg\<close>
+proof -
+  let ?os0 = \<open>os(nid := s1)\<close>
+  let ?oputs = \<open>\<lambda>p. map (\<lambda>(x, cap). (x, capability.time cap))
+    (filter (\<lambda>(x, cap). out cap = p) batch)\<close>
+  let ?produs = \<open>map (\<lambda>(x, cap). (out cap, capability.time cap, 1 :: int)) batch\<close>
+  let ?drop_times = \<open>\<lambda>p. map capability.time (filter (\<lambda>c. out c = p) caps_to_drop)\<close>
+
+  have input_filter:
+    \<open>input s1 = (\<lambda>p. filter (\<lambda>(_, t). t \<notin> set (?drop_times p)) (input s1 p))\<close>
+  proof (rule ext)
+    fix p
+    have all_not: \<open>\<forall>x\<in>set (input s1 p). case x of (_, t) \<Rightarrow> t \<notin> set (?drop_times p)\<close>
+      using drops_disjoint_input[of p]
+      by auto
+    show \<open>input s1 p = filter (\<lambda>(_, t). t \<notin> set (?drop_times p)) (input s1 p)\<close>
+      by (rule sym, subst filter_id_conv) (use all_not in auto)
+  qed
+
+  have Produs: \<open>\<forall>(p, t, m) \<in> set ?produs. m > 0 \<and> t \<in> set (ocaps (?os0 nid) p)\<close>
+    using batch_caps_exact
+    by (auto split: prod.splits capability.splits)
+
+  have Oputs: \<open>\<forall>p. snd ` set (?oputs p) \<subseteq> set (ocaps (?os0 nid) p)\<close>
+    using batch_caps_exact
+    by (auto split: prod.splits capability.splits)
+
+  have OPZ:
+    \<open>\<forall>p. to_zmset (map snd (?oputs p)) =
+      zmset (map snd (filter (\<lambda>x. p = fst x) ?produs))\<close>
+  proof
+    fix p
+    have rhs:
+      \<open>map snd (filter (\<lambda>x. p = fst x) ?produs) =
+        map (\<lambda>(x, cap). (capability.time cap, 1 :: int))
+          (filter (\<lambda>(x, cap). out cap = p) batch)\<close>
+      by (induct batch) (auto simp: split_beta)
+    have lhs_to:
+      \<open>to_zmset (map snd (?oputs p)) =
+        to_zmset (map (\<lambda>(x, cap). capability.time cap)
+          (filter (\<lambda>(x, cap). out cap = p) batch))\<close>
+      by (induct batch) (auto simp: split_beta)
+    have zm:
+      \<open>zmset (map (\<lambda>(x, cap). (capability.time cap, 1 :: int))
+          (filter (\<lambda>(x, cap). out cap = p) batch)) =
+        to_zmset (map (\<lambda>(x, cap). capability.time cap)
+          (filter (\<lambda>(x, cap). out cap = p) batch))\<close>
+      by (induct \<open>filter (\<lambda>(x, cap). out cap = p) batch\<close>) (auto simp: split_beta)
+    show \<open>to_zmset (map snd (?oputs p)) =
+      zmset (map snd (filter (\<lambda>x. p = fst x) ?produs))\<close>
+      using lhs_to rhs zm by simp
+  qed
+
+  have inv_shape:
+    \<open>dataplane_tracker_inv
+      (?os0(nid := (?os0 nid)\<lparr>
+        outpu := (\<lambda>p. outpu (?os0 nid) p @ ?oputs p),
+        ocaps := (\<lambda>p. list_diff (ocaps (?os0 nid) p) (?drop_times p)),
+        input := input s1,
+        produ := produ (?os0 nid) @ ?produs,
+        inter := operator_state.inter (?os0 nid) @
+          map (\<lambda>cap. (out cap, capability.time cap, - 1)) caps_to_drop\<rparr>))
+      cbufs sg\<close>
+    apply (rule dataplane_tracker_inv_produces_drops_dropcaps_shape[OF D])
+               apply (rule refl)
+              apply (rule refl)
+             apply (subst fun_upd_same)
+             apply (rule input_filter)
+            apply (rule refl)
+           apply (rule refl)
+          apply (rule allI)
+          apply (subst fun_upd_same)
+          apply (rule drops_subset_per_port)
+         apply (rule Produs)
+        apply (rule Oputs)
+       apply (rule OPZ)
+      apply (rule GR)
+     apply (rule Nxt)
+    apply (rule Inv)
+    done
+
+  have target_eq:
+    \<open>os(nid := drop_caps (produces s1 batch) caps_to_drop) =
+     ?os0(nid := (?os0 nid)\<lparr>
+        outpu := (\<lambda>p. outpu (?os0 nid) p @ ?oputs p),
+        ocaps := (\<lambda>p. list_diff (ocaps (?os0 nid) p) (?drop_times p)),
+        input := input s1,
+        produ := produ (?os0 nid) @ ?produs,
+        inter := operator_state.inter (?os0 nid) @
+          map (\<lambda>cap. (out cap, capability.time cap, - 1)) caps_to_drop\<rparr>)\<close>
+    unfolding drop_caps_def produces_def
+    by (cases s1) simp
+
+  show ?thesis
+    using inv_shape target_eq by simp
+qed
+
+definition op_state_base where
+  \<open>op_state_base os = \<lparr>
+    intsum = intsum os,
+    consu = consu os,
+    inter = inter os,
+    produ = produ os,
+    input = input os,
+    outpu = outpu os,
+    front = front os,
+    ocaps = ocaps os,
+    initia = initia os\<rparr>\<close>
+
+lemma op_state_base_add_caps[simp]:
+  \<open>op_state_base (add_caps os caps) = add_caps (op_state_base os) caps\<close>
+  unfolding op_state_base_def add_caps_def
+  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
+
+lemma op_state_base_produces[simp]:
+  \<open>op_state_base (produces os batch) = produces (op_state_base os) batch\<close>
+  unfolding op_state_base_def produces_def
+  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
+
+lemma op_state_base_drop_caps[simp]:
+  \<open>op_state_base (drop_caps os caps) = drop_caps (op_state_base os) caps\<close>
+  unfolding op_state_base_def drop_caps_def
+  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
+
+lemma op_state_base_release_caps[simp]:
+  \<open>op_state_base (release_caps os p) = release_caps (op_state_base os) p\<close>
+  unfolding op_state_base_def release_caps_def drop_caps_def Let_def
+  by (rule operator_state_eqI) (simp_all add: trace_simp fun_eq_iff)
+
+lemma op_state_base_outpu_update[simp]:
+  \<open>op_state_base (os\<lparr>outpu := outs\<rparr>) = (op_state_base os)\<lparr>outpu := outs\<rparr>\<close>
+  unfolding op_state_base_def
+  by (rule operator_state_eqI) simp_all
+
+lemma op_state_base_CONSUMES[simp]:
+  \<open>op_state_base (CONSUMES p xs os) = CONSUMES p xs (op_state_base os)\<close>
+  unfolding op_state_base_def fold_consumes
+  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
+
+lemma cap_times_filter_single_port_subset:
+  assumes "mset xs \<subseteq># mset (ocaps os p)"
+  shows "\<forall>p'. mset (map capability.time (filter (\<lambda>c. out c = p') (map (\<lambda>t. Cap t p) xs))) \<subseteq># mset (ocaps os p')"
+proof (intro allI)
+  fix p'
+  have filt_eq:
+    "map capability.time (filter (\<lambda>c. out c = p') (map (\<lambda>t. Cap t p) xs)) =
+      (if p' = p then xs else [])"
+    by (induct xs) auto
+  show "mset (map capability.time (filter (\<lambda>c. out c = p') (map (\<lambda>t. Cap t p) xs))) \<subseteq># mset (ocaps os p')"
+    using assms filt_eq by auto
+qed
+
+lemma produced_oputs_caps_from_produs:
+  assumes "\<forall>(p, t, m) \<in> set (map (\<lambda>(x, cap). (out cap, capability.time cap, 1 :: int)) batch).
+    m > 0 \<and> t \<in> set (ocaps os p)"
+  shows "\<forall>p. snd ` set (map (\<lambda>(x, cap). (x, capability.time cap)) (filter (\<lambda>(x, cap). out cap = p) batch)) \<subseteq> set (ocaps os p)"
+  using assms
+  by (auto split: prod.splits)
+
+lemma produced_oputs_produs_zmset:
+  "\<forall>p. to_zmset (map snd (map (\<lambda>(x, cap). (x, capability.time cap)) (filter (\<lambda>(x, cap). out cap = p) batch))) =
+    zmset (map snd (filter (\<lambda>x. p = fst x) (map (\<lambda>(x, cap). (out cap, capability.time cap, 1 :: int)) batch)))"
+  by (induct batch) (auto simp add: split_beta zmset_map_one update_zmultiset_one add.commute split: prod.splits capability.splits)
+
+
+lemma label_prop_input1_step_batch_caps:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes IOC: \<open>input_ocaps_inv os\<close>
+    and zero: \<open>0 \<in> set (intsum os 1 1)\<close>
+    and input: \<open>(d, t) \<in> set (input os 1)\<close>
+    and member: \<open>(x, cap) \<in> set (label_prop_input1_step_batch os d t)\<close>
+  shows \<open>\<exists>t'\<in>set (ocaps os (out cap)). t' \<le> capability.time cap\<close>
+  using member input IOC zero
+  unfolding label_prop_input1_step_batch_def label_prop_label_batch_def
+    label_prop_neighbor_batch_def input_ocaps_inv_def
+  apply (auto simp add: zero_myprod_def less_eq_myprod_def split: if_splits)
+  subgoal for cur_t v
+    apply (rule bexI[where x=t])
+     apply (cases t; simp add: less_eq_myprod_def)
+    apply force
+    done
+  done
+lemma input_ocaps_inv_label_prop_input1_step_stateI:
+  assumes \<open>input_ocaps_inv os\<close>
+  shows \<open>input_ocaps_inv (label_prop_input1_step_state os d t)\<close>
+  unfolding label_prop_input1_step_state_def Let_def
+  apply (rule input_ocaps_inv_release_capsI)
+  apply (rule input_ocaps_inv_drop_produces_add_capsI)
+  apply (rule input_ocaps_inv_label_prop_label_record_updateI)
+  apply (rule input_ocaps_inv_input_tlI)
+  apply (rule assms)
+  done
+
+lemma input_ocaps_inv_CONSUMES:
+  assumes \<open>input_ocaps_inv os\<close>
+  shows \<open>input_ocaps_inv (CONSUMES p xs os)\<close>
+  using assms
+  by (induct xs arbitrary: os) (auto simp add: inputs_ocaps_inv_consumes split: prod.splits)
+
+
+lemma dataplane_tracker_inv_input_update:
+  assumes \<open>dataplane_tracker_inv os cbufs sg\<close>
+  shows \<open>dataplane_tracker_inv (os(nid := (os nid)\<lparr>input := inp\<rparr>)) cbufs sg\<close>
+proof -
+  have fields: \<open>\<forall>nid'. intsum (os nid') = intsum ((os(nid := (os nid)\<lparr>input := inp\<rparr>)) nid') \<and>
+    ocaps (os nid') = ocaps ((os(nid := (os nid)\<lparr>input := inp\<rparr>)) nid') \<and>
+    consu (os nid') = consu ((os(nid := (os nid)\<lparr>input := inp\<rparr>)) nid') \<and>
+    operator_state.inter (os nid') = operator_state.inter ((os(nid := (os nid)\<lparr>input := inp\<rparr>)) nid') \<and>
+    produ (os nid') = produ ((os(nid := (os nid)\<lparr>input := inp\<rparr>)) nid') \<and>
+    outpu (os nid') = outpu ((os(nid := (os nid)\<lparr>input := inp\<rparr>)) nid') \<and>
+    front (os nid') = front ((os(nid := (os nid)\<lparr>input := inp\<rparr>)) nid')\<close>
+    by (auto split: if_splits)
+  show ?thesis
+    using iffD1[OF dataplane_tracker_inv_clean_input[OF fields] assms] .
+qed
+
+lemma dataplane_tracker_inv_label_prop_input1_step_state:
+  fixes ls :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>'nid :: {enum, linorder} \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+  assumes D: \<open>dataflow_topology (summ sg) (-+-)\<close>
+    and Inv: \<open>dataplane_tracker_inv (os(nid := op_state_base ls)) cbufs sg\<close>
+    and G: \<open>graph_summar_nt (summ sg) (nxt sg) (os(nid := op_state_base ls))\<close>
+    and Nxt: \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+    and IOC: \<open>input_ocaps_inv ls\<close>
+    and zero: \<open>0 \<in> set (intsum ls 1 1)\<close>
+    and input: \<open>input ls 1 = (d, t) # xs\<close>
+  shows \<open>dataplane_tracker_inv (os(nid := op_state_base (label_prop_input1_step_state ls d t))) cbufs sg\<close>
+proof -
+  let ?ls1 = \<open>input_tl ls 1\<close>
+  let ?ls2 = \<open>label_prop_label_record_update ?ls1 (myfst t) (fst (de1 ls d))
+    (min (min_label ls (myfst t) (fst (de1 ls d))) (snd (de1 ls d)))\<close>
+  let ?batch = \<open>label_prop_input1_step_batch ls d t\<close>
+  have inv_base2: \<open>dataplane_tracker_inv (os(nid := op_state_base ?ls2)) cbufs sg\<close>
+  proof -
+    have fields: \<open>\<forall>nid'. intsum ((os(nid := op_state_base ls)) nid') = intsum ((os(nid := op_state_base ?ls2)) nid') \<and>
+      ocaps ((os(nid := op_state_base ls)) nid') = ocaps ((os(nid := op_state_base ?ls2)) nid') \<and>
+      consu ((os(nid := op_state_base ls)) nid') = consu ((os(nid := op_state_base ?ls2)) nid') \<and>
+      inter ((os(nid := op_state_base ls)) nid') = inter ((os(nid := op_state_base ?ls2)) nid') \<and>
+      produ ((os(nid := op_state_base ls)) nid') = produ ((os(nid := op_state_base ?ls2)) nid') \<and>
+      outpu ((os(nid := op_state_base ls)) nid') = outpu ((os(nid := op_state_base ?ls2)) nid') \<and>
+      front ((os(nid := op_state_base ls)) nid') = front ((os(nid := op_state_base ?ls2)) nid')\<close>
+      by (auto simp add: op_state_base_def input_tl_def label_prop_label_record_update_def)
+    show ?thesis
+      using iffD1[OF dataplane_tracker_inv_clean_input[OF fields] Inv] .
+  qed
+  have G_base2: \<open>graph_summar_nt (summ sg) (nxt sg) (os(nid := op_state_base ?ls2))\<close>
+  proof -
+    have geq: \<open>graph_summar_nt (summ sg) (nxt sg) (os(nid := op_state_base ?ls2)) =
+      graph_summar_nt (summ sg) (nxt sg) (os(nid := op_state_base ls))\<close>
+      by (rule graph_summar_nt_intsum_cong) (simp add: op_state_base_def input_tl_def label_prop_label_record_update_def)
+    show ?thesis
+      using geq G by simp
+  qed
+  have input_member: \<open>(d, t) \<in> set (input ls 1)\<close>
+    using input by simp
+  have batch_caps: \<open>\<And>x cap. (x, cap) \<in> set ?batch \<Longrightarrow>
+    \<exists>t'\<in>set (ocaps (op_state_base ?ls2) (out cap)). t' \<le> capability.time cap\<close>
+    using label_prop_input1_step_batch_caps[OF IOC zero input_member]
+    by (simp add: op_state_base_def input_tl_def label_prop_label_record_update_def)
+  have inv_drop:
+    \<open>dataplane_tracker_inv
+      (os(nid := drop_caps (produces (add_caps (op_state_base ?ls2) (map snd ?batch)) ?batch) (map snd ?batch)))
+      cbufs sg\<close>
+    by (rule dataplane_tracker_inv_add_caps_produces_drop_caps_update[OF D inv_base2 G_base2 Nxt batch_caps])
+  have G_drop:
+    \<open>graph_summar_nt (summ sg) (nxt sg)
+      (os(nid := drop_caps (produces (add_caps (op_state_base ?ls2) (map snd ?batch)) ?batch) (map snd ?batch)))\<close>
+  proof -
+    have geq: \<open>graph_summar_nt (summ sg) (nxt sg)
+      (os(nid := drop_caps (produces (add_caps (op_state_base ?ls2) (map snd ?batch)) ?batch) (map snd ?batch))) =
+      graph_summar_nt (summ sg) (nxt sg) (os(nid := op_state_base ?ls2))\<close>
+      by (rule graph_summar_nt_intsum_cong) (simp add: drop_caps_def produces_def add_caps_def)
+    show ?thesis
+      using geq G_base2 by simp
+  qed
+  have inv_release:
+    \<open>dataplane_tracker_inv
+      (os(nid := release_caps (drop_caps (produces (add_caps (op_state_base ?ls2) (map snd ?batch)) ?batch) (map snd ?batch)) 1))
+      cbufs sg\<close>
+    by (rule dataplane_tracker_inv_release_caps_update[OF D inv_drop G_drop Nxt])
+  have step_base:
+    \<open>op_state_base (label_prop_input1_step_state ls d t) =
+      release_caps (drop_caps (produces (add_caps (op_state_base ?ls2) (map snd ?batch)) ?batch) (map snd ?batch)) 1\<close>
+    unfolding label_prop_input1_step_state_def label_prop_input1_step_batch_def Let_def
+    by simp
+  show ?thesis
+    using inv_release by (simp add: step_base)
+qed
+lemma dataplane_tracker_inv_label_prop_input1_batched:
+  fixes ls :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>'nid :: {enum, linorder} \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+  assumes D: \<open>dataflow_topology (summ sg) (-+-)\<close>
+    and Inv: \<open>dataplane_tracker_inv (os(nid := op_state_base ls)) cbufs sg\<close>
+    and G: \<open>graph_summar_nt (summ sg) (nxt sg) (os(nid := op_state_base ls))\<close>
+    and Nxt: \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+    and IOC: \<open>input_ocaps_inv ls\<close>
+    and zero: \<open>0 \<in> set (intsum ls 1 1)\<close>
+  shows \<open>dataplane_tracker_inv
+    (os(nid := op_state_base (fst (label_prop_input1_batched ls (input ls 1))))) cbufs sg\<close>
+proof -
+  have aux:
+    \<open>msgs = input ls 1 \<Longrightarrow>
+      dataplane_tracker_inv (os(nid := op_state_base ls)) cbufs sg \<Longrightarrow>
+      graph_summar_nt (summ sg) (nxt sg) (os(nid := op_state_base ls)) \<Longrightarrow>
+      input_ocaps_inv ls \<Longrightarrow>
+      0 \<in> set (intsum ls 1 1) \<Longrightarrow>
+      dataplane_tracker_inv
+        (os(nid := op_state_base (fst (label_prop_input1_batched ls (input ls 1))))) cbufs sg\<close>
+    for msgs ls
+  proof (induct msgs arbitrary: ls)
+    case Nil
+    then show ?case by simp
+  next
+    case (Cons msg msgs)
+    obtain d t where msg_eq: \<open>msg = (d, t)\<close>
+      by (cases msg)
+    have input_eq: \<open>input ls 1 = (d, t) # msgs\<close>
+      using Cons.prems(1) msg_eq by simp
+    let ?ls' = \<open>label_prop_input1_step_state ls d t\<close>
+    have inv_step: \<open>dataplane_tracker_inv (os(nid := op_state_base ?ls')) cbufs sg\<close>
+      by (rule dataplane_tracker_inv_label_prop_input1_step_state[OF D Cons.prems(2) Cons.prems(3) Nxt Cons.prems(4) Cons.prems(5) input_eq])
+    have G_step: \<open>graph_summar_nt (summ sg) (nxt sg) (os(nid := op_state_base ?ls'))\<close>
+    proof -
+      have geq: \<open>graph_summar_nt (summ sg) (nxt sg) (os(nid := op_state_base ?ls')) =
+        graph_summar_nt (summ sg) (nxt sg) (os(nid := op_state_base ls))\<close>
+        by (rule graph_summar_nt_intsum_cong) (simp add: label_prop_input1_step_state_def Let_def op_state_base_def)
+      show ?thesis
+        using geq Cons.prems(3) by simp
+    qed
+    have IOC_step: \<open>input_ocaps_inv ?ls'\<close>
+      by (rule input_ocaps_inv_label_prop_input1_step_stateI[OF Cons.prems(4)])
+    have zero_step: \<open>0 \<in> set (intsum ?ls' 1 1)\<close>
+      using Cons.prems(5) by simp
+    have input_step: \<open>msgs = input ?ls' 1\<close>
+      using input_eq by simp
+    have rec: \<open>dataplane_tracker_inv
+      (os(nid := op_state_base (fst (label_prop_input1_batched ?ls' (input ?ls' 1))))) cbufs sg\<close>
+      by (rule Cons.hyps[OF input_step inv_step G_step IOC_step zero_step])
+    obtain ls_final batches where rec_eq:
+      \<open>label_prop_input1_batched ?ls' msgs = (ls_final, batches)\<close>
+      by (cases \<open>label_prop_input1_batched ?ls' msgs\<close>)
+    show ?case
+      using rec input_eq msg_eq rec_eq by (simp add: fun_upd_def)
+  qed
+  show ?thesis
+    by (rule aux[OF refl Inv G IOC zero])
+qed
+
+
+
+
+
+context
+begin
+
+declare fold_append[simp del] map_append[simp del]
+
+
+(* Preservation of dataplane_tracker_inv by one step of label_prop_input1_loop_updates.
+
+   label_prop_input1_loop_updates touches three things:
+     1. clears cbufs (1,1) and cbufs (2,1);
+     2. updates os 2 to os2' = drop_caps (produces (CONSUMES 1 ... (os 2)) batch) caps
+        followed by an outpu/input reset on port 1;
+     3. updates the SHADOW state os_label_prop (which mirrors os 1 via
+        operator_state.extend) by CONSUMES + label_prop_input1_batched.
+
+   Step (3) does NOT change os 1; only os 2 changes inside os. Therefore the
+   conclusion is on os' = os(2 := os2') and cbufs' = cbufs((1,1):=[], (2,1):=[]).
+
+   Proof strategy (high level):
+     - Use dataplane_tracker_inv_fold_consumes for the CONSUMES applied to os 2
+       (note CONSUMES p = fold (consumes _ p _ _) ...).
+     - Use dataplane_tracker_inv_add_caps_produces_drop_caps_update (Produces.thy:1909)
+       for the (produces \<circ> drop_caps) on os 2. CONSUMES already does the add_caps part,
+       so the chain has to thread that through.
+     - Use dataplane_tracker_inv_clean_input / dataplane_tracker_inv_update_outputs_outside
+       for the input/outpu(1) := [] resets.
+     - The cbufs (1,1) := [] step is the tricky one: clearing the channel buffer
+       at (1,1) demands a matching reduction in caps(Loc 1 (Trg 1)). Since os 1
+       is NOT touched, the dataplane_tracker_inv witness (which is existentially
+       quantified over caps) must be re-instantiated; this likely requires
+       additional assumptions about ty1_check / label_prob_ty2_check (the
+       typing checks tying cbufs (1,1) entries to allowable progress).
+
+   Remaining gaps the user should resolve:
+     (a) the precise typing assumption that allows the cbufs (1,1) := [] step
+         to preserve the invariant -- compare with label_propagation_correctness
+         assumptions ty1_check / label_prob_ty2_check;
+     (b) whether the right conclusion is on os' alone, or whether os 1 must also
+         be projected from os_label_prop' (in which case the lemma's conclusion
+         should mention an updated slot-1 too).
+*)
+lemma label_prop_input1_loop_updates_preserves_dataplane_tracker_inv:
+  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
+    and T :: \<open>nat list\<close>
+    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
+    and V :: \<open>nat \<Rightarrow> nat list\<close>
+    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
+  assumes step:
+    \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
+  and D: \<open>dataflow_topology (summ sg) (-+-)\<close>
+  and GR: \<open>graph_summar_nt (summ sg) (nxt sg) os\<close>
+  and Nxt: \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+  and Inv: \<open>dataplane_tracker_inv os cbufs sg\<close>
+  and label_prop_extension:
+    \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
+  and Summ: \<open>summ sg = antichain_from_list \<circ>\<circ> raw_summary\<close>
+  and Intsum: \<open>\<forall>n. intsum (os n) = (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
+  and IOC1: \<open>input_ocaps_inv (os 1)\<close>
+  and IOC2: \<open>input_ocaps_inv (os 2)\<close>
+  shows \<open>dataplane_tracker_inv (os'(1 := op_state_base os_label_prop')) cbufs' sg\<close>
+
+proof -
+  let ?b1 = "cbufs (1, 1)"
+  let ?b21 = "cbufs (2, 1)"
+  let ?out1 = "outpu os_label_prop 1"
+  let ?in21 = "input (os 2) 1"
+  let ?inc = "MyPair 0 (Suc 0)"
+  let ?ts_caps2_extra = "map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- ?inc) (?b21 @ ?out1)"
+  let ?ts_drop = "ocaps (os 2) 1 @ ?ts_caps2_extra"
+  let ?batch = "map (\<lambda>x. (fst x, Cap (snd x -+- ?inc) 1)) (?in21 @ ?b21 @ ?out1)"
+  let ?os2_consumed = "CONSUMES 1 (?b21 @ ?out1) (os 2)"
+  let ?os2_after_prod = "produces ?os2_consumed ?batch"
+  let ?os2_after_drop = "drop_caps ?os2_after_prod (map (\<lambda>t. Cap t 1) ?ts_drop)"
+  let ?os2' = "?os2_after_drop\<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>"
+
+  have cbufs'_eq: "cbufs' = cbufs((2, 1) := [], (1, 1) := [])"
+    and os'_eq: "os' = os(2 := ?os2')"
+    using step unfolding label_prop_input1_loop_updates_def Let_def
+    by (simp_all split: prod.splits)
+
+  let ?os_label_prop_consumed =
+    "CONSUMES 1
+      (?b1 @ outpu (os 2) 1 @
+        map (\<lambda>(d, t). (d, t -+- ?inc)) (?in21 @ ?b21 @ ?out1))
+      (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)"
+
+  have base_label_prop: "op_state_base os_label_prop = os 1"
+    using label_prop_extension
+    unfolding op_state_base_def
+    by (simp add: operator_state.defs)
+
+  have IOC_label_prop: "input_ocaps_inv os_label_prop"
+    using IOC1 label_prop_extension
+    unfolding input_ocaps_inv_def
+    by (simp add: operator_state.defs)
+
+  have zero_label_prop: "0 \<in> set (intsum os_label_prop 1 1)"
+    using Intsum label_prop_extension
+    by (simp add: raw_summary_def zero_myprod_def operator_state.defs)
+
+  have out1_eq: "?out1 = outpu (os 1) 1"
+    using label_prop_extension by (simp add: operator_state.defs)
+
+  have edge12: "summ sg (Loc (1 :: 3) (Src (1 :: 2))) (Loc (2 :: 3) (Trg (1 :: 2))) \<noteq> {}\<^sub>A"
+    using Summ
+    by (simp add: raw_summary_def antichain_from_list_singleton)
+
+  have edge21: "summ sg (Loc (2 :: 3) (Src (1 :: 2))) (Loc (1 :: 3) (Trg (1 :: 2))) \<noteq> {}\<^sub>A"
+    using Summ
+    by (simp add: raw_summary_def antichain_from_list_singleton)
+
+  let ?osA = "os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(1 := [])\<rparr>,
+                 2 := ?os2_consumed)"
+  let ?cbufsA = "cbufs((2, 1) := [])"
+
+  have invA: "dataplane_tracker_inv ?osA ?cbufsA sg"
+  proof -
+    have raw: "dataplane_tracker_inv
+      (os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(1 := [])\<rparr>,
+          2 := CONSUMES 1 (cbufs (2, 1) @ outpu (os 1) 1) (os 2)))
+      (cbufs((2, 1) := [])) sg"
+      by (rule dataplane_tracker_inv_outpu_then_fold_consumes
+          [where nid_up=1 and p_up=1 and nid_dn=2 and p_dn=1,
+            OF Inv D GR Nxt edge12]) simp
+    show ?thesis
+      using raw out1_eq by simp
+  qed
+
+  have GA: "graph_summar_nt (summ sg) (nxt sg) ?osA"
+  proof -
+    have "graph_summar_nt (summ sg) (nxt sg) ?osA = graph_summar_nt (summ sg) (nxt sg) os"
+      by (rule graph_summar_nt_intsum_cong) (simp add: fold_consumes)
+    then show ?thesis
+      using GR by simp
+  qed
+
+  let ?msgsA = "?b1 @ outpu (os 2) 1"
+  let ?osB = "?osA(2 := (?osA 2)\<lparr>outpu := (outpu (?osA 2))(1 := [])\<rparr>,
+                   1 := CONSUMES 1 ?msgsA (?osA 1))"
+  let ?cbufsB = "?cbufsA((1, 1) := [])"
+
+  have invB: "dataplane_tracker_inv ?osB ?cbufsB sg"
+  proof -
+    have raw: "dataplane_tracker_inv
+      (?osA(2 := (?osA 2)\<lparr>outpu := (outpu (?osA 2))(1 := [])\<rparr>,
+             1 := CONSUMES 1 (?cbufsA (1, 1) @ outpu (?osA 2) 1) (?osA 1)))
+      (?cbufsA((1, 1) := [])) sg"
+      by (rule dataplane_tracker_inv_outpu_then_fold_consumes
+          [where nid_up=2 and p_up=1 and nid_dn=1 and p_dn=1,
+            OF invA D GA Nxt edge21]) simp
+    show ?thesis
+      using raw by (simp add: fold_consumes)
+  qed
+
+  have GB: "graph_summar_nt (summ sg) (nxt sg) ?osB"
+  proof -
+    have "graph_summar_nt (summ sg) (nxt sg) ?osB = graph_summar_nt (summ sg) (nxt sg) os"
+      by (rule graph_summar_nt_intsum_cong) (simp add: fold_consumes)
+    then show ?thesis
+      using GR by simp
+  qed
+
+  let ?caps_drop = "map (\<lambda>t. Cap t 1) ?ts_drop"
+  let ?produs = "map (\<lambda>(x, cap). (out cap, capability.time cap, 1 :: int)) ?batch"
+  let ?oputs = "\<lambda>p. map (\<lambda>(x, cap). (x, capability.time cap)) (filter (\<lambda>(x, cap). out cap = p) ?batch)"
+
+
+  have concat_shift:
+    "concat (map (\<lambda>(d, t). [t -+- ?inc]) xs) = map (\<lambda>(d, t). t -+- ?inc) xs" for xs
+    by (induct xs) auto
+  have osB2_ocaps1:
+    "ocaps (?osB 2) 1 = ocaps (os 2) 1 @ map (\<lambda>(d, t). t -+- ?inc) (?b21 @ ?out1)"
+    using Intsum
+    by (simp add: fold_consumes raw_summary_def concat_shift)
+
+
+
+
+  have input_caps2:
+    "\<And>d t. (d, t) \<in> set ?in21 \<Longrightarrow> t -+- ?inc \<in> set (ocaps (os 2) 1)"
+  proof -
+    fix d t
+    assume mem: "(d, t) \<in> set ?in21"
+    have inc: "?inc \<in> set (intsum (os 2) 1 1)"
+      using Intsum by (simp add: raw_summary_def)
+    show "t -+- ?inc \<in> set (ocaps (os 2) 1)"
+      using IOC2 mem inc unfolding input_ocaps_inv_def by blast
+  qed
+
+  have shifted_caps_B:
+    "\<And>d t. (d, t) \<in> set (?in21 @ ?b21 @ ?out1) \<Longrightarrow> t -+- ?inc \<in> set (ocaps (?osB 2) 1)"
+    using input_caps2 osB2_ocaps1 by auto
+
+  have prod_caps_B: "\<forall>(p, t, m) \<in> set ?produs. m > 0 \<and> t \<in> set (ocaps (?osB 2) p)"
+  proof (rule ballI)
+    fix y :: "2 \<times> (nat, nat) myprod \<times> int"
+
+    assume y: "y \<in> set ?produs"
+    then obtain x where x_mem: "x \<in> set (?in21 @ ?b21 @ ?out1)"
+      and y_eq: "y = (1, snd x -+- ?inc, 1)"
+      by auto
+    obtain d t where x_eq: "x = (d, t)"
+      by (cases x)
+    show "case y of (p, t, m) \<Rightarrow> 0 < m \<and> t \<in> set (ocaps (?osB 2) p)"
+      using shifted_caps_B[of d t] x_mem x_eq y_eq by simp
+  qed
+
+  have ts_drop_subset_B: "mset ?ts_drop \<subseteq># mset (ocaps (?osB 2) 1)"
+    using osB2_ocaps1 by (simp add: split_beta)
+
+  have drops_subset_B:
+    "\<forall>p'. mset (map capability.time (filter (\<lambda>c. out c = p') ?caps_drop)) \<subseteq># mset (ocaps (?osB 2) p')"
+    by (rule cap_times_filter_single_port_subset[OF ts_drop_subset_B])
+
+  have oputs_caps_B: "\<forall>p. snd ` set (?oputs p) \<subseteq> set (ocaps (?osB 2) p)"
+    by (rule produced_oputs_caps_from_produs[OF prod_caps_B])
+
+  have oputs_produs_B:
+    "\<forall>p. to_zmset (map snd (?oputs p)) = zmset (map snd (filter (\<lambda>x. p = fst x) ?produs))"
+    by (rule produced_oputs_produs_zmset)
+
+  let ?drop_times = "\<lambda>p. map capability.time (filter (\<lambda>c. out c = p) ?caps_drop)"
+  let ?os2C_abs = "(?osB 2)\<lparr>
+    outpu := (\<lambda>p. outpu (?osB 2) p @ ?oputs p),
+    ocaps := (\<lambda>p. list_diff (ocaps (?osB 2) p) (?drop_times p)),
+    input := (\<lambda>p. filter (\<lambda>(_, t). t \<notin> set (?drop_times p)) (input (?osB 2) p)),
+    produ := produ (?osB 2) @ ?produs,
+    inter := operator_state.inter (?osB 2) @ map (\<lambda>cap. (out cap, capability.time cap, - 1)) ?caps_drop\<rparr>"
+  let ?osC_abs = "?osB(2 := ?os2C_abs)"
+
+  have invC_abs: "dataplane_tracker_inv ?osC_abs ?cbufsB sg"
+    by (rule dataplane_tracker_inv_produces_drops_dropcaps_shape
+        [OF D refl refl refl refl refl drops_subset_B prod_caps_B oputs_caps_B oputs_produs_B GB Nxt invB])
+
+  have GC_abs: "graph_summar_nt (summ sg) (nxt sg) ?osC_abs"
+  proof -
+    have "graph_summar_nt (summ sg) (nxt sg) ?osC_abs = graph_summar_nt (summ sg) (nxt sg) ?osB"
+      by (rule graph_summar_nt_intsum_cong) simp
+    then show ?thesis
+      using GB by simp
+  qed
+
+  let ?osD = "?osC_abs(2 := (?osC_abs 2)\<lparr>outpu := (outpu (?osC_abs 2))(1 := [])\<rparr>,
+                       1 := CONSUMES 1 (?cbufsB (1, 1) @ outpu (?osC_abs 2) 1) (?osC_abs 1))"
+
+  have invD: "dataplane_tracker_inv ?osD (?cbufsB((1, 1) := [])) sg"
+    by (rule dataplane_tracker_inv_outpu_then_fold_consumes
+        [where nid_up=2 and p_up=1 and nid_dn=1 and p_dn=1,
+          OF invC_abs D GC_abs Nxt edge21]) simp
+
+  have oputs1_map:
+    "map (\<lambda>(x, cap). (x, capability.time cap))
+        (filter (\<lambda>(x, cap). out cap = 1)
+          (map (\<lambda>x. (fst x, Cap (snd x -+- ?inc) 1)) xs)) =
+      map (\<lambda>(d, t). (d, t -+- ?inc)) xs" for xs
+    by (induct xs) (auto split: prod.splits)
+
+  have oputs1_eq:
+    "?oputs 1 = map (\<lambda>(d, t). (d, t -+- ?inc)) (?in21 @ ?b21 @ ?out1)"
+    by (simp add: oputs1_map)
+
+  have out_label_prop: "outpu os_label_prop = outpu (os 1)"
+    using label_prop_extension by (simp add: operator_state.defs)
+
+  have base_clear:
+    "op_state_base (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) =
+      (os 1)\<lparr>outpu := (outpu (os 1))(1 := [])\<rparr>"
+    using base_label_prop out_label_prop by simp
+
+  have osB1:
+    "?osB 1 = CONSUMES 1 ?msgsA ((os 1)\<lparr>outpu := (outpu (os 1))(1 := [])\<rparr>)"
+    by simp
+
+  have osC_abs_1: "?osC_abs 1 = ?osB 1"
+    by simp
+
+  have osC_abs_out2_1: "outpu (?osC_abs 2) 1 = ?oputs 1"
+    by (simp add: oputs1_map)
+
+  have osD_to_B: "?osD 1 = CONSUMES 1 (?oputs 1) (?osB 1)"
+  proof -
+    have raw: "?osD 1 = CONSUMES 1 (?cbufsB (1, 1) @ outpu (?osC_abs 2) 1) (?osC_abs 1)"
+      by simp
+    have msgs: "?cbufsB (1, 1) @ outpu (?osC_abs 2) 1 = ?oputs 1"
+      using osC_abs_out2_1 by simp
+    show ?thesis
+      apply (subst raw)
+      apply (subst msgs)
+      apply (subst osC_abs_1)
+      apply (rule refl)
+      done
+  qed
+
+  have osD_to_base:
+    "?osD 1 = CONSUMES 1 (?msgsA @ ?oputs 1) ((os 1)\<lparr>outpu := (outpu (os 1))(1 := [])\<rparr>)"
+    apply (subst osD_to_B)
+    apply (subst osB1)
+    apply (rule CONSUMES_CONSUMES)
+    done
+
+  have msgs_oputs_eq:
+    "?msgsA @ ?oputs 1 =
+      ?b1 @ outpu (os 2) 1 @ map (\<lambda>(d, t). (d, t -+- ?inc)) (?in21 @ ?b21 @ ?out1)"
+    using oputs1_eq by simp
+
+  have label_prop_consumed_base:
+    "op_state_base ?os_label_prop_consumed =
+      CONSUMES 1 (?msgsA @ ?oputs 1) ((os 1)\<lparr>outpu := (outpu (os 1))(1 := [])\<rparr>)"
+    apply (simp only: op_state_base_CONSUMES)
+    apply (subst base_clear)
+    apply (subst msgs_oputs_eq)
+    apply (rule refl)
+    done
+
+  have osD_slot1: "?osD 1 = op_state_base ?os_label_prop_consumed"
+    apply (subst osD_to_base)
+    apply (subst label_prop_consumed_base)
+    apply (rule refl)
+    done
+
+  let ?osE = "?osD(2 := (?osD 2)\<lparr>input := (input (os 2))(1 := [])\<rparr>)"
+
+  have invE: "dataplane_tracker_inv ?osE (?cbufsB((1, 1) := [])) sg"
+    by (rule dataplane_tracker_inv_input_update
+        [where nid=2 and inp="(input (os 2))(1 := [])", OF invD])
+
+
+  have oputs_other_map:
+    "p \<noteq> 1 \<Longrightarrow>
+      map (\<lambda>(x, cap). (x, capability.time cap))
+        (filter (\<lambda>(x, cap). out cap = p)
+          (map (\<lambda>x. (fst x, Cap (snd x -+- ?inc) 1)) xs)) = []" for p :: 2 and xs
+    by (induct xs) (auto split: prod.splits)
+
+  have oputs_other: "p \<noteq> 1 \<Longrightarrow> ?oputs p = []" for p :: 2
+    by (rule oputs_other_map)
+
+  have osB2_eq: "?osB 2 = ?os2_consumed\<lparr>outpu := (outpu (os 2))(1 := [])\<rparr>"
+    by simp
+
+  have osE2_outpu: "outpu (?osE 2) = outpu ?os2'"
+  proof (rule ext)
+    fix p :: 2
+    show "outpu (?osE 2) p = outpu ?os2' p"
+    proof (cases "p = 1")
+      case True
+      then show ?thesis
+        by (simp add: drop_caps_def produces_def)
+    next
+      case False
+      then show ?thesis
+        using oputs_other[OF False]
+        by (simp add: osB2_eq drop_caps_def produces_def)
+    qed
+  qed
+
+  have osE2_eq: "?osE 2 = ?os2'"
+  proof (rule operator_state_eqI)
+    show "intsum (?osE 2) = intsum ?os2'"
+      by (simp add: osB2_eq drop_caps_def produces_def)
+    show "consu (?osE 2) = consu ?os2'"
+      by (simp add: osB2_eq drop_caps_def produces_def)
+    show "operator_state.inter (?osE 2) = operator_state.inter ?os2'"
+      by (simp add: osB2_eq drop_caps_def produces_def)
+    show "produ (?osE 2) = produ ?os2'"
+      by (simp add: osB2_eq drop_caps_def produces_def)
+    show "input (?osE 2) = input ?os2'"
+      by (simp add: osB2_eq drop_caps_def produces_def)
+    show "outpu (?osE 2) = outpu ?os2'"
+      by (rule osE2_outpu)
+    show "front (?osE 2) = front ?os2'"
+      by (simp add: osB2_eq drop_caps_def produces_def)
+    show "ocaps (?osE 2) = ocaps ?os2'"
+      by (simp add: osB2_eq drop_caps_def produces_def)
+    show "initia (?osE 2) = initia ?os2'"
+      by (simp add: osB2_eq drop_caps_def produces_def)
+    show "operator_state.more (?osE 2) = operator_state.more ?os2'"
+      by (simp add: osB2_eq drop_caps_def produces_def)
+  qed
+
+  have osE_eq: "?osE = os(2 := ?os2', 1 := op_state_base ?os_label_prop_consumed)"
+  proof (rule ext)
+    fix nid'
+    show "?osE nid' = (os(2 := ?os2', 1 := op_state_base ?os_label_prop_consumed)) nid'"
+    proof (cases "nid' = 1")
+      case True
+      then show ?thesis
+        using osD_slot1 by simp
+    next
+      case False
+      then show ?thesis
+      proof (cases "nid' = 2")
+        case True
+        then show ?thesis
+          using osE2_eq False by simp
+      next
+        case False2: False
+        then show ?thesis
+          using False by simp
+      qed
+    qed
+  qed
+
+  have intsum_os2': "intsum ?os2' = intsum (os 2)"
+    by (simp add: drop_caps_def produces_def)
+
+  have intsum_consumed_base:
+    "intsum (op_state_base ?os_label_prop_consumed) = intsum (os 1)"
+  proof -
+    have "intsum (op_state_base ?os_label_prop_consumed) =
+      intsum (op_state_base (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>))"
+      by simp
+    also have "... = intsum ((op_state_base os_label_prop)\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)"
+      by simp
+    also have "... = intsum (op_state_base os_label_prop)"
+      by simp
+    also have "... = intsum (os 1)"
+      using base_label_prop by simp
+    finally show ?thesis .
+  qed
+
+  have intsum_label_base: "intsum (op_state_base os_label_prop) = intsum (os 1)"
+    using base_label_prop by simp
+
+
+  have GE: "graph_summar_nt (summ sg) (nxt sg) ?osE"
+  proof -
+    have geq:
+      "graph_summar_nt (summ sg) (nxt sg)
+        (os(2 := ?os2', 1 := op_state_base ?os_label_prop_consumed)) =
+       graph_summar_nt (summ sg) (nxt sg) os"
+      by (rule graph_summar_nt_intsum_cong)
+        (simp add: intsum_os2' intsum_consumed_base intsum_label_base)
+    have "graph_summar_nt (summ sg) (nxt sg) ?osE = graph_summar_nt (summ sg) (nxt sg) os"
+      apply (subst osE_eq)
+      apply (rule geq)
+      done
+    then show ?thesis
+      using GR by simp
+  qed
+
+  have IOC_consumed: "input_ocaps_inv ?os_label_prop_consumed"
+  proof -
+    have "input_ocaps_inv (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)"
+      using IOC_label_prop unfolding input_ocaps_inv_def by simp
+    then show ?thesis
+      by (rule input_ocaps_inv_CONSUMES)
+  qed
+
+  have zero_consumed: "0 \<in> set (intsum ?os_label_prop_consumed 1 1)"
+    using zero_label_prop by simp
+
+  have upd: "?osE(1 := op_state_base ?os_label_prop_consumed) = ?osE"
+    apply (subst osE_eq)
+    apply (subst osE_eq)
+    apply simp
+    done
+
+  have invE_base:
+    "dataplane_tracker_inv (?osE(1 := op_state_base ?os_label_prop_consumed))
+      (?cbufsB((1, 1) := [])) sg"
+    apply (subst upd)
+    apply (rule invE)
+    done
+
+  have GE_base:
+    "graph_summar_nt (summ sg) (nxt sg)
+      (?osE(1 := op_state_base ?os_label_prop_consumed))"
+    apply (subst upd)
+    apply (rule GE)
+    done
+
+
+
+  have invFinal:
+    "dataplane_tracker_inv
+      (?osE(1 := op_state_base (fst (label_prop_input1_batched ?os_label_prop_consumed (input ?os_label_prop_consumed 1)))))
+      (?cbufsB((1, 1) := [])) sg"
+    by (rule dataplane_tracker_inv_label_prop_input1_batched
+        [OF D invE_base GE_base Nxt IOC_consumed zero_consumed])
+
+
+
+
+
+
+
+  have os_label_prop'_eq:
+    "os_label_prop' = fst (label_prop_input1_batched ?os_label_prop_consumed (input ?os_label_prop_consumed 1))"
+    using step unfolding label_prop_input1_loop_updates_def Let_def
+    by (simp split: prod.splits)
+
+  have os_final_eq:
+    "os'(1 := op_state_base os_label_prop') =
+      ?osE(1 := op_state_base (fst (label_prop_input1_batched ?os_label_prop_consumed (input ?os_label_prop_consumed 1))))"
+    apply (subst os'_eq)
+    apply (subst os_label_prop'_eq)
+    apply (subst osE_eq)
+    apply simp
+    done
+
+  have cbufs_final_eq: "cbufs' = ?cbufsB((1, 1) := [])"
+    using cbufs'_eq by simp
+
+  show ?thesis
+    apply (subst os_final_eq)
+    apply (subst cbufs_final_eq)
+    apply (rule invFinal)
+    done
+
+qed
+
+end
+
+
+
+
+
+(* Preservation of dataplane_tracker_inv by the entire loop_updates iteration.
+
+   Proof strategy: induction using loop_updates.induct.
+     - else-branch (guard fails): only cbufs gets cleared; need to argue this
+       is fine when there's nothing to release (probably needs an extra "no
+       releasable caps left" assumption, similar to (a) above);
+     - then-branch with input ... = []: apply the single-step preservation
+       lemma above and we're done;
+     - then-branch with recursion: apply single-step then IH; IH requires
+       that the branch guards (INV / LABELS / TIMES) are preserved by one
+       step -- another auxiliary lemma is needed here.
+*)
+lemma loop_updates_preserves_dataplane_tracker_inv:
+  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
+    and T :: \<open>nat list\<close>
+    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
+    and V :: \<open>nat \<Rightarrow> nat list\<close>
+    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
+  assumes step:
+    \<open>(cbufs', os_label_prop', os') = loop_updates cbufs os_label_prop os\<close>
+  and D: \<open>dataflow_topology (summ sg) (-+-)\<close>
+  and GR: \<open>graph_summar_nt (summ sg) (nxt sg) os\<close>
+  and Nxt: \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+  and Inv: \<open>dataplane_tracker_inv os cbufs sg\<close>
+  and label_prop_extension:
+    \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
+  and INV: \<open>label_prop_upd_inv os_label_prop\<close>
+  and LABELS: \<open>\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+  and TIMES: \<open>myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
+        input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1)) \<subseteq> set (timestamps os_label_prop)\<close>
+  shows \<open>dataplane_tracker_inv os' cbufs' sg\<close>
+  sorry
+
+
+(* Per-step invariant for label_prop_input1_loop_updates.
+
+   Goal: one application of the step preserves, per-label, the zmset of the
+   combined progress emitted by the "direct" form on both updated operator slots
+   (1 and 2). With this, foo follows by induction on loop_updates.
+
+   Caveats / known gaps (from review):
+   (a) The direct form for os 2 is written here as "release_caps (os 2) 1", but
+       the actual transformer used inside label_prop_input1_loop_updates is a
+       drop_caps . produces . CONSUMES composite (see
+       label_prop_input1_loop_updates_def). Proving this invariant likely
+       requires either (i) replacing release_caps (os 2) 1 with that composite
+       on both sides, or (ii) first showing release_caps (os 2) 1 equals the
+       composite under the assumptions below and using that fact here.
+   (b) release_caps reads ocaps AND input; the step clears input (os 2) 1,
+       so the set of caps releasable before vs. after differs. The buffer
+       invariant (dataplane_tracker_inv) is what balances this --- cbufs and
+       outpu entries that get consumed are accounted for as pending caps.
+
+   Assumptions, mirroring produ_fst_snd_loop_updates plus the buffer link:
+     - step:                the single-step relation;
+     - label_prop_extension: ties os_label_prop to (os 1) so labels match;
+     - INV / LABELS / TIMES: the good-branch guards used by
+                            produ_fst_snd_loop_updates;
+     - DATAPLANE:           the standard dataplane/control-plane glue from
+                            General.thy, which contains the Src_caps_inv /
+                            Trg_caps_inv pieces that link cbufs to ocaps and
+                            the progress fields. Whoever proves this lemma can
+                            narrow this down to just the elements actually
+                            needed (Src_caps_inv, Trg_caps_inv,
+                            produ_consu_inter_supported, change_deltas_inv).
+*)
+lemma label_prop_input1_loop_updates_preserves_release_progress_zmset:
+  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
+    and T :: \<open>nat list\<close>
+    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
+    and V :: \<open>nat \<Rightarrow> nat list\<close>
+    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
+  assumes step:
+    \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
+  and label_prop_extension:
+    \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
+  and INV: \<open>label_prop_upd_inv os_label_prop\<close>
+  and LABELS: \<open>\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+  and TIMES: \<open>myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
+        input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1)) \<subseteq> set (timestamps os_label_prop)\<close>
+  and DATAPLANE: \<open>dataplane_tracker_inv os cbufs sg\<close>
+  shows "\<forall> l. zmset (map snd (filter (\<lambda> (l', _, _). l = l') (
+      extract_progress (1 :: 3) nt (snd (obtain_progress (release_caps os_label_prop' 1))) @
+      extract_progress (2 :: 3) nt (snd (obtain_progress (release_caps (os' 2) 1))))))
+   = zmset (map snd (filter (\<lambda> (l', _, _). l = l') (
+      extract_progress (1 :: 3) nt (snd (obtain_progress (release_caps os_label_prop 1))) @
+      extract_progress (2 :: 3) nt (snd (obtain_progress (release_caps (os 2) 1))))))"
+  oops
+
+(* foo: the loop's combined emitted progress matches a single direct release_caps,
+   per-label. Proof plan: induction on loop_updates, using
+   label_prop_input1_loop_updates_preserves_release_progress_zmset as the
+   step case; the else-branch (guard fails) clears cbufs (1,1) and cbufs (2,1)
+   but leaves os_label_prop, os unchanged, so we need the good-branch guards
+   (mirror of produ_fst_snd_loop_updates).
+*)
+lemma foo:
+  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
+    and T :: \<open>nat list\<close>
+    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
+    and V :: \<open>nat \<Rightarrow> nat list\<close>
+    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
+  assumes label_prop_extension:
+    \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
+  and INV: \<open>label_prop_upd_inv os_label_prop\<close>
+  and LABELS: \<open>\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+  and TIMES: \<open>myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
+        input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1)) \<subseteq> set (timestamps os_label_prop)\<close>
+  and DATAPLANE: \<open>dataplane_tracker_inv os cbufs sg\<close>
+  and "xs =
+      extract_progress (1 :: 3) nt (snd (obtain_progress (fst (snd (loop_updates cbufs os_label_prop os))))) @
+      extract_progress (2 :: 3) nt (snd (obtain_progress (snd (snd (loop_updates cbufs os_label_prop os)) 2)))"
+  and "ys =
+      extract_progress (1 :: 3) nt (snd (obtain_progress (release_caps os_label_prop 1))) @
+      extract_progress (2 :: 3) nt (snd (obtain_progress (release_caps (os 2) 1)))"
+  shows "\<forall> l \<in> fst ` set xs. zmset (map snd (filter (\<lambda> (l', _, _). l = l') xs)) = zmset (map snd (filter (\<lambda> (l', _, _). l = l') ys))"
+  oops
 
 
 lemma extract_prog_three_fold:
