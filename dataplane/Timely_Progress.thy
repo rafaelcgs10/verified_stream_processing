@@ -107,4 +107,87 @@ lemma c_imp_change_multiplicities[simp]:
   apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm) 
   done
 
+lemma change_multiplicities_update_form:
+  "change_multiplicities su xs c =
+   c\<lparr>c_pts := c_pts (change_multiplicities su xs c),
+     c_work := c_work (change_multiplicities su xs c)\<rparr>"
+proof (induct xs arbitrary: c)
+  case Nil
+  show ?case by simp
+next
+  case (Cons x xs c)
+  obtain l t m where xeq: "x = (l, t, m)" by (cases x) auto
+  let ?c' = "take_step su (CM l t m) c"
+  have "change_multiplicities su (x # xs) c = change_multiplicities su xs ?c'"
+    unfolding change_multiplicities_def by (simp add: xeq)
+  also have "\<dots> = ?c'\<lparr>c_pts := c_pts (change_multiplicities su xs ?c'),
+                      c_work := c_work (change_multiplicities su xs ?c')\<rparr>"
+    by (rule Cons.hyps)
+  also have "\<dots> = c\<lparr>c_pts := c_pts (change_multiplicities su xs ?c'),
+                    c_work := c_work (change_multiplicities su xs ?c')\<rparr>"
+    by simp
+  finally show ?case
+    by (simp add: xeq)
+qed
+
+lemma c_work_change_multiplicities:
+  "c_work (change_multiplicities su xs c) l =
+   c_work c l + zmultiset_of_antichain (frontier (c_pts (change_multiplicities su xs c) l))
+              - zmultiset_of_antichain (frontier (c_pts c l))"
+proof (induct xs arbitrary: c)
+  case Nil
+  show ?case by simp
+next
+  case (Cons x xs c)
+  obtain l' t m where xeq: "x = (l', t, m)" by (cases x) auto
+  let ?c' = "take_step su (CM l' t m) c"
+  have lhs: "c_work (change_multiplicities su (x # xs) c) l = c_work (change_multiplicities su xs ?c') l"
+    unfolding change_multiplicities_def by (simp add: xeq)
+  have pts_lhs: "c_pts (change_multiplicities su (x # xs) c) l = c_pts (change_multiplicities su xs ?c') l"
+    unfolding change_multiplicities_def by (simp add: xeq)
+  have ih: "c_work (change_multiplicities su xs ?c') l =
+            c_work ?c' l + zmultiset_of_antichain (frontier (c_pts (change_multiplicities su xs ?c') l))
+                         - zmultiset_of_antichain (frontier (c_pts ?c' l))"
+    by (rule Cons.hyps)
+  show ?case
+  proof (cases "l = l'")
+    case True
+    have cw: "c_work ?c' l = c_work c l + zmultiset_of_antichain (frontier (c_pts ?c' l))
+                                        - zmultiset_of_antichain (frontier (c_pts c l))"
+      using True by simp
+    show ?thesis using lhs pts_lhs ih cw by simp
+  next
+    case False
+    have cw: "c_work ?c' l = c_work c l" using False by simp
+    have cp: "c_pts ?c' l = c_pts c l" using False by simp
+    show ?thesis using lhs pts_lhs ih cw cp by simp
+  qed
+qed
+
+lemma change_multiplicities_zmset_cong:
+  "\<forall> l \<in> fst ` set xs \<union> fst ` set ys. zmset (map snd (filter (\<lambda> (l', _, _). l = l') xs)) = zmset (map snd (filter (\<lambda> (l', _, _). l = l') ys)) \<Longrightarrow>
+   change_multiplicities su xs = change_multiplicities su ys"
+proof (rule ext)
+  fix c
+  assume H: "\<forall> l \<in> fst ` set xs \<union> fst ` set ys. zmset (map snd (filter (\<lambda> (l', _, _). l = l') xs)) = zmset (map snd (filter (\<lambda> (l', _, _). l = l') ys))"
+  have pts_eq: "c_pts (change_multiplicities su xs c) = c_pts (change_multiplicities su ys c)"
+  proof (rule ext)
+    fix l
+    show "c_pts (change_multiplicities su xs c) l = c_pts (change_multiplicities su ys c) l"
+    proof (cases "l \<in> fst ` set xs \<union> fst ` set ys")
+      case True
+      with H show ?thesis by (simp add: c_pts_change_multiplicities)
+    next
+      case False
+      then have "filter (\<lambda> (l', _, _). l = l') xs = []" and "filter (\<lambda> (l', _, _). l = l') ys = []"
+        by (force simp: filter_empty_conv image_iff)+
+      then show ?thesis by (simp add: c_pts_change_multiplicities)
+    qed
+  qed
+  have work_eq: "c_work (change_multiplicities su xs c) = c_work (change_multiplicities su ys c)"
+    by (rule ext) (simp add: c_work_change_multiplicities pts_eq)
+  show "change_multiplicities su xs c = change_multiplicities su ys c"
+    by (subst change_multiplicities_update_form, subst (2) change_multiplicities_update_form, simp add: pts_eq work_eq)
+qed
+
 end

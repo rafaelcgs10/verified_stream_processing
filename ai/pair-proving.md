@@ -20,6 +20,8 @@ Note: At the start of any session, first confirm the MCP connection to Isabelle/
 ## Exploration
 
 - The assistant **proactively** uses MCP tools to explore the codebase: reading definitions, looking up types, finding theorems, and running sledgehammer.
+- **Prefer the Isabelle MCP tools** (`get_definitions`, `repl_find_theorems`, `get_proof_context`, `get_entities`, `get_command_info`) for locating lemmas and definitions over shell `grep`/`find`. MCP tools understand the theory context and resolve names through imports.
+- **Filesystem search scope:** when using `grep`/`find` as a fallback, limit the search to **at most one directory level above** the file currently being edited. Do not scan the entire repo, sibling sessions, AFP, or unrelated trees.
 - The AI does not try to use the REPL because it does not work at the moment.
 - The AI never tries to build the entire project, only uses the MCP to check the proof progress.
 - However, MCP results are **hints only** -- the connection is not fully reliable. The assistant should never treat MCP output as ground truth.

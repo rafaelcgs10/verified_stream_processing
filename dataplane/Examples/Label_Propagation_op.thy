@@ -2472,6 +2472,75 @@ lemma vertices_label_prop_label_record_update[simp]:
   unfolding label_prop_label_record_update_def by auto
 
 
+lemma outpu_consumes_fun[simp]:
+  "outpu (consumes os p t d) = outpu os"
+  unfolding consumes_def add_caps_def BENQ_def by auto
+
+lemma timestamps_consumes[simp]:
+  "timestamps (consumes os p t d) = timestamps os"
+  unfolding consumes_def add_caps_def BENQ_def by auto
+
+lemma graph_consumes[simp]:
+  "label_propagation_state.graph (consumes os p t d) = label_propagation_state.graph os"
+  unfolding consumes_def add_caps_def BENQ_def by auto
+
+lemma vertices_consumes[simp]:
+  "vertices (consumes os p t d) = vertices os"
+  unfolding consumes_def add_caps_def BENQ_def by auto
+
+lemma label_consumes[simp]:
+  "label (consumes os p t d) = label os"
+  unfolding consumes_def add_caps_def BENQ_def by auto
+
+lemma all_vertices_consumes[simp]:
+  "all_vertices (consumes os p t d) = all_vertices os"
+  unfolding all_vertices_def by simp
+
+lemma neighbors_consumes[simp]:
+  "neighbors (consumes os p t d) = neighbors os"
+  unfolding neighbors_def by simp
+
+lemma all_edges_consumes_label_state[simp]:
+  "all_edges (consumes os p t d) = all_edges os"
+  unfolding all_edges_def by simp
+
+lemma min_label_consumes_label_state[simp]:
+  "min_label (consumes os p t d) = min_label os"
+  unfolding min_label_def by simp
+
+lemma timestamps_fold_consumes[simp]:
+  "timestamps (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = timestamps os"
+  by (induct xs arbitrary: os) auto
+
+lemma graph_fold_consumes[simp]:
+  "label_propagation_state.graph (fold (\<lambda>(d, t) os. consumes os p t d) xs os) =
+    label_propagation_state.graph os"
+  by (induct xs arbitrary: os) auto
+
+lemma vertices_fold_consumes[simp]:
+  "vertices (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = vertices os"
+  by (induct xs arbitrary: os) auto
+
+lemma label_fold_consumes[simp]:
+  "label (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = label os"
+  by (induct xs arbitrary: os) auto
+
+lemma all_vertices_fold_consumes[simp]:
+  "all_vertices (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = all_vertices os"
+  unfolding all_vertices_def by simp
+
+lemma neighbors_fold_consumes[simp]:
+  "neighbors (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = neighbors os"
+  unfolding neighbors_def by simp
+
+lemma all_edges_fold_consumes[simp]:
+  "all_edges (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = all_edges os"
+  unfolding all_edges_def by simp
+
+lemma min_label_fold_consumes[simp]:
+  "min_label (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = min_label os"
+  unfolding min_label_def by simp
+
 lemma all_vertices_outpu_upd[simp]:
   "all_vertices (os_label_prop\<lparr>outpu := A\<rparr>) = all_vertices os_label_prop"
   unfolding all_vertices_def
@@ -3706,10 +3775,22 @@ lemma consu_fst_label_prop_input0_batched[simp]:
   \<open>consu (fst (label_prop_input0_batched os msgs)) = consu os\<close>
   by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
 
+
+lemma inter_fst_label_prop_input0_batched:
+  \<open>inter (fst (label_prop_input0_batched os msgs)) =
+    inter (fold (\<lambda>(d, t) os. label_prop_input0_step_state os d t) msgs os)\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta split: prod.splits)
 lemma front_fst_label_prop_input0_batched[simp]:
   \<open>front (fst (label_prop_input0_batched os msgs)) = front os\<close>
   by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
 
+find_theorems label_prop_input0_step_state inter
+
+
+lemma ocaps_fst_label_prop_input0_batched:
+  \<open>ocaps (fst (label_prop_input0_batched os msgs)) =
+    ocaps (fold (\<lambda>(d, t) os. label_prop_input0_step_state os d t) msgs os)\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta split: prod.splits)
 lemma initia_fst_label_prop_input0_batched[simp]:
   \<open>initia (fst (label_prop_input0_batched os msgs)) = initia os\<close>
 proof (induct msgs arbitrary: os)
@@ -4182,6 +4263,16 @@ lemma outpu_fst_label_prop_input1_batched[simp]:
     (\<lambda>p. outpu os p @ map (\<lambda>(x, cap). (x, time cap))
       (filter (\<lambda>(x, cap). out cap = p) (snd (label_prop_input1_batched os msgs))))\<close>
   by (induct msgs arbitrary: os) (auto simp: case_prod_beta append_assoc fun_eq_iff)
+
+lemma inter_fst_label_prop_input1_batched:
+  \<open>inter (fst (label_prop_input1_batched os msgs)) =
+    inter (fold (\<lambda>(d, t) os. label_prop_input1_step_state os d t) msgs os)\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta split: prod.splits)
+
+lemma ocaps_fst_label_prop_input1_batched:
+  \<open>ocaps (fst (label_prop_input1_batched os msgs)) =
+    ocaps (fold (\<lambda>(d, t) os. label_prop_input1_step_state os d t) msgs os)\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta split: prod.splits)
 
 lemma produ_fst_label_prop_input1_batched[simp]:
   \<open>produ (fst (label_prop_input1_batched os msgs)) =
