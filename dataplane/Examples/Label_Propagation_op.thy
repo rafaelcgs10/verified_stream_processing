@@ -1546,15 +1546,7 @@ lemma min_label_release_caps[simp]:
   by (auto split: list.splits)
 
 
-lemma outpu_release_caps[simp]:
-  "outpu (release_caps os p) = outpu os"
-  unfolding release_caps_def Let_def trace_simp
-  by (auto split: list.splits)
 
-lemma front_release_caps[simp]:
-  "front (release_caps os p) = front os"
-  unfolding release_caps_def Let_def trace_simp
-  by (auto split: list.splits)
 
 
 lemma neighbors_drop_caps[simp]:
@@ -1902,10 +1894,7 @@ proof -
     done
 qed
 
-lemma input_release_caps[simp]:
-  "input (release_caps os p) = input os"
-  unfolding release_caps_def
-  by auto
+
 
 lemma min_label_produces[simp]:
   "min_label (produces os batch) = min_label os"
@@ -2135,153 +2124,7 @@ lemma label_prop_upd_inv_release_caps[simp]:
   using label_prop_upd_inv_drop_caps
   by simp
 
-lemma is_en1_delay_cap[simp]:
-  "is_en1 (delay_cap os cap incr) = is_en1 os"
-  unfolding delay_cap_def by auto
 
-lemma is_en2_delay_cap[simp]:
-  "is_en2 (delay_cap os cap incr) = is_en2 os"
-  unfolding delay_cap_def by auto
-
-lemma is_en1_produce[simp]:
-  "is_en1 (produce os cap batch) = is_en1 os"
-  unfolding produce_def by auto
-
-lemma is_en2_produce[simp]:
-  "is_en2 (produce os cap batch) = is_en2 os"
-  unfolding produce_def by auto
-
-lemma is_en1_consume[simp]:
-  "is_en1 (consume os p t len) = is_en1 os"
-  unfolding consume_def by auto
-
-lemma is_en2_consume[simp]:
-  "is_en2 (consume os p t len) = is_en2 os"
-  unfolding consume_def by auto
-
-lemma is_en1_mint_cap[simp]:
-  "is_en1 (mint_cap os p t) = is_en1 os"
-  unfolding mint_cap_def by auto
-
-lemma is_en2_mint_cap[simp]:
-  "is_en2 (mint_cap os p t) = is_en2 os"
-  unfolding mint_cap_def by auto
-
-lemma is_en1_mint[simp]:
-  "is_en1 (snd (mint os caps p t)) = is_en1 os"
-  unfolding mint_def mint_cap_def by auto
-
-lemma is_en2_mint[simp]:
-  "is_en2 (snd (mint os caps p t)) = is_en2 os"
-  unfolding mint_def mint_cap_def by auto
-
-lemma is_en1_produces[simp]:
-  "is_en1 (produces os batch) = is_en1 os"
-  unfolding produces_def by auto
-
-lemma is_en2_produces[simp]:
-  "is_en2 (produces os batch) = is_en2 os"
-  unfolding produces_def by auto
-
-lemma is_en1_drop_cap[simp]:
-  "is_en1 (drop_cap os cap) = is_en1 os"
-  unfolding drop_cap_def by auto
-
-lemma is_en2_drop_cap[simp]:
-  "is_en2 (drop_cap os cap) = is_en2 os"
-  unfolding drop_cap_def by auto
-
-lemma is_en1_drop_caps[simp]:
-  "is_en1 (drop_caps os caps) = is_en1 os"
-  unfolding drop_caps_def by auto
-
-lemma is_en2_drop_caps[simp]:
-  "is_en2 (drop_caps os caps) = is_en2 os"
-  unfolding drop_caps_def by auto
-
-lemma is_en1_release_caps[simp]:
-  "is_en1 (release_caps os p) = is_en1 os"
-  unfolding release_caps_def drop_caps_def trace_simp Let_def by auto
-
-lemma is_en2_release_caps[simp]:
-  "is_en2 (release_caps os p) = is_en2 os"
-  unfolding release_caps_def drop_caps_def trace_simp Let_def by auto
-
-lemma is_en1_add_cap[simp]:
-  "is_en1 (add_cap os p t) = is_en1 os"
-  unfolding add_cap_def by auto
-
-lemma is_en2_add_cap[simp]:
-  "is_en2 (add_cap os p t) = is_en2 os"
-  unfolding add_cap_def by auto
-
-lemma is_en1_consumes[simp]:
-  "is_en1 (consumes os p t d) = is_en1 os"
-  unfolding consumes_def add_caps_def BENQ_def by auto
-
-lemma is_en2_consumes[simp]:
-  "is_en2 (consumes os p t d) = is_en2 os"
-  unfolding consumes_def add_caps_def BENQ_def by auto
-
-lemma is_en1_fold_consumes[simp]:
-  "is_en1 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = is_en1 os"
-  by (induct xs arbitrary: os) auto
-
-lemma is_en2_fold_consumes[simp]:
-  "is_en2 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = is_en2 os"
-  by (induct xs arbitrary: os) auto
-
-lemma is_en1_obtain_progress[simp]:
-  "is_en1 (fst (obtain_progress os)) = is_en1 os"
-  unfolding obtain_progress_def by auto
-
-lemma is_en2_obtain_progress[simp]:
-  "is_en2 (fst (obtain_progress os)) = is_en2 os"
-  unfolding obtain_progress_def by auto
-
-lemma intsum_add_caps[simp]:
-  "intsum (add_caps os caps) = intsum os"
-  unfolding add_caps_def by auto
-
-lemma input_add_caps[simp]:
-  "input (add_caps os caps) = input os"
-  unfolding add_caps_def by auto
-
-lemma outpu_add_caps[simp]:
-  "outpu (add_caps os caps) = outpu os"
-  unfolding add_caps_def by auto
-
-lemma front_add_caps[simp]:
-  "front (add_caps os caps) = front os"
-  unfolding add_caps_def by auto
-
-lemma initia_add_caps[simp]:
-  "initia (add_caps os caps) = initia os"
-  unfolding add_caps_def by auto
-
-lemma en1_add_caps[simp]:
-  "en1 (add_caps os caps) = en1 os"
-  unfolding add_caps_def by auto
-
-lemma de1_add_caps[simp]:
-  "de1 (add_caps os caps) = de1 os"
-  unfolding add_caps_def by auto
-
-lemma is_en1_add_caps[simp]:
-  "is_en1 (add_caps os caps) = is_en1 os"
-  unfolding add_caps_def by auto
-
-lemma en2_add_caps[simp]:
-  "en2 (add_caps os caps) = en2 os"
-  unfolding add_caps_def by auto
-
-lemma de2_add_caps[simp]:
-  "de2 (add_caps os caps) = de2 os"
-  unfolding add_caps_def by auto
-
-lemma is_en2_add_caps[simp]:
-  "is_en2 (add_caps os caps) = is_en2 os"
-  unfolding add_caps_def by auto
 
 lemma timestamps_add_caps[simp]:
   "timestamps (add_caps os caps) = timestamps os"
@@ -2299,29 +2142,7 @@ lemma label_add_caps[simp]:
   "label (add_caps os caps) = label os"
   unfolding add_caps_def by auto
 
-lemma en1_input_tl[simp]:
-  "en1 (input_tl os p) = en1 os"
-  unfolding input_tl_def by auto
 
-lemma de1_input_tl[simp]:
-  "de1 (input_tl os p) = de1 os"
-  unfolding input_tl_def by auto
-
-lemma is_en1_input_tl[simp]:
-  "is_en1 (input_tl os p) = is_en1 os"
-  unfolding input_tl_def by auto
-
-lemma en2_input_tl[simp]:
-  "en2 (input_tl os p) = en2 os"
-  unfolding input_tl_def by auto
-
-lemma de2_input_tl[simp]:
-  "de2 (input_tl os p) = de2 os"
-  unfolding input_tl_def by auto
-
-lemma is_en2_input_tl[simp]:
-  "is_en2 (input_tl os p) = is_en2 os"
-  unfolding input_tl_def by auto
 
 lemma timestamps_input_tl[simp]:
   "timestamps (input_tl os p) = timestamps os"
@@ -2472,9 +2293,7 @@ lemma vertices_label_prop_label_record_update[simp]:
   unfolding label_prop_label_record_update_def by auto
 
 
-lemma outpu_consumes_fun[simp]:
-  "outpu (consumes os p t d) = outpu os"
-  unfolding consumes_def add_caps_def BENQ_def by auto
+
 
 lemma timestamps_consumes[simp]:
   "timestamps (consumes os p t d) = timestamps os"
@@ -3572,13 +3391,7 @@ lemma step_compower_label_propagation_op_input0[intro]:
   using assms by auto
 
 
-lemma initia_produces[simp]:
-  \<open>initia (produces os batch) = initia os\<close>
-  unfolding produces_def by auto
 
-lemma initia_release_caps[simp]:
-  \<open>initia (release_caps os p) = initia os\<close>
-  unfolding release_caps_def Let_def trace_simp by simp
 
 definition label_prop_input0_step_state where
   \<open>label_prop_input0_step_state os d t = (
@@ -3614,62 +3427,7 @@ fun label_prop_input0_batched where
      (case label_prop_input0_batched (label_prop_input0_step_state os d t) ms of
         (os_final, batches) \<Rightarrow> (os_final, label_prop_input0_step_batch os d t @ batches))\<close>
 
-lemma en1_drop_caps[simp]:
-  \<open>en1 (drop_caps os caps) = en1 os\<close>
-  unfolding drop_caps_def by auto
 
-lemma de1_drop_caps[simp]:
-  \<open>de1 (drop_caps os caps) = de1 os\<close>
-  unfolding drop_caps_def by auto
-
-lemma en2_drop_caps[simp]:
-  \<open>en2 (drop_caps os caps) = en2 os\<close>
-  unfolding drop_caps_def by auto
-
-lemma de2_drop_caps[simp]:
-  \<open>de2 (drop_caps os caps) = de2 os\<close>
-  unfolding drop_caps_def by auto
-
-lemma en1_produces[simp]:
-  \<open>en1 (produces os batch) = en1 os\<close>
-  unfolding produces_def by auto
-
-lemma de1_produces[simp]:
-  \<open>de1 (produces os batch) = de1 os\<close>
-  unfolding produces_def by auto
-
-lemma en2_produces[simp]:
-  \<open>en2 (produces os batch) = en2 os\<close>
-  unfolding produces_def by auto
-
-lemma de2_produces[simp]:
-  \<open>de2 (produces os batch) = de2 os\<close>
-  unfolding produces_def by auto
-
-lemma en1_release_caps[simp]:
-  \<open>en1 (release_caps os p) = en1 os\<close>
-  unfolding release_caps_def trace_simp Let_def
-  by auto
-
-lemma de1_release_caps[simp]:
-  \<open>de1 (release_caps os p) = de1 os\<close>
-  unfolding release_caps_def trace_simp Let_def
-  by auto
-
-lemma en2_release_caps[simp]:
-  \<open>en2 (release_caps os p) = en2 os\<close>
-  unfolding release_caps_def trace_simp Let_def
-  by auto
-
-lemma de2_release_caps[simp]:
-  \<open>de2 (release_caps os p) = de2 os\<close>
-  unfolding release_caps_def trace_simp Let_def
-  by auto
-
-lemma produ_release_caps[simp]:
-  \<open>produ (release_caps os p) = produ os\<close>
-  unfolding release_caps_def trace_simp Let_def
-  by auto
 
 lemma input_label_prop_input0_step_state[simp]:
   \<open>input (label_prop_input0_step_state os d t) = (input os)(0 := tl (input os 0))\<close>

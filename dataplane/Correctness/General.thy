@@ -1007,4 +1007,205 @@ lemma antichain_from_list_bots_antichain_set[simp]:
       set_bots_bot_antichain)
 
 
+
+
+lemma input_ocaps_inv_release_capsI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (release_caps os p)"
+proof -
+  let ?M = "concat (map (\<lambda>(p', s). map (((+) s) \<circ> snd) (input os p'))
+              (concat (map (\<lambda>p'. map (\<lambda>s. (p', s)) (intsum os p' p)) enum_class.enum)))"
+  let ?ts = "list_diff (ocaps os p) ?M"
+  have release_eq:
+    "release_caps os p = drop_caps os (map (\<lambda>t. Cap t p) ?ts)"
+    unfolding release_caps_def Let_def trace_simp by simp
+  have ocaps_other:
+    "\<And>p'. p' \<noteq> p \<Longrightarrow> ocaps (release_caps os p) p' = ocaps os p'"
+    unfolding release_eq drop_caps_def by auto
+  have ocaps_p_mset:
+    "mset (ocaps (release_caps os p) p) =
+       mset (ocaps os p) - mset (list_diff (ocaps os p) ?M)"
+    unfolding release_eq drop_caps_def by simp
+  show ?thesis
+    unfolding input_ocaps_inv_def
+  proof (intro allI ballI)
+    fix p1 p2 t s
+    assume t_in: "t \<in> snd ` set (input (release_caps os p) p1)"
+      and s_in: "s \<in> set (intsum (release_caps os p) p1 p2)"
+    have t_in': "t \<in> snd ` set (input os p1)"
+      using t_in by simp
+    have s_in': "s \<in> set (intsum os p1 p2)"
+      using s_in by simp
+    have orig: "t -+- s \<in> set (ocaps os p2)"
+      using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
+    show "t -+- s \<in> set (ocaps (release_caps os p) p2)"
+    proof (cases "p2 = p")
+      case False
+      then show ?thesis using orig ocaps_other by simp
+    next
+      case True
+      have plus_eq: "t -+- s = s + t"
+        by (simp add: add.commute)
+      have in_M: "t -+- s \<in> set ?M"
+      proof -
+        from t_in' obtain d where d_in: "(d, t) \<in> set (input os p1)"
+          by auto
+        have p1_enum: "p1 \<in> set enum_class.enum"
+          by (simp add: enum_UNIV)
+        have pair_in:
+          "(p1, s) \<in> set (concat (map (\<lambda>p'. map (\<lambda>s. (p', s)) (intsum os p' p)) enum_class.enum))"
+          using p1_enum s_in' True by auto
+        have apply_eq: "((+) s \<circ> snd) (d, t) = s + t"
+          by simp
+        from pair_in apply_eq d_in have "s + t \<in> set ?M"
+          by (force simp: image_iff)
+        then show ?thesis using plus_eq by simp
+      qed
+      have count_pos:
+        "count (mset (ocaps (release_caps os p) p)) (t -+- s) > 0"
+      proof -
+        let ?O = "mset (ocaps os p)"
+        let ?Mm = "mset ?M"
+        have step1: "mset (list_diff (ocaps os p) ?M) = ?O - ?Mm"
+          by simp
+        have countM: "count ?Mm (t -+- s) > 0"
+          using in_M by (simp add: count_greater_zero_iff)
+        have countO: "count ?O (t -+- s) > 0"
+          using orig True by (simp add: count_greater_zero_iff)
+        have "count (?O - (?O - ?Mm)) (t -+- s) > 0"
+          using countM countO by simp
+        then show ?thesis
+          using ocaps_p_mset True step1 by simp
+      qed
+      then have "t -+- s \<in> set_mset (mset (ocaps (release_caps os p) p))"
+        by (simp add: count_greater_zero_iff)
+      then show ?thesis
+        using True by simp
+    qed
+  qed
+qed
+
+lemma input_ocaps_inv_produces[simp]:
+  "input_ocaps_inv (produces os batch) = input_ocaps_inv os"
+  unfolding produces_def input_ocaps_inv_def
+  by auto
+
+(* add_caps only enlarges ocaps (and leaves input/intsum untouched),
+   so any required witness remains present. *)
+lemma input_ocaps_inv_add_capsI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (add_caps os caps)"
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t s
+  assume t_in: "t \<in> snd ` set (input (add_caps os caps) p1)"
+    and s_in: "s \<in> set (intsum (add_caps os caps) p1 p2)"
+  have t_in': "t \<in> snd ` set (input os p1)"
+    using t_in unfolding add_caps_def by simp
+  have s_in': "s \<in> set (intsum os p1 p2)"
+    using s_in unfolding add_caps_def by simp
+  have "t -+- s \<in> set (ocaps os p2)"
+    using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
+  then show "t -+- s \<in> set (ocaps (add_caps os caps) p2)"
+    unfolding add_caps_def by auto
+qed
+
+lemma inputs_ocaps_inv_consumes:
+  assumes \<open>input_ocaps_inv os\<close>
+  shows \<open>input_ocaps_inv (consumes os p t d)\<close>
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t1 s
+  assume t1: \<open>t1 \<in> snd ` set (input (consumes os p t d) p1)\<close>
+    and \<open>s \<in> set (intsum (consumes os p t d) p1 p2)\<close>
+  hence s: \<open>s \<in> set (intsum os p1 p2)\<close> unfolding consumes_def add_caps_def by simp
+  consider (input) \<open>t1 \<in> snd ` set (input os p1)\<close> | (consumed) \<open>p1 = p\<close> \<open>t1 = t\<close>
+    using t1 unfolding consumes_def add_caps_def BENQ_def by (auto split: if_splits)
+  thus \<open>t1 -+- s \<in> set (ocaps (consumes os p t d) p2)\<close>
+  proof cases
+    case input
+    thus ?thesis using assms s unfolding input_ocaps_inv_def consumes_def add_caps_def by auto
+  next
+    case consumed
+    thus ?thesis using s unfolding consumes_def add_caps_def by force
+  qed
+qed
+
+(* Adding and then dropping the same caps leaves ocaps unchanged (as multisets,
+   hence as sets); input and intsum are untouched throughout, so input_ocaps_inv
+   transfers directly. *)
+lemma input_ocaps_inv_drop_add_capsI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (drop_caps (add_caps os caps) caps)"
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t s
+  assume t_in: "t \<in> snd ` set (input (drop_caps (add_caps os caps) caps) p1)"
+    and s_in: "s \<in> set (intsum (drop_caps (add_caps os caps) caps) p1 p2)"
+  have t_in': "t \<in> snd ` set (input os p1)"
+    using t_in unfolding drop_caps_def add_caps_def by simp
+  have s_in': "s \<in> set (intsum os p1 p2)"
+    using s_in unfolding drop_caps_def add_caps_def by simp
+  have orig: "t -+- s \<in> set (ocaps os p2)"
+    using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
+  have ocaps_mset:
+    "mset (ocaps (drop_caps (add_caps os caps) caps) p2) = mset (ocaps os p2)"
+    unfolding drop_caps_def add_caps_def by simp
+  then have set_eq:
+    "set (ocaps (drop_caps (add_caps os caps) caps) p2) = set (ocaps os p2)"
+    by (metis set_mset_mset)
+  show "t -+- s \<in> set (ocaps (drop_caps (add_caps os caps) caps) p2)"
+    using orig set_eq by simp
+qed
+
+(* Same as input_ocaps_inv_drop_add_capsI, but with produces interposed between
+   add_caps and drop_caps. produces only modifies outpu and produ, so input,
+   intsum, and ocaps remain untouched. *)
+lemma input_ocaps_inv_drop_produces_add_capsI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (drop_caps (produces (add_caps os caps) batch) caps)"
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t s
+  assume t_in: "t \<in> snd ` set (input (drop_caps (produces (add_caps os caps) batch) caps) p1)"
+    and s_in: "s \<in> set (intsum (drop_caps (produces (add_caps os caps) batch) caps) p1 p2)"
+  have t_in': "t \<in> snd ` set (input os p1)"
+    using t_in unfolding drop_caps_def produces_def add_caps_def by simp
+  have s_in': "s \<in> set (intsum os p1 p2)"
+    using s_in unfolding drop_caps_def produces_def add_caps_def by simp
+  have orig: "t -+- s \<in> set (ocaps os p2)"
+    using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
+  have ocaps_mset:
+    "mset (ocaps (drop_caps (produces (add_caps os caps) batch) caps) p2) = mset (ocaps os p2)"
+    unfolding drop_caps_def produces_def add_caps_def by simp
+  then have set_eq:
+    "set (ocaps (drop_caps (produces (add_caps os caps) batch) caps) p2) = set (ocaps os p2)"
+    by (metis set_mset_mset)
+  show "t -+- s \<in> set (ocaps (drop_caps (produces (add_caps os caps) batch) caps) p2)"
+    using orig set_eq by simp
+qed
+
+(* input_tl only drops the head of input os p; the remaining input is a subset of
+   the original. intsum and ocaps are untouched, so any witness for an element
+   still present transfers. *)
+lemma input_ocaps_inv_input_tlI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (input_tl os p)"
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t s
+  assume t_in: "t \<in> snd ` set (input (input_tl os p) p1)"
+    and s_in: "s \<in> set (intsum (input_tl os p) p1 p2)"
+  have t_in': "t \<in> snd ` set (input os p1)"
+    using t_in unfolding input_tl_def
+    by (auto split: if_splits dest: in_set_tlD)
+  have s_in': "s \<in> set (intsum os p1 p2)"
+    using s_in unfolding input_tl_def by simp
+  have orig: "t -+- s \<in> set (ocaps os p2)"
+    using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
+  show "t -+- s \<in> set (ocaps (input_tl os p) p2)"
+    using orig unfolding input_tl_def by simp
+qed
+
+
 end
