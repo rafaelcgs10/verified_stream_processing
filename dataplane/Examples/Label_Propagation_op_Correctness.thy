@@ -4584,8 +4584,6 @@ lemma loop_updates_preserves_dataplane_tracker_inv:
   and IOC2: \<open>input_ocaps_inv (os 2)\<close>
   and INV: \<open>label_prop_upd_inv os_label_prop\<close>
   and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
-  and TIMES: \<open>myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
-        input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1)) \<subseteq> set (timestamps os_label_prop)\<close>
   and MSGS: \<open>\<And>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
         map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
           (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<Longrightarrow>
@@ -4594,7 +4592,7 @@ lemma loop_updates_preserves_dataplane_tracker_inv:
       (\<forall>q. myfst t \<le> q \<longrightarrow>
         snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))\<close>
   shows \<open>dataplane_tracker_inv (os'(1 := op_state_base os_label_prop')) cbufs' sg\<close>
-  using step D GR Nxt Inv label_prop_extension Summ Intsum IOC1 IOC2 INV LABELS TIMES MSGS
+  using step D GR Nxt Inv label_prop_extension Summ Intsum IOC1 IOC2 INV LABELS MSGS
 proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' T G V L rule: loop_updates.induct)
   case (1 cbufs os_label_prop os)
   note loop_step = "1.prems"(1)
@@ -4609,15 +4607,26 @@ proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' T G V 
   note IOC20 = "1.prems"(10)
   note INV0 = "1.prems"(11)
   note LABELS0 = "1.prems"(12)
-  note TIMES0 = "1.prems"(13)
-  note MSGS0 = "1.prems"(14)
+  note MSGS0 = "1.prems"(13)
 
+  have MSGS0_all: \<open>\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
+        map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+      myfst t \<in> set (timestamps os_label_prop) \<and>
+      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow>
+        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))\<close>
+    using MSGS0 by blast
   have good: \<open>label_prop_upd_inv os_label_prop \<and>
     (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
-    myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
-      input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1))
-      \<subseteq> set (timestamps os_label_prop)\<close>
-    using INV0 LABELS0 TIMES0 by simp
+    (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
+        map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+      myfst t \<in> set (timestamps os_label_prop) \<and>
+      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow>
+        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d))))\<close>
+    using INV0 LABELS0 MSGS0_all by blast
 
   obtain cbufs1 os_label_prop1 os1 where step1:
     \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
@@ -4631,13 +4640,15 @@ proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' T G V 
   proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
     case True
     have loop_eq: \<open>loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
-      sorry
+      apply (subst loop_updates.simps)
+      using good step1 True by simp
     show ?thesis
       using loop_step loop_eq Inv1 by (simp add: fun_upd_def)
   next
     case False
     have loop_eq: \<open>loop_updates cbufs os_label_prop os = loop_updates cbufs1 os_label_prop1 os1\<close>
-      sorry
+      apply (subst loop_updates.simps)
+      using good step1 False by simp
     have step_rec: \<open>(cbufs', os_label_prop', os') = loop_updates cbufs1 os_label_prop1 os1\<close>
       using loop_step loop_eq by simp
     have GR1: \<open>graph_summar_nt (summ sg) (nxt sg) (os1(1 := op_state_base os_label_prop1))\<close>
@@ -4660,10 +4671,6 @@ proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' T G V 
       by (rule label_prop_upd_inv_label_prop_input1_loop_updatesI[OF step1[symmetric] INV0 MSGS0])
     have LABELS1: \<open>\<forall>t. labels_inv (all_edges os_label_prop1 t) (min_label os_label_prop1 t)\<close>
       by (rule labels_inv_label_prop_input1_loop_updates_allI[OF step1[symmetric] INV0 MSGS0 LABELS0])
-    have TIMES1: \<open>myfst ` snd ` set (input os_label_prop1 1 @ outpu os_label_prop1 1 @
-        input (os1 2) 1 @ outpu (os1 2) 1 @ cbufs1 (1, 1) @ cbufs1 (2, 1))
-      \<subseteq> set (timestamps os_label_prop1)\<close>
-      by (rule label_prop_input1_loop_updates_times_invI[OF step1[symmetric] INV0 LABELS0 TIMES0 MSGS0])
     have EN10: \<open>en1 os_label_prop = Inl\<close>
       using arg_cong[OF Ext0, of en1]
       by (simp add: operator_state.defs)
@@ -4678,16 +4685,11 @@ proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' T G V 
       (\<forall>q. myfst t \<le> q \<longrightarrow>
         snd (de1 os_label_prop1 d) \<in> cc_of (all_edges os_label_prop1 q) (fst (de1 os_label_prop1 d)))\<close>
       by (rule label_prop_input1_loop_updates_msgs_invI
-          [OF step1[symmetric] EN10 DE10 INV0 LABELS0 TIMES0 MSGS0])
-
-
-
+          [OF step1[symmetric] EN10 DE10 INV0 LABELS0 MSGS0_all])
 
     show ?thesis
-      (* by (rule "1.hyps"[OF good step1[symmetric] refl refl False
-          step_rec D0 GR1 Nxt0 Inv1 Ext1 Summ0 Intsum1 IOC11 IOC21 INV1 LABELS1 TIMES1 MSGS1]) *)
-      sorry
-
+      by (rule "1.hyps"[OF good step1[symmetric] refl refl False
+          step_rec D0 GR1 Nxt0 Inv1 Ext1 Summ0 Intsum1 IOC11 IOC21 INV1 LABELS1 MSGS1])
   qed
 qed
 
@@ -4764,8 +4766,6 @@ lemma loop_updates_final_dataplane_tracker_inv_for_progress:
     and IOC2: \<open>input_ocaps_inv (os 2)\<close>
     and INV: \<open>label_prop_upd_inv os_label_prop\<close>
     and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
-    and TIMES: \<open>myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
-        input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1)) \<subseteq> set (timestamps os_label_prop)\<close>
     and MSGS: \<open>\<And>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
         map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
           (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<Longrightarrow>
@@ -4797,7 +4797,7 @@ proof -
     by (simp add: op_state_base_def operator_state.defs)
   show ?thesis
     by (rule loop_updates_preserves_dataplane_tracker_inv
-        [OF step D GR Nxt base_inv ext_base Summ Intsum IOC1 IOC2 INV LABELS TIMES MSGS])
+        [OF step D GR Nxt base_inv ext_base Summ Intsum IOC1 IOC2 INV LABELS MSGS])
 qed
 
 lemma foo:
