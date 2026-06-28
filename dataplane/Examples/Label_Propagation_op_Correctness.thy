@@ -4272,32 +4272,51 @@ subsection \<open>Frame and produced-progress facts for loop_updates\<close>
 
 lemma fst_loop_updates[simp]:
   \<open>fst (loop_updates cbufs os_label_prop os) = cbufs((2, 1) := [], (1, 1) := [])\<close>
-(* proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
   case (1 cbufs os_label_prop os)
-  obtain cbufs' os_label_prop' os' where triple:
-    \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
-    by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
-  have cbufs'_eq: \<open>cbufs' = cbufs((2, 1) := [], (1, 1) := [])\<close>
-    using triple by (metis fst_conv fst_label_prop_input1_loop_updates)
-  have idemp_eq:
-    \<open>(cbufs((2, 1) := [], (1, 1) := []))((2, 1) := [], (1, 1) := []) =
-     cbufs((2, 1) := [], (1, 1) := [])\<close>
-    by simp
-  have ih_applied:
-    \<open>outpu os_label_prop' 1 \<noteq> [] \<Longrightarrow>
-     label_prop_upd_inv os_label_prop \<and>
-     (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
-     myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
-       input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1))
-       \<subseteq> set (timestamps os_label_prop) \<Longrightarrow>
-     fst (loop_updates (cbufs((2, 1) := [], (1, 1) := [])) os_label_prop' os')
-       = cbufs((2, 1) := [], (1, 1) := [])\<close>
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
+      map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+        (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+      myfst t \<in> set (timestamps os_label_prop) \<and>
+      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow>
+        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d))))\<close>
 
-    using 1(1)[OF _ triple[symmetric] refl refl] cbufs'_eq idemp_eq by metis
   show ?case
-    by (subst loop_updates.simps) (auto simp: triple cbufs'_eq ih_applied)
-qed *)
-  sorry
+  proof (cases ?good)
+    case False
+    show ?thesis
+      by (subst loop_updates.simps) (simp only: False if_False fst_conv)
+
+
+  next
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have cbufs1_eq: \<open>cbufs1 = cbufs((2, 1) := [], (1, 1) := [])\<close>
+      using step1
+      unfolding label_prop_input1_loop_updates_def Let_def
+      by (auto split: prod.splits)
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 True cbufs1_eq in simp)
+    next
+      case False
+      have rec:
+        \<open>fst (loop_updates cbufs1 os_label_prop1 os1) =
+          cbufs1((2, 1) := [], (1, 1) := [])\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 False rec cbufs1_eq in simp)
+    qed
+  qed
+qed
+
 
 lemma produ_fst_snd_loop_updates_prefix:
   fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -4800,6 +4819,20 @@ proof -
         [OF step D GR Nxt base_inv ext_base Summ Intsum IOC1 IOC2 INV LABELS MSGS])
 qed
 
+lemma zmset_filter_eq_if_c_pts_change_multiplicities_eq:
+  assumes \<open>c_pts (change_multiplicities su xs c) l =
+    c_pts (change_multiplicities su ys c) l\<close>
+  shows \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) =
+    zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys))\<close>
+  using assms
+  by (simp add: c_pts_change_multiplicities)
+
+lemma extract_prog_two_12:
+  shows \<open>extract_progress (1 :: 3) eds (snd (obtain_progress os1)) @
+    extract_progress (2 :: 3) eds (snd (obtain_progress os2)) =
+    extract_prog [1 :: 3, 2] eds (\<lambda>nid. if nid = 1 then os1 else os2)\<close>
+  by (simp add: extract_prog_def)
+
 lemma foo:
   fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -4824,8 +4857,6 @@ lemma foo:
   and IOC2: \<open>input_ocaps_inv (os 2)\<close>
   and INV: \<open>label_prop_upd_inv os_label_prop\<close>
   and LABELS: \<open>\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
-  and TIMES: \<open>myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
-        input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1)) \<subseteq> set (timestamps os_label_prop)\<close>
   and MSGS: \<open>\<And>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
         map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
           (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<Longrightarrow>
