@@ -164,9 +164,12 @@ next
   qed
 qed
 
+definition "CM_equiv xs ys = (\<forall> l \<in> fst ` set xs \<union> fst ` set ys. zmset (map snd (filter (\<lambda> (l', _, _). l = l') xs)) = zmset (map snd (filter (\<lambda> (l', _, _). l = l') ys)))"
+
 lemma change_multiplicities_zmset_cong:
-  "\<forall> l \<in> fst ` set xs \<union> fst ` set ys. zmset (map snd (filter (\<lambda> (l', _, _). l = l') xs)) = zmset (map snd (filter (\<lambda> (l', _, _). l = l') ys)) \<Longrightarrow>
+  "CM_equiv xs ys \<Longrightarrow>
    change_multiplicities su xs = change_multiplicities su ys"
+  unfolding CM_equiv_def
 proof (rule ext)
   fix c
   assume H: "\<forall> l \<in> fst ` set xs \<union> fst ` set ys. zmset (map snd (filter (\<lambda> (l', _, _). l = l') xs)) = zmset (map snd (filter (\<lambda> (l', _, _). l = l') ys))"

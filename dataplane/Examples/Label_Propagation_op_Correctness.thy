@@ -572,133 +572,140 @@ definition label_prop_input1_loop_updates where
       os' = os(2 := os2')
      in (cbufs', os_label_prop', os'))\<close>
 
-lemma label_prop_input1_loop_updates_cbufs_11[simp]:
+lemma label_prop_input1_loop_updates_cbufs_11:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>cbufs' (1, 1) = []\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_cbufs_21[simp]:
+lemma label_prop_input1_loop_updates_cbufs_21:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>cbufs' (2, 1) = []\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_input_label_1[simp]:
+lemma label_prop_input1_loop_updates_input_label_1:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>input os_label_prop' 1 = []\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_input_os2_1[simp]:
+lemma label_prop_input1_loop_updates_input_label_0:
+  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
+  shows \<open>input os_label_prop' 0 = input os_label_prop 0\<close>
+  using step
+  unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
+  by (auto split: prod.splits)
+
+lemma label_prop_input1_loop_updates_input_os2_1:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>input (os' 2) 1 = []\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_outpu_os2_1[simp]:
+lemma label_prop_input1_loop_updates_outpu_os2_1:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>outpu (os' 2) 1 = []\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_initia_label[simp]:
+lemma label_prop_input1_loop_updates_initia_label:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>initia os_label_prop' = initia os_label_prop\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_front_label[simp]:
+lemma label_prop_input1_loop_updates_front_label:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>front os_label_prop' = front os_label_prop\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_initia_os2[simp]:
+lemma label_prop_input1_loop_updates_initia_os2:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>initia (os 2) = initia (os' 2)\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_front_os2[simp]:
+lemma label_prop_input1_loop_updates_front_os2:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>front (os 2) = front (os' 2)\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_intsum_os2[simp]:
+lemma label_prop_input1_loop_updates_intsum_os2:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>intsum (os 2) = intsum (os' 2)\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_intsum_label[simp]:
+lemma label_prop_input1_loop_updates_intsum_label:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>intsum os_label_prop = intsum os_label_prop'\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_en1_label[simp]:
+lemma label_prop_input1_loop_updates_en1_label:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>en1 os_label_prop = en1 os_label_prop'\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_en2_label[simp]:
+lemma label_prop_input1_loop_updates_en2_label:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>en2 os_label_prop = en2 os_label_prop'\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_de1_label[simp]:
+lemma label_prop_input1_loop_updates_de1_label:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>de1 os_label_prop = de1 os_label_prop'\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_de2_label[simp]:
+lemma label_prop_input1_loop_updates_de2_label:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>de2 os_label_prop = de2 os_label_prop'\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_en1_os2[simp]:
+lemma label_prop_input1_loop_updates_en1_os2:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>en1 (os 2) = en1 (os' 2)\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_en2_os2[simp]:
+lemma label_prop_input1_loop_updates_en2_os2:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>en2 (os 2) = en2 (os' 2)\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_de1_os2[simp]:
+lemma label_prop_input1_loop_updates_de1_os2:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>de1 (os 2) = de1 (os' 2)\<close>
   using step
   unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
   by (auto split: prod.splits)
 
-lemma label_prop_input1_loop_updates_de2_os2[simp]:
+lemma label_prop_input1_loop_updates_de2_os2:
   assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
   shows \<open>de2 (os 2) = de2 (os' 2)\<close>
   using step
@@ -2116,6 +2123,179 @@ lemma produ_fst_snd_label_prop_input1_loop_updates:
   unfolding label_prop_input1_loop_updates_def Let_def
   by (simp add: fold_consumes split_beta split: capability.splits)
 
+
+subsection \<open>Operational normal forms for label_prop_input1_loop_updates\<close>
+
+lemma label_prop_input1_loop_updates_os2_state:
+  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
+  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
+  shows \<open>os' 2 =
+    drop_caps
+      (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2))
+        (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1))
+          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
+      (map (\<lambda>t. Cap t 1)
+        (ocaps (os 2) 1 @
+          map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- MyPair 0 (Suc 0))
+            (cbufs (2, 1) @ outpu os_label_prop 1)))
+      \<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>\<close>
+  using step[symmetric]
+  unfolding label_prop_input1_loop_updates_def Let_def
+  by (simp split: prod.splits)
+
+lemma label_prop_input1_loop_updates_consu_os2:
+  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
+  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
+  shows \<open>consu (os' 2) = consu (os 2) @
+    map (\<lambda>(d, t). ((1 :: 2), t, (1 :: int))) (cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+proof -
+  have os2_eq: \<open>os' 2 =
+    drop_caps
+      (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2))
+        (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1))
+          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
+      (map (\<lambda>t. Cap t 1)
+        (ocaps (os 2) 1 @
+          map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- MyPair 0 (Suc 0))
+            (cbufs (2, 1) @ outpu os_label_prop 1)))
+      \<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>\<close>
+    by (rule label_prop_input1_loop_updates_os2_state[OF step])
+  show ?thesis
+    unfolding os2_eq
+    by (simp add: produces_def drop_caps_def fold_consumes split_beta)
+qed
+
+lemma label_prop_input1_loop_updates_produ_os2:
+  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
+  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
+  shows \<open>produ (os' 2) = produ (os 2) @
+    map (\<lambda>(d, t). ((1 :: 2), t -+- MyPair 0 (Suc 0), (1 :: int)))
+      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+proof -
+  have os2_eq: \<open>os' 2 =
+    drop_caps
+      (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2))
+        (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1))
+          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
+      (map (\<lambda>t. Cap t 1)
+        (ocaps (os 2) 1 @
+          map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- MyPair 0 (Suc 0))
+            (cbufs (2, 1) @ outpu os_label_prop 1)))
+      \<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>\<close>
+    by (rule label_prop_input1_loop_updates_os2_state[OF step])
+  show ?thesis
+    unfolding os2_eq
+    by (simp add: produces_def drop_caps_def fold_consumes split_beta)
+qed
+
+lemma label_prop_input1_loop_updates_inter_os2:
+  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
+  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
+  shows \<open>inter (os' 2) = inter (os 2) @
+    concat (map (\<lambda>(d, t). concat (map (\<lambda>p'. map (\<lambda>t'. ((p' :: 2), t + t', (1 :: int)))
+      (intsum (os 2) 1 p')) enum_class.enum))
+      (cbufs (2, 1) @ outpu os_label_prop 1)) @
+    map (\<lambda>t. ((1 :: 2), t, -(1 :: int))) (ocaps (os 2) 1) @
+    map (\<lambda>(d, t). ((1 :: 2), t -+- MyPair 0 (Suc 0), -(1 :: int)))
+      (cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+proof -
+  have os2_eq: \<open>os' 2 =
+    drop_caps
+      (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2))
+        (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1))
+          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
+      (map (\<lambda>t. Cap t 1)
+        (ocaps (os 2) 1 @
+          map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- MyPair 0 (Suc 0))
+            (cbufs (2, 1) @ outpu os_label_prop 1)))
+      \<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>\<close>
+    by (rule label_prop_input1_loop_updates_os2_state[OF step])
+  show ?thesis
+    unfolding os2_eq
+    by (simp add: produces_def drop_caps_def fold_consumes split_beta)
+qed
+
+lemma label_prop_input1_loop_updates_label_batched:
+  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and os_label_prop_consumed :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
+  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
+    and consumed_def: \<open>os_label_prop_consumed =
+      CONSUMES 1
+        (cbufs (1, 1) @ outpu (os 2) 1 @
+          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+            (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
+        (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
+  shows \<open>os_label_prop' =
+    fst (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))\<close>
+  using step[symmetric] consumed_def
+  unfolding label_prop_input1_loop_updates_def Let_def
+  by (auto split: prod.splits)
+
+lemma label_prop_input1_loop_updates_outpu_label_1_batched:
+  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and os_label_prop_consumed :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
+  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
+    and consumed_def: \<open>os_label_prop_consumed =
+      CONSUMES 1
+        (cbufs (1, 1) @ outpu (os 2) 1 @
+          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+            (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
+        (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
+  shows \<open>outpu os_label_prop' 1 =
+    map (\<lambda>(x, cap). (x, capability.time cap))
+      (filter (\<lambda>(x, cap). out cap = (1 :: 2))
+        (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))))\<close>
+proof -
+  have batched: \<open>os_label_prop' =
+    fst (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))\<close>
+    by (rule label_prop_input1_loop_updates_label_batched[OF step consumed_def])
+  have consumed_out_empty: \<open>outpu os_label_prop_consumed 1 = []\<close>
+    using consumed_def by (simp add: fold_consumes)
+  show ?thesis
+    using batched consumed_out_empty
+    by (simp add: outpu_fst_label_prop_input1_batched_eq)
+qed
+
+lemma label_prop_input1_loop_updates_produ_label:
+  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and os_label_prop_consumed :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
+  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
+    and consumed_def: \<open>os_label_prop_consumed =
+      CONSUMES 1
+        (cbufs (1, 1) @ outpu (os 2) 1 @
+          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+            (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
+        (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
+  shows \<open>produ os_label_prop' = produ os_label_prop @
+    map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
+      (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1)))\<close>
+proof -
+  have \<open>produ (fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))) = produ os_label_prop @
+    map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
+      (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1)))\<close>
+    using consumed_def
+    by (rule produ_fst_snd_label_prop_input1_loop_updates
+      [where os_label_prop_consumed = os_label_prop_consumed
+        and cbufs = cbufs
+        and os_label_prop = os_label_prop
+        and os = os])
+  then show ?thesis
+    using step by simp
+qed
 
 section \<open>Dataplane invariant transfer lemmas\<close>
 
@@ -3726,7 +3906,7 @@ proof -
   have shifted_member:
     \<open>(d, t) \<in> set (map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (outpu os_label_prop' 1))\<close>
     using member step 
-    by auto
+    by (simp add: label_prop_input1_loop_updates_cbufs_11 label_prop_input1_loop_updates_cbufs_21 label_prop_input1_loop_updates_input_os2_1 label_prop_input1_loop_updates_outpu_os2_1)
   then obtain d0 t0 where out_member: \<open>(d0, t0) \<in> set (outpu os_label_prop' 1)\<close>
     and d_eq: \<open>d = d0\<close>
     and t_eq: \<open>t = t0 -+- MyPair 0 (Suc 0)\<close>
@@ -4157,6 +4337,7 @@ lemma step_tau_pow_loop_updates:
             apply clarsimp
           apply simp
           apply clarsimp
+          apply (metis label_prop_input1_loop_updates_de1_label)
           done
         subgoal for d t
            apply (drule sym[of "label_prop_input1_loop_updates cbufs os_label_prop os"])
@@ -4165,6 +4346,7 @@ lemma step_tau_pow_loop_updates:
             apply clarsimp
           apply simp
           apply clarsimp
+          apply (metis label_prop_input1_loop_updates_de1_label)
         done
       done
     subgoal
@@ -4179,9 +4361,7 @@ lemma step_tau_pow_loop_updates_alt:
   fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
     and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
     and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
-  assumes UPDATES:
-    \<open>(cbufs', os_label_prop', os') = loop_updates cbufs os_label_prop os\<close>
-    and NO: \<open>initia os_label_prop\<close>
+  assumes NO: \<open>initia os_label_prop\<close>
     and Intsum: \<open>\<forall>n. intsum ((os(1 := op_state_base os_label_prop)) n) =
       (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
     and N: \<open>initia (os 2)\<close>
@@ -4833,6 +5013,579 @@ lemma extract_prog_two_12:
     extract_prog [1 :: 3, 2] eds (\<lambda>nid. if nid = 1 then os1 else os2)\<close>
   by (simp add: extract_prog_def)
 
+lemma produces_Nil[simp]:
+  "produces os [] = os"
+  unfolding produces_def
+  by simp
+
+lemma CM_equiv_empty_filter_notin:
+  assumes \<open>l \<notin> fst ` set xs\<close>
+  shows \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) = {#}\<^sub>z\<close>
+  using assms by (induct xs) auto
+
+lemma CM_equiv_trans:
+  assumes \<open>CM_equiv xs ys\<close> and \<open>CM_equiv ys zs\<close>
+  shows \<open>CM_equiv xs zs\<close>
+proof -
+  have step: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) =
+      zmset (map snd (filter (\<lambda>(l', _, _). l = l') zs))\<close>
+    if \<open>l \<in> fst ` set xs \<union> fst ` set zs\<close> for l
+  proof -
+    have xy: \<open>l \<in> fst ` set xs \<union> fst ` set ys \<Longrightarrow>
+      zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) =
+      zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys))\<close>
+      using assms(1) unfolding CM_equiv_def by blast
+    have yz: \<open>l \<in> fst ` set ys \<union> fst ` set zs \<Longrightarrow>
+      zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys)) =
+      zmset (map snd (filter (\<lambda>(l', _, _). l = l') zs))\<close>
+      using assms(2) unfolding CM_equiv_def by blast
+    show ?thesis
+    proof (cases \<open>l \<in> fst ` set xs\<close>)
+      case True
+      have xs_ys: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) =
+        zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys))\<close>
+        using True xy by simp
+      show ?thesis
+      proof (cases \<open>l \<in> fst ` set ys \<union> fst ` set zs\<close>)
+        case True
+        then show ?thesis
+          using xs_ys yz by simp
+      next
+        case False
+        then have ys_empty: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys)) = {#}\<^sub>z\<close>
+          by (intro CM_equiv_empty_filter_notin) auto
+        have zs_empty: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') zs)) = {#}\<^sub>z\<close>
+          using False by (intro CM_equiv_empty_filter_notin) auto
+        show ?thesis
+          using xs_ys ys_empty zs_empty by simp
+      qed
+    next
+      case False_xs: False
+      have xs_empty: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) = {#}\<^sub>z\<close>
+        by (rule CM_equiv_empty_filter_notin[OF False_xs])
+      have z_in: \<open>l \<in> fst ` set zs\<close>
+        using that False_xs by simp
+      have ys_zs: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys)) =
+        zmset (map snd (filter (\<lambda>(l', _, _). l = l') zs))\<close>
+        using z_in yz by simp
+      show ?thesis
+      proof (cases \<open>l \<in> fst ` set ys\<close>)
+        case True
+        have xs_ys: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) =
+          zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys))\<close>
+          using True xy by simp
+        show ?thesis
+          using xs_ys ys_zs by simp
+      next
+        case False
+        have ys_empty: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys)) = {#}\<^sub>z\<close>
+          by (rule CM_equiv_empty_filter_notin[OF False])
+        show ?thesis
+          using xs_empty ys_empty ys_zs by simp
+      qed
+    qed
+  qed
+  show ?thesis
+    unfolding CM_equiv_def
+    using step by blast
+qed
+
+
+
+lemma CM_equiv_append:
+  assumes ac: "CM_equiv a c" and bd: "CM_equiv b d"
+  shows "CM_equiv (a @ b) (c @ d)"
+proof (unfold CM_equiv_def, intro ballI)
+  fix l
+  assume "l \<in> fst ` set (a @ b) \<union> fst ` set (c @ d)"
+  let ?F = "\<lambda>xs. filter (\<lambda>(l', _, _). l = l') xs"
+  have part_a: "zmset (map snd (?F a)) = zmset (map snd (?F c))"
+  proof (cases "l \<in> fst ` set a \<union> fst ` set c")
+    case True
+    with ac show ?thesis unfolding CM_equiv_def by blast
+  next
+    case False
+    hence "?F a = []" "?F c = []"
+      by (force simp: filter_empty_conv image_iff split: prod.splits)+
+    thus ?thesis by simp
+  qed
+  have part_b: "zmset (map snd (?F b)) = zmset (map snd (?F d))"
+  proof (cases "l \<in> fst ` set b \<union> fst ` set d")
+    case True
+    with bd show ?thesis unfolding CM_equiv_def by blast
+  next
+    case False
+    hence "?F b = []" "?F d = []"
+      by (force simp: filter_empty_conv image_iff split: prod.splits)+
+    thus ?thesis by simp
+  qed
+  show "zmset (map snd (?F (a @ b))) = zmset (map snd (?F (c @ d)))"
+    by (simp add: part_a part_b)
+qed
+
+lemma filter_extract_progress_outside:
+  assumes "node l \<noteq> nid"
+  shows "filter (\<lambda>(l', _, _). l = l') (extract_progress nid nt st) =
+    List.map_filter
+      (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None
+         | Some (nid', p') \<Rightarrow>
+             if l = Loc nid' (Trg p') then Some (Loc nid' (Trg p'), t, m) else None)
+      (prod st)"
+proof -
+  have cons_empty:
+    "filter (\<lambda>(l', _, _). l = l')
+       (map (\<lambda>(p, t, m). (Loc nid (Trg p), t, -m)) xs) = []" for xs
+    by (induct xs) (use assms in \<open>auto split: prod.splits\<close>)
+  have inte_empty:
+    "filter (\<lambda>(l', _, _). l = l')
+       (map (\<lambda>(p, y). (Loc nid (Src p), y)) xs) = []" for xs
+    by (induct xs) (use assms in \<open>auto split: prod.splits\<close>)
+  have prod_eq:
+    "filter (\<lambda>(l', _, _). l = l')
+       (List.map_filter
+          (\<lambda>(p, t, m). case_option None (\<lambda>(nid', p'). Some (Loc nid' (Trg p'), t, m))
+                          (nt (nid, p)))
+          xs)
+     = List.map_filter
+        (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None
+           | Some (nid', p') \<Rightarrow>
+               if l = Loc nid' (Trg p') then Some (Loc nid' (Trg p'), t, m) else None)
+        xs" for xs
+    by (induct xs) (auto simp: List.map_filter_def split: option.splits prod.splits)
+  show ?thesis
+    unfolding extract_progress_def
+    by (simp add: cons_empty inte_empty prod_eq)
+qed
+
+lemma map_filter_append:
+  "List.map_filter f (xs @ ys) = List.map_filter f xs @ List.map_filter f ys"
+  by (induct xs) (auto simp: List.map_filter_def split: option.splits)
+
+lemma dataplane_tracker_inv_buffer_balance_aux:
+  fixes os :: "3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state"
+    and cbufs :: "3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf"
+    and sg :: "(3, 2, (nat, nat) myprod) subgraph"
+  assumes D: "dataplane_tracker_inv os cbufs sg"
+    and conn_eq: "(outputs_at_target (summ sg) os >> cbufs) (2, 1)
+                  = outpu (os 1) 1 @ cbufs (2, 1)"
+  shows "to_zmset (map snd (outpu (os 1) 1)) + to_zmset (map snd (cbufs (2, 1)))
+       = c_pts (change_multiplicities (summ sg)
+                  (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) (Loc 2 (Trg 1))"
+proof -
+  from D obtain caps where
+    Trg: "Trg_caps_inv caps (outputs_at_target (summ sg) os >> cbufs)" and
+    cp: "c_pts_inv (change_multiplicities (summ sg)
+            (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) caps"
+    unfolding dataplane_tracker_inv_def by blast
+  have caps_eq:
+    "caps (Loc 2 (Trg 1)) = to_zmset (map snd ((outputs_at_target (summ sg) os >> cbufs) (2, 1)))"
+    using Trg unfolding Trg_caps_inv_def by blast
+  have caps_simp:
+    "caps (Loc 2 (Trg 1)) = to_zmset (map snd (outpu (os 1) 1)) + to_zmset (map snd (cbufs (2, 1)))"
+    using caps_eq conn_eq by (simp add: to_zmset_append)
+  have c_pts_eq:
+    "c_pts (change_multiplicities (summ sg)
+              (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) (Loc 2 (Trg 1))
+     = caps (Loc 2 (Trg 1))"
+    using cp unfolding c_pts_inv_def by simp
+  show ?thesis
+    using caps_simp c_pts_eq by simp
+qed
+
+lemma extract_prog_at_loc_2_trg_1:
+  fixes os :: "3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state"
+  assumes nt_1_1: "nt (1::3, 1::2) = Some ((2::3), (1::2))"
+    and nt_1_0: "nt ((1::3), (0::2)) = None"
+    and nt_2_0: "nt ((2::3), (0::2)) = None"
+    and nt_2_1: "nt ((2::3), (1::2)) = Some ((1::3), (1::2))"
+    and nt_0_0: "nt ((0::3), (0::2)) = None"
+    and nt_0_1: "nt ((0::3), (1::2)) = None"
+  shows "zmset (map snd (filter (\<lambda>(l', _, _). Loc (2::3) (Trg (1::2)) = l')
+                  (extract_prog Enum.enum nt os)))
+       = zmset (map (\<lambda>(p, t, m). (t, m))
+                  (filter (\<lambda>(p, _, _). p = (1::2)) (produ (os 1))))
+       - zmset (map (\<lambda>(p, t, m). (t, m))
+                  (filter (\<lambda>(p, _, _). p = (1::2)) (consu (os 2))))"
+proof -
+  let ?F = "\<lambda>xs. filter (\<lambda>(l', _, _). Loc (2::3) (Trg (1::2)) = l') xs"
+  have nt_1_cases: "nt ((1::3), q) = (if q = (1::2) then Some (2, 1) else None)" for q
+    using nt_1_0 nt_1_1 by (cases "q = 1") (auto, metis num2_neq(2))
+  have nt_2_cases: "nt ((2::3), q) = (if q = (1::2) then Some (1, 1) else None)" for q
+    using nt_2_0 nt_2_1 by (cases "q = 1") (auto, metis num2_neq(2))
+  have nt_0_all: "nt ((0::3), q) = None" for q :: 2
+    using nt_0_0 nt_0_1 by (cases "q = 1") (auto, metis num2_neq(2))
+  (* unfold extract_prog *)
+  have ep_unfold: "extract_prog Enum.enum nt os
+    = extract_progress 0 nt (snd (obtain_progress (os 0)))
+    @ extract_progress 1 nt (snd (obtain_progress (os 1)))
+    @ extract_progress 2 nt (snd (obtain_progress (os 2)))"
+    unfolding extract_prog_def by simp
+  (* helper inductive facts *)
+  have map_filter_None_const:
+    "List.map_filter (\<lambda>(p, t, m). None) xs = []" for xs :: "('a \<times> 'b \<times> 'c) list"
+    by (induct xs) (auto simp: List.map_filter_def split: prod.splits)
+  have cons_empty_other_nid:
+    "filter (\<lambda>(l', _, _). Loc (2::3) (Trg (1::2)) = l')
+       (map (\<lambda>(p, t, m). (Loc nid (Trg p), t, -m)) xs) = []"
+    if "nid \<noteq> (2::3)" for nid xs
+    by (induct xs) (use that in \<open>auto split: prod.splits\<close>)
+  have inter_empty:
+    "filter (\<lambda>(l', _, _). Loc (2::3) (Trg (1::2)) = l')
+       (map (\<lambda>(p, y). (Loc nid (Src p), y)) xs) = []" for nid xs
+    by (induct xs) (auto split: prod.splits)
+  have prod_empty_when_nt_None:
+    "List.map_filter (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None
+                              | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) xs = []"
+    if "\<And>p. nt (nid, p) = None" for nid xs
+    by (induct xs) (auto simp: List.map_filter_def that split: prod.splits)
+  have prod_match_nt_1:
+    "filter (\<lambda>(l', _, _). Loc (2::3) (Trg (1::2)) = l')
+       (List.map_filter (\<lambda>(p, t, m). case nt ((1::3), p) of None \<Rightarrow> None
+                                       | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) xs)
+     = map (\<lambda>(p, t, m). (Loc 2 (Trg 1), t, m))
+         (filter (\<lambda>(p, _, _). p = (1::2)) xs)" for xs
+    by (induct xs)
+       (auto simp: List.map_filter_def nt_1_cases split: prod.splits if_splits)
+  have prod_empty_nt_2:
+    "filter (\<lambda>(l', _, _). Loc (2::3) (Trg (1::2)) = l')
+       (List.map_filter (\<lambda>(p, t, m). case nt ((2::3), p) of None \<Rightarrow> None
+                                       | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) xs) = []" for xs
+    by (induct xs)
+       (auto simp: List.map_filter_def nt_2_cases split: prod.splits if_splits)
+  have cons_match_2:
+    "filter (\<lambda>(l', _, _). Loc (2::3) (Trg (1::2)) = l')
+       (map (\<lambda>(p, t, m). (Loc (2::3) (Trg p), t, -m)) xs)
+     = map (\<lambda>(p, t, m). (Loc 2 (Trg 1), t, -m))
+         (filter (\<lambda>(p, _, _). p = (1::2)) xs)" for xs
+    by (induct xs) (auto split: prod.splits)
+  (* assemble *)
+  have nid0_empty: "?F (extract_progress 0 nt (snd (obtain_progress (os 0)))) = []"
+    unfolding extract_progress_def obtain_progress_def
+    by (simp add: split_beta cons_empty_other_nid inter_empty
+                  prod_empty_when_nt_None[OF nt_0_all])
+  have nid1_routed:
+    "?F (extract_progress 1 nt (snd (obtain_progress (os 1))))
+    = map (\<lambda>(p, t, m). (Loc 2 (Trg 1), t, m))
+        (filter (\<lambda>(p, _, _). p = 1) (produ (os 1)))"
+    unfolding extract_progress_def obtain_progress_def
+    by (simp add: split_beta cons_empty_other_nid inter_empty prod_match_nt_1)
+  have nid2_cons_only:
+    "?F (extract_progress 2 nt (snd (obtain_progress (os 2))))
+    = map (\<lambda>(p, t, m). (Loc 2 (Trg 1), t, -m))
+        (filter (\<lambda>(p, _, _). p = 1) (consu (os 2)))"
+    unfolding extract_progress_def obtain_progress_def
+    by (simp add: split_beta cons_match_2 inter_empty prod_empty_nt_2)
+  have filtered_eq:
+    "?F (extract_prog Enum.enum nt os)
+    = map (\<lambda>(p, t, m). (Loc 2 (Trg 1), t, m))
+        (filter (\<lambda>(p, _, _). p = 1) (produ (os 1)))
+    @ map (\<lambda>(p, t, m). (Loc 2 (Trg 1), t, -m))
+        (filter (\<lambda>(p, _, _). p = 1) (consu (os 2)))"
+    unfolding ep_unfold filter_append
+    using nid0_empty nid1_routed nid2_cons_only by simp
+  (* final zmset arithmetic *)
+  have map_snd_drop_loc_pos:
+    "map snd (map (\<lambda>(p, t, m). (Loc (2::3) (Trg (1::2)), t, m)) xs) 
+     = map (\<lambda>(p, t, m). (t, m)) xs" for xs :: "(2 \<times> (nat, nat) myprod \<times> int) list"
+    by (induct xs) (auto split: prod.splits)
+  have map_snd_drop_loc_neg:
+    "map snd (map (\<lambda>(p, t, m). (Loc (2::3) (Trg (1::2)), t, -m)) xs) 
+     = map (\<lambda>(p, t, m). (t, -m)) xs" for xs :: "(2 \<times> (nat, nat) myprod \<times> int) list"
+    by (induct xs) (auto split: prod.splits)
+  have zmset_neg_3:
+    "zmset (map (\<lambda>(p, t, m). (t, -m)) xs) = - zmset (map (\<lambda>(p, t, m). (t, m)) xs)"
+    for xs :: "(2 \<times> (nat, nat) myprod \<times> int) list"
+    by (simp add: case_prod_unfold)
+  show ?thesis
+    unfolding filtered_eq
+    by (simp add: case_prod_beta' comp_def split_beta map_append zmset_append map_snd_drop_loc_pos map_snd_drop_loc_neg zmset_neg_3)
+qed
+
+lemma dataplane_buffer_consu_produ_balance:
+  fixes os :: "3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state"
+    and cbufs :: "3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf"
+    and sg :: "(3, 2, (nat, nat) myprod) subgraph"
+  assumes D: "dataplane_tracker_inv os cbufs sg"
+    and Nxt: "nxt sg = nt"
+    and conn_eq: "(outputs_at_target (summ sg) os >> cbufs) (2, 1)
+                  = outpu (os 1) 1 @ cbufs (2, 1)"
+    and nt_1_1: "nt (1::3, 1::2) = Some ((2::3), (1::2))"
+    and nt_1_0: "nt ((1::3), (0::2)) = None"
+    and nt_2_0: "nt ((2::3), (0::2)) = None"
+    and nt_2_1: "nt ((2::3), (1::2)) = Some ((1::3), (1::2))"
+    and nt_0_0: "nt ((0::3), (0::2)) = None"
+    and nt_0_1: "nt ((0::3), (1::2)) = None"
+  shows "to_zmset (map snd (outpu (os 1) 1)) + to_zmset (map snd (cbufs (2, 1)))
+       + zmset (map (\<lambda>(p, t, m). (t, m))
+                  (filter (\<lambda>(p, _, _). p = (1::2)) (consu (os 2))))
+       = c_pts (pt_tr sg) (Loc (2::3) (Trg (1::2)))
+       + zmset (map (\<lambda>(p, t, m). (t, m))
+                  (filter (\<lambda>(p, _, _). p = (1::2)) (produ (os 1))))"
+proof -
+  have buffer_balance:
+    "to_zmset (map snd (outpu (os 1) 1)) + to_zmset (map snd (cbufs (2, 1)))
+     = c_pts (change_multiplicities (summ sg)
+                (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) (Loc 2 (Trg 1))"
+    using D conn_eq by (rule dataplane_tracker_inv_buffer_balance_aux)
+  also have "c_pts (change_multiplicities (summ sg)
+                (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) (Loc 2 (Trg 1))
+           = c_pts (pt_tr sg) (Loc 2 (Trg 1))
+           + zmset (map snd (filter (\<lambda>(l', _, _). Loc 2 (Trg 1) = l')
+                  (extract_prog Enum.enum (nxt sg) os)))"
+    by (simp add: c_pts_change_multiplicities)
+  also have "zmset (map snd (filter (\<lambda>(l', _, _). Loc 2 (Trg 1) = l')
+                  (extract_prog Enum.enum (nxt sg) os)))
+           = zmset (map (\<lambda>(p, t, m). (t, m))
+                      (filter (\<lambda>(p, _, _). p = 1) (produ (os 1))))
+           - zmset (map (\<lambda>(p, t, m). (t, m))
+                      (filter (\<lambda>(p, _, _). p = 1) (consu (os 2))))"
+    using nt_1_1 nt_1_0 nt_2_0 nt_2_1 nt_0_0 nt_0_1
+    unfolding Nxt[symmetric]
+    by (rule extract_prog_at_loc_2_trg_1)
+  finally show ?thesis by simp
+qed
+
+lemma dataplane_tracker_inv_buffer_balance:
+  fixes os :: "3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state"
+    and cbufs :: "3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf"
+    and sg :: "(3, 2, (nat, nat) myprod) subgraph"
+  assumes D: "dataplane_tracker_inv os cbufs sg"
+    and conn_eq: "(outputs_at_target (summ sg) os >> cbufs) (2, 1)
+                  = outpu (os 1) 1 @ cbufs (2, 1)"
+  shows "to_zmset (map snd (outpu (os 1) 1)) + to_zmset (map snd (cbufs (2, 1)))
+       = c_pts (change_multiplicities (summ sg) 
+                  (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) (Loc 2 (Trg 1))"
+proof -
+  from D obtain caps where
+    Trg: "Trg_caps_inv caps (outputs_at_target (summ sg) os >> cbufs)" and
+    cp: "c_pts_inv (change_multiplicities (summ sg)
+            (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) caps"
+    unfolding dataplane_tracker_inv_def by blast
+  have caps_eq:
+    "caps (Loc 2 (Trg 1)) = to_zmset (map snd ((outputs_at_target (summ sg) os >> cbufs) (2, 1)))"
+    using Trg unfolding Trg_caps_inv_def by blast
+  have caps_simp:
+    "caps (Loc 2 (Trg 1)) = to_zmset (map snd (outpu (os 1) 1)) + to_zmset (map snd (cbufs (2, 1)))"
+    using caps_eq conn_eq by (simp add: to_zmset_append)
+  have c_pts_eq:
+    "c_pts (change_multiplicities (summ sg)
+              (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) (Loc 2 (Trg 1))
+     = caps (Loc 2 (Trg 1))"
+    using cp unfolding c_pts_inv_def by simp
+  show ?thesis
+    using caps_simp c_pts_eq by simp
+qed
+
+lemma filter_extract_progress_Trg:
+  shows "filter (\<lambda>(l', _, _). Loc nid (Trg p) = l') (extract_progress nid' nt st) =
+    (if nid = nid' then
+       map (\<lambda>(p', t, m). (Loc nid (Trg p), t, -m))
+         (filter (\<lambda>(p', _, _). p' = p) (cons st))
+     else []) @
+    List.map_filter (\<lambda>(p_in, t, m).
+      case nt (nid', p_in) of None \<Rightarrow> None
+      | Some (nid'', p''') \<Rightarrow>
+          if nid = nid'' \<and> p = p''' then Some (Loc nid (Trg p), t, m) else None)
+    (prod st)"
+proof -
+  have cons_simp:
+    "filter (\<lambda>(l', _, _). Loc nid (Trg p) = l')
+       (map (\<lambda>(p'', t, m). (Loc nid' (Trg p''), t, -m)) xs) =
+     (if nid = nid' then
+        map (\<lambda>(p'', t, m). (Loc nid (Trg p), t, -m))
+          (filter (\<lambda>(p'', _, _). p'' = p) xs)
+      else [])" for xs
+    by (induct xs) (auto split: prod.splits)
+  have inter_empty:
+    "filter (\<lambda>(l', _, _). Loc nid (Trg p) = l')
+       (map (\<lambda>(p'', y). (Loc nid' (Src p''), y)) xs) = []" for xs
+    by (induct xs) (auto split: prod.splits)
+  have prod_simp:
+    "filter (\<lambda>(l', _, _). Loc nid (Trg p) = l')
+       (List.map_filter (\<lambda>(p_in, t, m). case_option None (\<lambda>(nid'', p''').
+          Some (Loc nid'' (Trg p'''), t, m)) (nt (nid', p_in))) xs) =
+     List.map_filter (\<lambda>(p_in, t, m).
+       case nt (nid', p_in) of None \<Rightarrow> None
+       | Some (nid'', p''') \<Rightarrow>
+           if nid = nid'' \<and> p = p''' then Some (Loc nid (Trg p), t, m) else None)
+     xs" for xs
+    by (induct xs) (auto simp: List.map_filter_def split: option.splits prod.splits)
+  show ?thesis
+    unfolding extract_progress_def
+    by (simp add: cons_simp inter_empty prod_simp split_beta)
+qed
+
+lemma filter_extract_progress_Src:
+  shows "filter (\<lambda>(l', _, _). Loc nid (Src p) = l') (extract_progress nid' nt st) =
+    (if nid = nid' then
+      map (\<lambda>(p', y). (Loc nid (Src p), y))
+        (filter (\<lambda>(p', _). p' = p) (inte st))
+    else [])"
+proof -
+  have cons_empty:
+    "filter (\<lambda>(l', _, _). Loc nid (Src p) = l')
+       (map (\<lambda>(p'', t, m). (Loc nid' (Trg p''), t, -m)) xs) = []" for xs
+    by (induct xs) (auto split: prod.splits)
+  have inter_simp:
+    "filter (\<lambda>(l', _, _). Loc nid (Src p) = l')
+       (map (\<lambda>(p'', y). (Loc nid' (Src p''), y)) xs) =
+     (if nid = nid' then
+        map (\<lambda>(p'', y). (Loc nid (Src p), y))
+          (filter (\<lambda>(p'', _). p'' = p) xs)
+      else [])" for xs
+    by (induct xs) (auto split: prod.splits)
+  have prod_empty:
+    "filter (\<lambda>(l', _, _). Loc nid (Src p) = l')
+       (List.map_filter (\<lambda>(p'', t, m). case_option None (\<lambda>(nid'', p'''). 
+          Some (Loc nid'' (Trg p'''), t, m)) (nt (nid', p''))) xs) = []" for xs
+    by (induct xs) (auto simp: List.map_filter_def split: option.splits prod.splits)
+  show ?thesis
+    unfolding extract_progress_def
+    by (simp add: cons_empty inter_simp prod_empty split_beta)
+qed
+
+lemma foo2:
+  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
+    and nt :: \<open>3 \<times> 2 \<Rightarrow> (3 \<times> 2) option\<close>
+    and T :: \<open>nat list\<close>
+    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
+    and V :: \<open>nat \<Rightarrow> nat list\<close>
+    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
+  assumes R: "label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')"
+   and label_prop_extension:
+    \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
+  and D: \<open>dataflow_topology (summ sg) (-+-)\<close>
+  and GR: \<open>graph_summar_nt (summ sg) (nxt sg) (os(1 := op_state_base os_label_prop))\<close>
+  and Nxt: \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+  and Summ: \<open>summ sg = antichain_from_list \<circ>\<circ> raw_summary\<close>
+  and NT: \<open>nt = nxt sg\<close>
+  and Intsum: \<open>\<forall>n. intsum ((os(1 := op_state_base os_label_prop)) n) =
+        (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
+  and IOC1: \<open>input_ocaps_inv os_label_prop\<close>
+  and IOC2: \<open>input_ocaps_inv (os 2)\<close>
+  and INV: \<open>label_prop_upd_inv os_label_prop\<close>
+  and LABELS: \<open>\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+  and DATAPLANE: \<open>dataplane_tracker_inv os cbufs sg\<close>
+  and xs_def: "xs =
+      extract_progress (1 :: 3) nt (snd (obtain_progress os_label_prop')) @
+      extract_progress (2 :: 3) nt (snd (obtain_progress (os' 2)))"
+  and ys_def: "ys =
+      map (\<lambda> t. (Loc 1 (Src 1), t, -1)) (ocaps (os 2) 1)  "
+    and input0: \<open>input os_label_prop 0 = []\<close>
+shows "CM_equiv xs ys"
+  oops
+
+
+
+lemma label_prop_input1_loop_updates_ocaps_label_1_empty:
+  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
+    and Intsum_label:
+      \<open>intsum os_label_prop = (\<lambda>p1 p2. raw_summary (Loc (1 :: 3) (Trg p1)) (Loc 1 (Src p2)))\<close>
+    and input0: \<open>input os_label_prop 0 = []\<close>
+  shows \<open>ocaps os_label_prop' 1 = []\<close>
+  oops
+
+lemma label_prop_input1_loop_updates_ocaps_os2_1_empty:
+  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
+    and Intsum_os2:
+      \<open>intsum (os 2) = (\<lambda>p1 p2. raw_summary (Loc (2 :: 3) (Trg p1)) (Loc 2 (Src p2)))\<close>
+  shows \<open>ocaps (os' 2) 1 = []\<close>
+  oops
+
+lemma foo2_loop_inductive_bridge:
+  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
+    and nt :: \<open>3 \<times> 2 \<Rightarrow> (3 \<times> 2) option\<close>
+    and T :: \<open>nat list\<close>
+    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
+    and V :: \<open>nat \<Rightarrow> nat list\<close>
+    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
+  assumes R: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+    and label_prop_extension:
+      \<open>os_label_prop = operator_state.extend (op_state_base os_label_prop) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+          en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
+    and D: \<open>dataflow_topology (summ sg) (-+-)\<close>
+    and GR: \<open>graph_summar_nt (summ sg) (nxt sg) (os(1 := op_state_base os_label_prop))\<close>
+    and Nxt: \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+    and Summ: \<open>summ sg = antichain_from_list \<circ>\<circ> raw_summary\<close>
+    and NT: \<open>nt = nxt sg\<close>
+    and Intsum: \<open>\<forall>n. intsum ((os(1 := op_state_base os_label_prop)) n) =
+          (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
+    and IOC1: \<open>input_ocaps_inv os_label_prop\<close>
+    and IOC2: \<open>input_ocaps_inv (os 2)\<close>
+    and INV: \<open>label_prop_upd_inv os_label_prop\<close>
+    and LABELS: \<open>\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+    and INPUT0: \<open>input os_label_prop 0 = []\<close>
+    and DATAPLANE: \<open>dataplane_tracker_inv (os(1 := op_state_base os_label_prop)) cbufs sg\<close>
+
+
+  shows \<open>CM_equiv
+      (extract_progress (1 :: 3) nt (snd (obtain_progress (release_caps os_label_prop1 1))) @
+       extract_progress (2 :: 3) nt (snd (obtain_progress (drop_caps (os1 2) (map (\<lambda>t. Cap t 1) (ocaps (os1 2) 1))))))
+      (extract_progress (1 :: 3) nt (snd (obtain_progress (release_caps os_label_prop 1))) @
+       extract_progress (2 :: 3) nt (snd (obtain_progress (drop_caps (os 2) (map (\<lambda>t. Cap t 1) (ocaps (os 2) 1))))))\<close>
+proof -
+  have step_corr:
+    \<open>label_prop_input1_loop_updates cbufs os_label_prop (os(1 := op_state_base os_label_prop)) =
+      (cbufs1, os_label_prop1, os1(1 := op_state_base os_label_prop))\<close>
+    using label_prop_input1_loop_updates_corrected_os[OF R[symmetric]]
+    by (simp add: eq_commute)
+  have ext_corr:
+    \<open>os_label_prop = operator_state.extend ((os(1 := op_state_base os_label_prop)) 1)
+      \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
+    using label_prop_extension by simp
+  have GR_corr:
+    \<open>graph_summar_nt (summ sg) (nxt sg)
+      ((os(1 := op_state_base os_label_prop))(1 := op_state_base os_label_prop))\<close>
+    using GR by simp
+  have Intsum_corr:
+    \<open>\<forall>n. intsum (((os(1 := op_state_base os_label_prop))(1 := op_state_base os_label_prop)) n) =
+      (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
+    using Intsum by simp
+  have IOC2_corr:
+    \<open>input_ocaps_inv ((os(1 := op_state_base os_label_prop)) 2)\<close>
+    using IOC2 by simp
+  have cm:
+    \<open>CM_equiv
+      (extract_progress (1 :: 3) nt (snd (obtain_progress os_label_prop1)) @
+       extract_progress (2 :: 3) nt (snd (obtain_progress ((os1(1 := op_state_base os_label_prop)) 2))))
+      (extract_progress (1 :: 3) nt
+        (snd (obtain_progress
+          (produces (release_caps os_label_prop 1)
+            (map (\<lambda>(d, t). (d, Cap t 1)) (outpu os_label_prop1 1))))) @
+       extract_progress (2 :: 3) nt
+        (snd (obtain_progress
+          (drop_caps ((os(1 := op_state_base os_label_prop)) 2)
+            (map (\<lambda>t. Cap t 1) (ocaps ((os(1 := op_state_base os_label_prop)) 2) 1))))))\<close>
+    oops
+
+(*   have rhs_cm_equiv: \<open>CM_equiv ?rhs_cm ?rhs_goal\<close>
+    using outpu_label1_empty
+    by (simp add: CM_equiv_def produces_def obtain_progress_def extract_progress_def)
+
+  show ?thesis
+    using CM_equiv_trans[OF cm rhs_cm_equiv] lhs_eq by simp
+
+
+
+
+ *)
+
+
+
+
+
 lemma foo:
   fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -4843,10 +5596,11 @@ lemma foo:
     and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
     and V :: \<open>nat \<Rightarrow> nat list\<close>
     and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
-  assumes label_prop_extension:
+  assumes D: \<open>dataflow_topology (summ sg) (-+-)\<close>
+    and R: "loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')"
+  and label_prop_extension:
     \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
         en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
-  and D: \<open>dataflow_topology (summ sg) (-+-)\<close>
   and GR: \<open>graph_summar_nt (summ sg) (nxt sg) (os(1 := op_state_base os_label_prop))\<close>
   and Nxt: \<open>nxt sg = graph_to_nxt (summ sg)\<close>
   and Summ: \<open>summ sg = antichain_from_list \<circ>\<circ> raw_summary\<close>
@@ -4865,16 +5619,14 @@ lemma foo:
       (\<forall>q. myfst t \<le> q \<longrightarrow>
         snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))\<close>
   and DATAPLANE: \<open>dataplane_tracker_inv os cbufs sg\<close>
-  and NO_LABEL_OUTPUT: \<open>outpu (fst (snd (loop_updates cbufs os_label_prop os))) 1 = []\<close>
   and xs_def: "xs =
-      extract_progress (1 :: 3) nt (snd (obtain_progress (fst (snd (loop_updates cbufs os_label_prop os))))) @
-      extract_progress (2 :: 3) nt (snd (obtain_progress (snd (snd (loop_updates cbufs os_label_prop os)) 2)))"
+      extract_progress (1 :: 3) nt (snd (obtain_progress os_label_prop')) @
+      extract_progress (2 :: 3) nt (snd (obtain_progress (os' 2)))"
   and ys_def: "ys =
       extract_progress (1 :: 3) nt (snd (obtain_progress (release_caps os_label_prop 1))) @
       extract_progress (2 :: 3) nt (snd (obtain_progress (drop_caps (os 2) (map (\<lambda>t. Cap t 1) (ocaps (os 2) 1)))))"
-  shows "\<forall> l \<in> fst ` set xs. zmset (map snd (filter (\<lambda> (l', _, _). l = l') xs)) = zmset (map snd (filter (\<lambda> (l', _, _). l = l') ys))"
-  sorry
-
+shows "CM_equiv xs ys"
+  oops
 
 
 lemma extract_prog_three_fold:
@@ -6930,8 +7682,8 @@ next
                      apply (rule step_tau_pow_loop_updates_alt)
                            apply simp
                 subgoal
-                  using os_inv(7)[unfolded raw_summary_def, rule_format, of 2,  simplified] 
-                  using num2_neq(1) by force
+                  unfolding op_state_base_def
+                  by (simp add: os_inv(7)[rule_format]  operator_state.defs os_inv(4))
                 using os_inv(9) apply simp
                 using os_inv(8) apply simp
                 subgoal
@@ -6957,7 +7709,11 @@ next
                   apply (simp only: CONSUMES_CONSUMES)
                   apply (clarsimp del: disjCI simp add: input_CONSUMES split_beta image_iff simp del: fold_append)
                   sorry 
-                    apply (rule refl)
+                subgoal
+                  by (simp add:  operator_state.defs os_inv(4))
+                subgoal
+                  by (simp add:  operator_state.defs os_inv(4))
+                apply (rule refl)+
 
                    apply (rule converse_rtranclp_into_rtranclp) 
                     apply (rule step_set_op_intro_Tau_2)
@@ -7019,6 +7775,9 @@ next
                      apply simp
                     apply (rule refl)+
                    apply (simp add: flip: fold_append change_multiplicities_append_alt)
+
+                using dataplane_inv
+
                 sorry
               done
             done
