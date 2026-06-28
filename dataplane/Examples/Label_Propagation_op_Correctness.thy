@@ -9,6 +9,7 @@ imports
   "../Correctness/Produces"
   "../Correctness/Mints"
   "../Correctness/Propagates"
+  "../Correctness/Progress"
   "../Correctness/OCapsReorder"
   "../Correctness/Consumes"
   "HOL-ex.Sketch_and_Explore"
@@ -7343,6 +7344,175 @@ next
     using os_inv(7) apply assumption
     using subgraph_inv(2) apply assumption
     done
+  obtain cap where dt_inv:
+    \<open>Src_caps_inv cap os\<close>
+    \<open>Trg_caps_inv cap (outputs_at_target (summ sg) os >> cbufs)\<close>
+    \<open>c_pts_inv
+      (change_multiplicities (summ sg)
+        (extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @
+         extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1))) @
+         extract_progress 2 (subgraph.nxt sg) (snd (obtain_progress (os 2))))
+        (pt_tr sg)) cap\<close>
+    \<open>front_inv os (pt_tr sg)\<close>
+    \<open>imp_front_inv (summ sg) (pt_tr sg)\<close>
+    \<open>chnls_imp_front_inv (summ sg) (pt_tr sg) (outputs_at_target (summ sg) os >> cbufs)\<close>
+    \<open>change_deltas_inv os\<close>
+    \<open>propagation_inv (summ sg) (pt_tr sg)\<close>
+    \<open>extract_prog_changes_above_impl_inv (summ sg) (subgraph.nxt sg) (pt_tr sg) os\<close>
+    \<open>produ_consu_inter_supported (subgraph.nxt sg) os (pt_tr sg)\<close>
+    using dataplane_inv[unfolded dataplane_tracker_inv_def, simplified]
+    by clarsimp
+  obtain c' where first_propa:
+    \<open>propagate_all (antichain_from_list \<circ>\<circ> raw_summary)
+      (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary)
+        (extract_progress 0 (graph_to_nxt (antichain_from_list \<circ>\<circ> raw_summary))
+          (snd (obtain_progress os_input)))
+        (pt_tr sg)) = Some c'\<close>
+    \<open>\<forall>loc. frontier (c_imp c' loc) =
+      ifrontier (antichain_from_list \<circ>\<circ> raw_summary) (-+-)
+        (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary)
+          (extract_progress 0 (graph_to_nxt (antichain_from_list \<circ>\<circ> raw_summary))
+            (snd (obtain_progress os_input)))
+          (pt_tr sg)) loc\<close>
+    \<open>dataflow_topology_from_tree.inv_implications_nonneg c'\<close>
+    \<open>dataflow_topology_from_tree.inv_imp_plus_work_nonneg c'\<close>
+    \<open>dataflow_topology.inv_imps_work_sum (antichain_from_list \<circ>\<circ> raw_summary) (-+-) c'\<close>
+    using propagate_all_frontier_change_multiplicities_c_imp_correctnessE
+      [OF D, of \<open>pt_tr sg\<close>
+        \<open>extract_progress 0 (graph_to_nxt (antichain_from_list \<circ>\<circ> raw_summary))
+          (snd (obtain_progress os_input))\<close>,
+        unfolded subgraph_inv(1), simplified]
+    apply -
+    apply (drule meta_mp)
+    subgoal
+      using dt_inv(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
+    apply (drule meta_mp)
+    subgoal
+      using dt_inv(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
+    apply (drule meta_mp)
+    subgoal
+      using dt_inv(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
+    apply (drule meta_mp)
+    subgoal
+      unfolding extract_progress_def
+      apply (clarsimp simp add: obtain_progress_def subgraph_inv(1,2) set_map_filter
+          split_beta operator_state.defs os_inv(1) image_iff split: option.splits)
+      subgoal for l t
+        using loc_3_2_cases[of l]
+        using dt_inv(7)[unfolded change_deltas_inv_def]
+        by (fastforce del: disjCI split: option.splits)
+      done
+    apply (drule meta_mp)
+    subgoal
+      apply clarsimp
+      subgoal for l t m
+        apply (subst frontier_less_equal_iff2[symmetric])
+        apply (rule frontier_less_equal_le_trans[rotated])
+         apply (rule dt_inv(5)[unfolded imp_front_inv_def, rule_format, of l])
+        apply (rule dt_inv(9)[unfolded extract_prog_changes_above_impl_inv_def
+              changes_above_impl_inv_def, simplified, rule_format,
+              where xs=Nil and x=\<open>(l, t, m)\<close> and nid=0, simplified])
+        apply (clarsimp simp add: obtain_progress_def subgraph_inv(1,2) set_map_filter
+            split_beta operator_state.defs os_inv(1) image_iff split: option.splits)
+        done
+      done
+    apply (drule meta_mp)
+    subgoal
+      using raw_summary_no_self_loop by auto
+    by clarsimp
+
+  let ?os_progress = \<open>os(0 := op_state_base (fst (obtain_progress os_input)))\<close>
+  let ?sg_progress = \<open>sg\<lparr>upfro := (\<lambda>_. True),
+    pt_tr := change_multiplicities (summ sg)
+      (extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress os_input)))
+      (pt_tr sg)\<rparr>\<close>
+  have dataplane_after_input_progress:
+    \<open>dataplane_tracker_inv ?os_progress cbufs ?sg_progress\<close>
+  proof -
+    have base_progress:
+      \<open>op_state_base (fst (obtain_progress os_input)) = fst (obtain_progress (os 0))\<close>
+      using os_inv(1)
+      by (simp add: obtain_progress_def op_state_base_def operator_state.defs)
+    have progress_st:
+      \<open>snd (obtain_progress os_input) = snd (obtain_progress (os 0))\<close>
+      using os_inv(1)
+      by (simp add: obtain_progress_def operator_state.defs)
+    have inv_no_upfro:
+      \<open>dataplane_tracker_inv ?os_progress cbufs
+        (sg\<lparr>pt_tr := change_multiplicities (summ sg)
+          (extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress os_input)))
+          (pt_tr sg)\<rparr>)\<close>
+      using dataplane_tracker_inv_progress[OF dataplane_inv D G refl]
+      by (simp add: base_progress progress_st)
+    have clean_upfro:
+      \<open>dataplane_tracker_inv ?os_progress cbufs ?sg_progress \<longleftrightarrow>
+        dataplane_tracker_inv ?os_progress cbufs
+          (sg\<lparr>pt_tr := change_multiplicities (summ sg)
+            (extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress os_input)))
+            (pt_tr sg)\<rparr>)\<close>
+      by (rule dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>]) simp_all
+    show ?thesis
+      using clean_upfro inv_no_upfro by simp
+  qed
+
+  let ?sg_first_propa = \<open>?sg_progress\<lparr>pt_tr := c', upfro := (upfro ?sg_progress)(1 := False)\<rparr>\<close>
+  let ?label_front_after_first_propa =
+    \<open>frontier \<circ> (\<lambda>p. c_imp (pt_tr ?sg_first_propa) (Loc (1 :: 3) (Trg p)))\<close>
+  let ?os_first_propa =
+    \<open>?os_progress(1 := op_state_base
+      (os_label_prop\<lparr>front := ?label_front_after_first_propa, initia := True\<rparr>))\<close>
+  have dataplane_after_first_propa:
+    \<open>dataplane_tracker_inv ?os_first_propa cbufs ?sg_first_propa\<close>
+  proof -
+    have base_progress:
+      \<open>op_state_base (fst (obtain_progress os_input)) = fst (obtain_progress (os 0))\<close>
+      using os_inv(1)
+      by (simp add: obtain_progress_def op_state_base_def operator_state.defs)
+    have progress_st:
+      \<open>snd (obtain_progress os_input) = snd (obtain_progress (os 0))\<close>
+      using os_inv(1)
+      by (simp add: obtain_progress_def operator_state.defs)
+    have G_progress:
+      \<open>graph_summar_nt (summ ?sg_progress) (nxt ?sg_progress) ?os_progress\<close>
+    proof -
+      have \<open>graph_summar_nt (summ sg) (nxt sg) ?os_progress =
+        graph_summar_nt (summ sg) (nxt sg) os\<close>
+        by (rule graph_summar_nt_intsum_cong)
+          (simp add: os_inv(1) obtain_progress_def op_state_base_def operator_state.defs)
+      then show ?thesis
+        using G by simp
+    qed
+    have D_progress: \<open>dataflow_topology (summ ?sg_progress) (-+-)\<close>
+      using D by simp
+    have reachable_progress: \<open>reachable_locations (summ ?sg_progress) = UNIV\<close>
+      using subgraph_inv(1) by simp
+    have propagate_progress: \<open>propagate_all (summ ?sg_progress) (pt_tr ?sg_progress) = Some c'\<close>
+      using first_propa(1) subgraph_inv by simp
+    let ?front_c = \<open>frontier \<circ> (\<lambda>p. c_imp c' (Loc (1 :: 3) (Trg p)))\<close>
+    have inv_front_no_upfro:
+      \<open>dataplane_tracker_inv ?os_first_propa cbufs (?sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>
+    proof -
+      let ?os_front = \<open>map_entry (1 :: 3) (front_update (\<lambda>_. ?front_c)) ?os_progress\<close>
+      have inv_map:
+        \<open>dataplane_tracker_inv ?os_front cbufs (?sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>
+        by (rule dataplane_tracker_inv_front_update
+          [OF D_progress reachable_progress propagate_progress G_progress dataplane_after_input_progress,
+            where nid = \<open>1 :: 3\<close>])
+      have clean_initia:
+        \<open>dataplane_tracker_inv ?os_first_propa cbufs (?sg_progress\<lparr>pt_tr := c'\<rparr>) \<longleftrightarrow>
+          dataplane_tracker_inv ?os_front cbufs (?sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>
+        by (rule dataplane_tracker_inv_clean[where f=\<open>upfro (?sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>])
+          (simp_all add: os_inv(4) op_state_base_def operator_state.defs)
+      show ?thesis
+        using clean_initia inv_map by simp
+    qed
+    have clean_upfro:
+      \<open>dataplane_tracker_inv ?os_first_propa cbufs ?sg_first_propa \<longleftrightarrow>
+        dataplane_tracker_inv ?os_first_propa cbufs (?sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>
+      by (rule dataplane_tracker_inv_clean[where f=\<open>(upfro ?sg_progress)(1 := False)\<close>]) simp_all
+    show ?thesis
+      using clean_upfro inv_front_no_upfro by simp
+  qed
   show ?case (is \<open>wsim ((~) OO \<U> ?R OO (\<approx>)) _ _\<close>)
   proof -
     define R where "R = ?R"
@@ -7486,46 +7656,7 @@ next
           using timely_input_stream_advances_frontier[OF input_stream_inv, of t] apply -
           apply clarsimp
           subgoal premises stream_move for n
-            using dataplane_inv[unfolded dataplane_tracker_inv_def, simplified] apply -
-            apply clarsimp
-            subgoal premises dt_inv for cap
-              using propagate_all_frontier_change_multiplicities_c_imp_correctnessE[OF D, of "pt_tr sg" "extract_progress 0 (graph_to_nxt (antichain_from_list \<circ>\<circ> raw_summary)) (snd (obtain_progress os_input))", unfolded subgraph_inv(1), simplified]
-              apply -
-              apply (drule meta_mp)
-              subgoal
-                using dt_inv(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
-              apply (drule meta_mp)
-              subgoal
-                using dt_inv(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
-              apply (drule meta_mp)
-              subgoal
-                using dt_inv(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
-              apply (drule meta_mp)
-              subgoal 
-                unfolding extract_progress_def
-                apply (clarsimp simp add: obtain_progress_def subgraph_inv(1,2) set_map_filter split_beta operator_state.defs os_inv(1) image_iff split: option.splits)
-                subgoal for l t
-                  using loc_3_2_cases[of l]
-                  using dt_inv(7)[unfolded change_deltas_inv_def]
-                  by (fastforce del: disjCI split: option.splits)
-                done
-              apply (drule meta_mp)
-              subgoal 
-                apply clarsimp
-                subgoal for l t m
-                  apply (subst frontier_less_equal_iff2[symmetric])
-                  apply (rule frontier_less_equal_le_trans[rotated])
-                   apply (rule dt_inv(5)[unfolded imp_front_inv_def, rule_format, of l])
-                  apply (rule dt_inv(9)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, simplified, rule_format, where xs=Nil and x="(l, t, m)" and nid=0, simplified])
-                  apply (clarsimp simp add: obtain_progress_def subgraph_inv(1,2) set_map_filter split_beta operator_state.defs os_inv(1) image_iff split: option.splits)
-                  done
-                done
-              apply (drule meta_mp)
-              subgoal
-                using raw_summary_no_self_loop by auto
-              apply clarsimp
-              subgoal premises first_propa for c'
-
+              (* first_propa is obtained above from the dataplane invariant. *)
                 apply (intro exI conjI[rotated])
                  apply (intro relcomppI)
                    apply (rule bisim_refl)
@@ -7776,14 +7907,12 @@ next
                     apply (rule refl)+
                    apply (simp add: flip: fold_append change_multiplicities_append_alt)
 
-                using dataplane_inv
+                find_theorems propagate_all
 
                 sorry
               done
             done
           done
-        done
-      done
   qed
 qed
 
