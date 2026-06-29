@@ -16,7 +16,7 @@ definition batch_op_logic where
     let comb_caps = comb compl_caps in
     if (\<forall> p. comb_caps p = []) then trace (STR ''No capabilities'') {||} else
     let compl_batches = (\<lambda> p t. map (de1 os o fst) (filter (\<lambda> (d, t'). t' = t \<and> t \<in> set (comb_caps p)) (input os p))) in
-    let ts = (\<lambda> p. rmdups {} (map snd (filter (\<lambda> (d, t). t \<in> set (comb_caps p)) (input os p)))) in
+    let ts = (\<lambda> p. remdups (map snd (filter (\<lambda> (d, t). t \<in> set (comb_caps p)) (input os p)))) in
     let os = os\<lparr> input := (\<lambda> p. filter (\<lambda> (d, t). t \<notin> set (comb_caps p)) (input os p)) \<rparr> in
     let outs_drops = logic compl_batches ts comb_caps in
     cimage (\<lambda> (outs, drops). 
@@ -35,7 +35,7 @@ definition diff_op where
    (\<lambda> compl_caps p. if p = 1 then filter (\<lambda> t. t \<in> set (compl_caps 2)) (compl_caps 1) else filter (\<lambda> t. t \<in> set (compl_caps 1)) (compl_caps 2))
    (os\<lparr> de1 := projl, en2 := Inr \<rparr>)
    (\<lambda> compl_batches ts caps. 
-   {| (map (\<lambda> t. (mset (compl_batches 1 t) - mset (compl_batches 2 t), Cap t 1)) (rmdups {} (caps 1)),
+   {| (map (\<lambda> t. (mset (compl_batches 1 t) - mset (compl_batches 2 t), Cap t 1)) (remdups (caps 1)),
        map (\<lambda> t. Cap t 1) (caps 1) @ map (\<lambda> t. Cap t 2) (caps 2)) |})"
 
 definition batch_ty2_op where

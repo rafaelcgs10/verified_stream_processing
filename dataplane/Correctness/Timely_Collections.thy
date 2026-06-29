@@ -14,7 +14,7 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
 section \<open>Data collection (coll) and timestamps ts\<close>
 
 definition "ts inps = cimage (\<lambda> e. case e of Data t d \<Rightarrow> t) (cfilter is_Data (cset_of_llist inps))"
-definition "outputs_ts f xs = rmdups {} (filter (\<lambda> t. \<not> frontier_less_equal f t) xs)"
+definition "outputs_ts f xs = remdups (filter (\<lambda> t. \<not> frontier_less_equal f t) xs)"
 
 definition "coll inps t = list_of (lmap (\<lambda> e. case e of Data t d \<Rightarrow> d) (lfilter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
 definition "fcoll inps t = (map (\<lambda> e. case e of Data t d \<Rightarrow> d) (filter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"

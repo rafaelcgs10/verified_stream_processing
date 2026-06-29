@@ -71,7 +71,7 @@ lemma cset_from_list_concat[simp]:
   done
 
 lemma cset_from_list_rmdups[simp]:
-  "cset_from_list (rmdups {} xs) = cset_from_list xs"
+  "cset_from_list (remdups xs) = cset_from_list xs"
   unfolding cset_from_list_def
   apply (auto simp flip: cin.rep_eq)
   done

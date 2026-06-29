@@ -52,7 +52,7 @@ record ('d, 'v :: linorder, 't1, 't2) label_propagation_state =
 
 definition neighbors where
   \<open>neighbors os t v = (let ts = filter ((\<ge>) t) (timestamps os) in
-  rmdups {} (concat ((map (\<lambda> t. graph os t v) ts))))\<close>
+  remdups (concat ((map (\<lambda> t. graph os t v) ts))))\<close>
 
 definition all_vertices where
   \<open>all_vertices os t = ((\<Union>t'\<in>{t' \<in> set (timestamps os). t' \<le> t}. set (vertices os t')))\<close>
@@ -1452,7 +1452,7 @@ definition label_prop_output_batch where
     map
       (\<lambda>t. let cap = Cap (MyPair t 0) 0 in
         (en2 old_os (components_from_labels (all_edges old_os t) (min_label old_os t)), cap))
-      (rmdups {} (map myfst below_times))\<close>
+      (remdups (map myfst below_times))\<close>
 
 definition "label_prob_ty2_check os bufs \<equiv>
    (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x)) \<and>

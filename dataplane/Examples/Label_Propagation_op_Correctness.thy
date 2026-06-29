@@ -6777,9 +6777,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   and drops = "\<lambda> p. if p = 1
                          then []
                          else filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t) \<and> myfst t \<in> set (timestamps os_label_prop)) (ocaps os_label_prop 0)"
-                  and produs="map (\<lambda> t . (0, MyPair t 0, 1)) (rmdups {} (map myfst (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t) \<and> myfst t \<in> set (timestamps os_label_prop)) (ocaps os_label_prop 0))))"
+                  and produs="map (\<lambda> t . (0, MyPair t 0, 1)) (remdups (map myfst (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t) \<and> myfst t \<in> set (timestamps os_label_prop)) (ocaps os_label_prop 0))))"
                   and oputs="(\<lambda> p. if p = 1 then [] else map (\<lambda>t. (en2 os_label_prop (components_from_labels (all_edges os_label_prop t) (min_label os_label_prop t)), (MyPair t 0)))
-                          (rmdups {} (map myfst (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t) \<and> myfst t \<in> set (timestamps os_label_prop)) (ocaps os_label_prop 0)))))"])
+                          (remdups (map myfst (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t) \<and> myfst t \<in> set (timestamps os_label_prop)) (ocaps os_label_prop 0)))))"])
                          apply (rule refl)+
                     prefer 9
             subgoal
@@ -9172,7 +9172,23 @@ next
                          apply (rule step_label_propagation_op_output)
             apply (rule refl)+
                apply (simp add: flip: fold_append change_multiplicities_append_alt)
-            subgoal sorry
+            subgoal       
+              unfolding label_prop_output_batch_def
+              apply (simp add: flip: fold_append change_multiplicities_append_alt)
+
+              find_theorems Nil remdups
+              sorry
+            apply (rule refl)+
+                          apply simp
+            apply (rule refl)+
+                        apply simp
+            apply (rule refl)+
+                        apply simp
+            apply (rule refl)+
+                        apply simp
+            apply (rule refl)+
+
+
 
             thm step_label_propagation_op_output
 
