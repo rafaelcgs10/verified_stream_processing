@@ -1415,8 +1415,9 @@ definition label_propagation_op_logic where
         (v, l) = de1 os d;
         t1 = myfst t;
         os' = input_tl os 1;
-        os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l);
-        batch = label_prop_label_batch os os'' t1 v l t
+        l' = min (min_label os t1 v) l;
+        os'' = label_prop_label_record_update os' t1 v l';
+        batch = label_prop_label_batch os os'' t1 v l' t
       in
         {|release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1|}))
   (let
@@ -3672,8 +3673,9 @@ definition label_prop_input1_step_state where
          l = snd (de1 os d);
          t1 = myfst t;
          os' = input_tl os 1;
-         os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l);
-         batch = label_prop_label_batch os os'' t1 v l t
+         l' = min (min_label os t1 v) l;
+         os'' = label_prop_label_record_update os' t1 v l';
+         batch = label_prop_label_batch os os'' t1 v l' t
      in release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1)\<close>
 
 definition label_prop_input1_step_batch ::
@@ -3683,8 +3685,9 @@ definition label_prop_input1_step_batch ::
          l = snd (de1 os d);
          t1 = myfst t;
          os' = input_tl os 1;
-         os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l)
-     in label_prop_label_batch os os'' t1 v l t)\<close>
+         l' = min (min_label os t1 v) l;
+         os'' = label_prop_label_record_update os' t1 v l'
+     in label_prop_label_batch os os'' t1 v l' t)\<close>
 
 fun label_prop_input1_batched where
   \<open>label_prop_input1_batched os [] = (os, [])\<close>
@@ -3842,8 +3845,9 @@ lemma label_propagation_op_logic_input1I[intro]:
     and \<open>de1 os d = (v, l)\<close>
     and \<open>t1 = myfst t\<close>
     and \<open>os' = input_tl os 1\<close>
-    and \<open>os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l)\<close>
-    and \<open>batch = label_prop_label_batch os os'' t1 v l t\<close>
+    and \<open>l' = min (min_label os t1 v) l\<close>
+    and \<open>os'' = label_prop_label_record_update os' t1 v l'\<close>
+    and \<open>batch = label_prop_label_batch os os'' t1 v l' t\<close>
     and \<open>os_next = release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1\<close>
   shows \<open>os_next |\<in>| label_propagation_op_logic os\<close>
   using assms unfolding label_propagation_op_logic_def by auto
@@ -3853,8 +3857,9 @@ lemma step_label_propagation_op_input1[intro]:
     and \<open>de1 os d = (v, l)\<close>
     and \<open>t1 = myfst t\<close>
     and \<open>os' = input_tl os 1\<close>
-    and \<open>os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l)\<close>
-    and \<open>batch = label_prop_label_batch os os'' t1 v l t\<close>
+    and \<open>l' = min (min_label os t1 v) l\<close>
+    and \<open>os'' = label_prop_label_record_update os' t1 v l'\<close>
+    and \<open>batch = label_prop_label_batch os os'' t1 v l' t\<close>
     and \<open>os_next = release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1\<close>
     and \<open>initia os\<close>
     and \<open>op = label_propagation_op os_next\<close>
@@ -3870,8 +3875,9 @@ proof -
   let ?v = \<open>fst (de1 os d)\<close>
   let ?l = \<open>snd (de1 os d)\<close>
   let ?t1 = \<open>myfst t\<close>
-  let ?os'' = \<open>label_prop_label_record_update (input_tl os 1) ?t1 ?v (min (min_label os ?t1 ?v) ?l)\<close>
-  let ?batch = \<open>label_prop_label_batch os ?os'' ?t1 ?v ?l t\<close>
+  let ?l' = \<open>min (min_label os ?t1 ?v) ?l\<close>
+  let ?os'' = \<open>label_prop_label_record_update (input_tl os 1) ?t1 ?v ?l'\<close>
+  let ?batch = \<open>label_prop_label_batch os ?os'' ?t1 ?v ?l' t\<close>
   have vl_eq: \<open>de1 os d = (?v, ?l)\<close> by simp
   have state_eq:
     \<open>label_prop_input1_step_state os d t =
@@ -3881,7 +3887,7 @@ proof -
   show ?thesis
     using op_eq[unfolded state_eq]
     by (rule step_label_propagation_op_input1
-            [OF inp vl_eq refl refl refl refl refl ini])
+            [OF inp vl_eq refl refl refl refl refl refl ini])
 qed
 
 lemma step_compower_label_propagation_op_input1[intro]:

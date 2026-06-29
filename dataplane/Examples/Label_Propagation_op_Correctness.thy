@@ -1423,7 +1423,7 @@ lemma label_prop_input1_step_batch_unfold:
     label_prop_label_batch os
       (label_prop_label_record_update (input_tl os 1) (myfst t) (fst (de1 os d))
         (min (min_label os (myfst t) (fst (de1 os d))) (snd (de1 os d))))
-      (myfst t) (fst (de1 os d)) (snd (de1 os d)) t\<close>
+      (myfst t) (fst (de1 os d)) (min (min_label os (myfst t) (fst (de1 os d))) (snd (de1 os d))) t\<close>
   unfolding label_prop_input1_step_batch_def Let_def by simp
 
 lemma label_prop_input1_step_batch_nonempty_unfoldD:
@@ -1432,30 +1432,31 @@ lemma label_prop_input1_step_batch_nonempty_unfoldD:
   shows \<open>label_prop_label_batch os
     (label_prop_label_record_update (input_tl os 1) (myfst t) (fst (de1 os d))
       (min (min_label os (myfst t) (fst (de1 os d))) (snd (de1 os d))))
-    (myfst t) (fst (de1 os d)) (snd (de1 os d)) t \<noteq> ([] :: ('d \<times> (2, (nat, nat) myprod) capability) list)\<close>
+    (myfst t) (fst (de1 os d)) (min (min_label os (myfst t) (fst (de1 os d))) (snd (de1 os d))) t \<noteq> ([] :: ('d \<times> (2, (nat, nat) myprod) capability) list)\<close>
   using assms[unfolded label_prop_input1_step_batch_unfold] by assumption
 
 lemma label_prop_input1_step_batch_nonemptyD:
   fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
   assumes \<open>label_prop_input1_step_batch os d t \<noteq> ([] :: ('d \<times> (2, (nat, nat) myprod) capability) list)\<close>
-  obtains v l cur_t v' where
+  obtains v l l' cur_t v' where
     \<open>de1 os d = (v, l)\<close>
     \<open>cur_t \<in> set (timestamps os)\<close>
     \<open>myfst t \<le> cur_t\<close>
     \<open>v' \<in> set (neighbors os cur_t v)\<close>
-    \<open>l < min_label os cur_t v\<close>
-    \<open>l < min_label
-      (label_prop_label_record_update (input_tl os 1) (myfst t) v (min (min_label os (myfst t) v) l))
+    \<open>l' = min (min_label os (myfst t) v) l\<close>
+    \<open>l' < min_label os cur_t v\<close>
+    \<open>l' < min_label
+      (label_prop_label_record_update (input_tl os 1) (myfst t) v l')
       cur_t v'\<close>
 proof -
   let ?v = \<open>fst (de1 os d)\<close>
   let ?l = \<open>snd (de1 os d)\<close>
-  let ?updated = \<open>label_prop_label_record_update (input_tl os 1) (myfst t) ?v
-    (min (min_label os (myfst t) ?v) ?l)\<close>
+  let ?l' = \<open>min (min_label os (myfst t) ?v) ?l\<close>
+  let ?updated = \<open>label_prop_label_record_update (input_tl os 1) (myfst t) ?v ?l'\<close>
   have de1_eq: \<open>de1 os d = (?v, ?l)\<close>
     by simp
   have batch_nonempty:
-    \<open>label_prop_label_batch os ?updated (myfst t) ?v ?l t \<noteq> ([] :: ('d \<times> (2, (nat, nat) myprod) capability) list)\<close>
+    \<open>label_prop_label_batch os ?updated (myfst t) ?v ?l' t \<noteq> ([] :: ('d \<times> (2, (nat, nat) myprod) capability) list)\<close>
     by (rule label_prop_input1_step_batch_nonempty_unfoldD[OF assms])
 
 
@@ -1465,10 +1466,10 @@ proof -
     assume cur_t_in: \<open>cur_t \<in> set (timestamps os)\<close>
       and time_le: \<open>myfst t \<le> cur_t\<close>
       and v'_in: \<open>v' \<in> set (neighbors os cur_t ?v)\<close>
-      and old_guard: \<open>?l < min_label os cur_t ?v\<close>
-      and updated_guard: \<open>?l < min_label ?updated cur_t v'\<close>
+      and old_guard: \<open>?l' < min_label os cur_t ?v\<close>
+      and updated_guard: \<open>?l' < min_label ?updated cur_t v'\<close>
     show thesis
-      using that[OF de1_eq cur_t_in time_le v'_in old_guard updated_guard] .
+      using that[OF de1_eq cur_t_in time_le v'_in refl old_guard updated_guard] .
   qed
 qed
 
@@ -1478,37 +1479,39 @@ lemma label_prop_input1_step_batch_nonempty_strict_updateD:
   fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
   assumes \<open>label_prop_input1_step_batch os d t \<noteq> []\<close>
     and ts_t: \<open>myfst t \<in> set (timestamps os)\<close>
-  obtains v l where
+  obtains v l l' where
     \<open>de1 os d = (v, l)\<close>
-    \<open>l < min_label os (myfst t) v\<close>
+    \<open>l' = min (min_label os (myfst t) v) l\<close>
+    \<open>l' < min_label os (myfst t) v\<close>
     \<open>min_label
-      (label_prop_label_record_update (input_tl os 1) (myfst t) v l)
+      (label_prop_label_record_update (input_tl os 1) (myfst t) v l')
       (myfst t) v < min_label os (myfst t) v\<close>
 proof -
-  obtain v l cur_t v' where de1_eq: \<open>de1 os d = (v, l)\<close>
+  obtain v l l' cur_t v' where de1_eq: \<open>de1 os d = (v, l)\<close>
     and cur_t_in: \<open>cur_t \<in> set (timestamps os)\<close>
     and time_le: \<open>myfst t \<le> cur_t\<close>
     and v'_in: \<open>v' \<in> set (neighbors os cur_t v)\<close>
-    and strict_cur: \<open>l < min_label os cur_t v\<close>
+    and l': \<open>l' = min (min_label os (myfst t) v) l\<close>
+    and strict_cur: \<open>l' < min_label os cur_t v\<close>
     using label_prop_input1_step_batch_nonemptyD[OF assms(1)] by metis
   have mono: \<open>min_label os cur_t v \<le> min_label os (myfst t) v\<close>
     using min_label_mono_time[OF ts_t time_le] .
-  have strict_myfst: \<open>l < min_label os (myfst t) v\<close>
+  have strict_myfst: \<open>l' < min_label os (myfst t) v\<close>
     using strict_cur mono by linarith
-  let ?updated = \<open>label_prop_label_record_update (input_tl os 1) (myfst t) v l\<close>
-  have label_eq: \<open>label ?updated = (label os)(myfst t := (label os (myfst t))(v := l))\<close>
+  let ?updated = \<open>label_prop_label_record_update (input_tl os 1) (myfst t) v l'\<close>
+  have label_eq: \<open>label ?updated = (label os)(myfst t := (label os (myfst t))(v := l'))\<close>
     unfolding label_prop_label_record_update_def input_tl_def by simp
   have ts_eq: \<open>timestamps ?updated = timestamps os\<close>
     unfolding label_prop_label_record_update_def input_tl_def by simp
-  have l_in_set: \<open>l \<in> insert (label ?updated (myfst t) v)
+  have l_in_set: \<open>l' \<in> insert (label ?updated (myfst t) v)
       ((\<lambda>t'. label ?updated t' v) ` {t' \<in> set (timestamps ?updated). t' \<le> myfst t})\<close>
     using label_eq by simp
-  have min_le_l: \<open>min_label ?updated (myfst t) v \<le> l\<close>
+  have min_le_l: \<open>min_label ?updated (myfst t) v \<le> l'\<close>
     using l_in_set unfolding min_label_def by (intro Min_le) auto
   have strict_update: \<open>min_label ?updated (myfst t) v < min_label os (myfst t) v\<close>
     using min_le_l strict_myfst by linarith
   show ?thesis
-    using that[OF de1_eq strict_myfst strict_update] .
+    using that[OF de1_eq l' strict_myfst strict_update] .
 qed
 
 
@@ -1603,14 +1606,15 @@ lemma label_prop_input1_batched_outpu_nonempty_strict_updateD:
     and \<open>outpu (fst (label_prop_input1_batched os msgs)) 1 \<noteq> []\<close>
     and INV: \<open>label_prop_upd_inv os\<close>
     and msgs_input: \<open>set msgs \<subseteq> set (input os 1)\<close>
-  obtains pre d t post os_pre v l where
+  obtains pre d t post os_pre v l l' where
     \<open>msgs = pre @ (d, t) # post\<close>
     \<open>os_pre = fst (label_prop_input1_batched os pre)\<close>
     \<open>de1 os_pre d = (v, l)\<close>
     \<open>myfst t \<in> set (timestamps os)\<close>
-    \<open>l < min_label os_pre (myfst t) v\<close>
+    \<open>l' = min (min_label os_pre (myfst t) v) l\<close>
+    \<open>l' < min_label os_pre (myfst t) v\<close>
     \<open>min_label
-      (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l)
+      (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l')
       (myfst t) v < min_label os_pre (myfst t) v\<close>
 proof -
   obtain x cap where batch_member: \<open>(x, cap) \<in> set (snd (label_prop_input1_batched os msgs))\<close>
@@ -1630,15 +1634,16 @@ proof -
     using dt_in_input INV unfolding label_prop_upd_inv_def by metis
   have ts_t_pre: \<open>myfst t \<in> set (timestamps os_pre)\<close>
     using ts_t_os os_pre_eq by simp
-  obtain v l where de1_eq: \<open>de1 os_pre d = (v, l)\<close>
-    and strict: \<open>l < min_label os_pre (myfst t) v\<close>
+  obtain v l l' where de1_eq: \<open>de1 os_pre d = (v, l)\<close>
+    and l': \<open>l' = min (min_label os_pre (myfst t) v) l\<close>
+    and strict: \<open>l' < min_label os_pre (myfst t) v\<close>
     and update_strict:
-    \<open>min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l)
+    \<open>min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l')
         (myfst t) v < min_label os_pre (myfst t) v\<close>
     using step_batch_nonempty ts_t_pre
     by (elim label_prop_input1_step_batch_nonempty_strict_updateD)
   show ?thesis
-    using that[OF msgs_eq os_pre_eq de1_eq ts_t_os strict update_strict] .
+    using that[OF msgs_eq os_pre_eq de1_eq ts_t_os l' strict update_strict] .
 qed
 
 
@@ -1740,7 +1745,7 @@ proof -
   let ?t1 = \<open>myfst t\<close>
   let ?new = \<open>min (min_label os ?t1 ?v) ?l\<close>
   let ?os'' = \<open>label_prop_label_record_update (input_tl os 1) ?t1 ?v ?new\<close>
-  let ?batch = \<open>label_prop_label_batch os ?os'' ?t1 ?v ?l t\<close>
+  let ?batch = \<open>label_prop_label_batch os ?os'' ?t1 ?v ?new t\<close>
   have step_eq:
     \<open>label_prop_input1_step_state os d t =
        release_caps (drop_caps (produces (add_caps ?os'' (map snd ?batch)) ?batch) (map snd ?batch)) 1\<close>
@@ -1826,13 +1831,14 @@ lemma min_label_fst_label_prop_input1_batched_strict_timestamped_if_output_nonem
     \<open>v \<in> edge_vertices (all_edges os q)\<close>
     \<open>min_label (fst (label_prop_input1_batched os msgs)) q v < min_label os q v\<close>
 proof -
-  obtain pre d t post os_pre v l where
+  obtain pre d t post os_pre v l l' where
     msgs_eq: \<open>msgs = pre @ (d, t) # post\<close>
     and os_pre_eq: \<open>os_pre = fst (label_prop_input1_batched os pre)\<close>
     and de1_pre_eq: \<open>de1 os_pre d = (v, l)\<close>
-    and strict_pre: \<open>l < min_label os_pre (myfst t) v\<close>
+    and l': \<open>l' = min (min_label os_pre (myfst t) v) l\<close>
+    and strict_pre: \<open>l' < min_label os_pre (myfst t) v\<close>
     and update_strict:
-    \<open>min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l) (myfst t) v
+    \<open>min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l') (myfst t) v
         < min_label os_pre (myfst t) v\<close>
     apply (rule label_prop_input1_batched_outpu_nonempty_strict_updateD[OF out_empty out_nonempty, OF INV msgs_input])
     apply simp
@@ -1853,7 +1859,7 @@ proof -
 
   let ?step = \<open>label_prop_input1_step_state os_pre d t\<close>
   let ?new = \<open>min (min_label os_pre (myfst t) v) l\<close>
-  have new_eq_l: \<open>?new = l\<close> using strict_pre by simp
+  have new_eq_l: \<open>?new = l'\<close> by (rule sym[OF l'])
   have step_min:
     \<open>min_label ?step (myfst t) v =
        min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v ?new) (myfst t) v\<close>
@@ -3806,18 +3812,18 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                          (produces
                            (add_caps (input_tl (os 1) 1)
                              (map snd
-                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
-                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
-                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v (min (min_label os_label_prop (myfst t) v) l) t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v (min (min_label os_label_prop (myfst t) v) l) t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v (min (min_label os_label_prop (myfst t) v) l) t)))
                        1)"])
                 apply (rule exI[of _ "release_caps
                        (drop_caps
                          (produces
                            (add_caps (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l))
                              (map snd
-                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
-                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
-                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v (min (min_label os_label_prop (myfst t) v) l) t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v (min (min_label os_label_prop (myfst t) v) l) t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v (min (min_label os_label_prop (myfst t) v) l) t)))
                        1"])
                 apply (rule exI[of _ cbufs])
                 apply (rule exI[of _ sg])
