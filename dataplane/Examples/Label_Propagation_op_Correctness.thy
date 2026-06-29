@@ -1259,18 +1259,15 @@ lemma input_CONSUMES:
 
 lemma label_prop_upd_inv_CONSUMES_port1I:
   assumes inv: \<open>label_prop_upd_inv os\<close>
-    and xs_inv: \<open>\<And>d t. (d, t) \<in> set xs \<Longrightarrow>
-      myfst t \<in> set (timestamps os) \<and>
-      fst (de1 os d) \<in> all_vertices os (myfst t) \<and>
-      (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d)))\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set xs)\<close>
   shows \<open>label_prop_upd_inv (CONSUMES (1 :: 2) xs os)\<close>
 proof -
   let ?os' = \<open>CONSUMES (1 :: 2) xs os\<close>
   have input_eq: \<open>set (input ?os' 1) = set (input os 1) \<union> set xs\<close>
     by (simp add: input_CONSUMES)
   show ?thesis
-    using inv xs_inv
-    unfolding label_prop_upd_inv_def
+    using inv wf_upd
+    unfolding label_prop_upd_inv_def wf_label_prop_updates_def
     apply (auto simp add: input_eq)
     done
 qed
@@ -1606,6 +1603,7 @@ lemma label_prop_input1_batched_outpu_nonempty_strict_updateD:
     and \<open>outpu (fst (label_prop_input1_batched os msgs)) 1 \<noteq> []\<close>
     and INV: \<open>label_prop_upd_inv os\<close>
     and msgs_input: \<open>set msgs \<subseteq> set (input os 1)\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   obtains pre d t post os_pre v l l' where
     \<open>msgs = pre @ (d, t) # post\<close>
     \<open>os_pre = fst (label_prop_input1_batched os pre)\<close>
@@ -1631,7 +1629,7 @@ proof -
   have dt_in_input: \<open>(d, t) \<in> set (input os 1)\<close>
     using dt_in_msgs msgs_input by auto
   have ts_t_os: \<open>myfst t \<in> set (timestamps os)\<close>
-    using dt_in_input INV unfolding label_prop_upd_inv_def by metis
+    using dt_in_input wf_upd unfolding wf_label_prop_updates_def by fast
   have ts_t_pre: \<open>myfst t \<in> set (timestamps os_pre)\<close>
     using ts_t_os os_pre_eq by simp
   obtain v l l' where de1_eq: \<open>de1 os_pre d = (v, l)\<close>
@@ -1826,6 +1824,7 @@ lemma min_label_fst_label_prop_input1_batched_strict_timestamped_if_output_nonem
     and out_nonempty: \<open>outpu (fst (label_prop_input1_batched os msgs)) 1 \<noteq> []\<close>
     and INV: \<open>label_prop_upd_inv os\<close>
     and msgs_input: \<open>set msgs \<subseteq> set (input os 1)\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   obtains q v where
     \<open>q \<in> set (timestamps os)\<close>
     \<open>v \<in> edge_vertices (all_edges os q)\<close>
@@ -1840,7 +1839,7 @@ proof -
     and update_strict:
     \<open>min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l') (myfst t) v
         < min_label os_pre (myfst t) v\<close>
-    apply (rule label_prop_input1_batched_outpu_nonempty_strict_updateD[OF out_empty out_nonempty, OF INV msgs_input])
+    apply (rule label_prop_input1_batched_outpu_nonempty_strict_updateD[OF out_empty out_nonempty, OF INV msgs_input wf_upd])
     apply simp
     done   
   have de1_os_eq: \<open>de1 os d = (v, l)\<close>
@@ -1851,7 +1850,7 @@ proof -
     using dt_in_msgs msgs_input by auto
   have ts_t: \<open>myfst t \<in> set (timestamps os)\<close>
     and v_vertex_raw: \<open>fst (de1 os d) \<in> all_vertices os (myfst t)\<close>
-    using dt_in_input INV unfolding label_prop_upd_inv_def by metis+
+    using dt_in_input wf_upd unfolding wf_label_prop_updates_def by fast+
   have v_in_all: \<open>v \<in> all_vertices os (myfst t)\<close>
     using v_vertex_raw de1_os_eq by simp
   have v_in_edge: \<open>v \<in> edge_vertices (all_edges os (myfst t))\<close>
@@ -1928,6 +1927,7 @@ lemma min_label_fst_label_prop_input1_batched_strict_at_Max_if_output_nonempty:
     and \<open>outpu (fst (label_prop_input1_batched os msgs)) 1 \<noteq> []\<close>
     and \<open>label_prop_upd_inv os\<close>
     and \<open>set msgs \<subseteq> set (input os 1)\<close>
+    and \<open>wf_label_prop_updates os (set (input os 1))\<close>
   obtains v where
     \<open>v \<in> edge_vertices (all_edges os (Max (set (timestamps os))))\<close>
     \<open>min_label (fst (label_prop_input1_batched os msgs)) (Max (set (timestamps os))) v
@@ -1937,7 +1937,7 @@ proof -
     and v_in: \<open>v \<in> edge_vertices (all_edges os q)\<close>
     and strict: \<open>min_label (fst (label_prop_input1_batched os msgs)) q v < min_label os q v\<close>
     using min_label_fst_label_prop_input1_batched_strict_timestamped_if_output_nonempty
-      [OF assms(2,3,4,5)]
+      [OF assms(2-)]
     by blast
   have v_max: \<open>v \<in> edge_vertices (all_edges os (Max (set (timestamps os))))\<close>
     and strict_max: \<open>min_label (fst (label_prop_input1_batched os msgs)) (Max (set (timestamps os))) v
@@ -2054,6 +2054,7 @@ lemma labels_measure_fst_label_prop_input1_batched_decreases_if_output_nonempty:
     and labels_os: \<open>\<And>t. labels_inv (all_edges os t) (min_label os t)\<close>
     and labels_os': \<open>\<And>t. labels_inv (all_edges (fst (label_prop_input1_batched os msgs)) t)
                           (min_label (fst (label_prop_input1_batched os msgs)) t)\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows \<open>labels_measure (all_edges os' (Max (set (timestamps os'))))
       (min_label os' (Max (set (timestamps os'))))
     < labels_measure (all_edges os (Max (set (timestamps os))))
@@ -2067,7 +2068,7 @@ proof -
   obtain v where v_in: \<open>v \<in> edge_vertices (all_edges os ?t)\<close>
     and strict: \<open>min_label (fst (label_prop_input1_batched os msgs)) ?t v < min_label os ?t v\<close>
     using min_label_fst_label_prop_input1_batched_strict_at_Max_if_output_nonempty
-      [OF assms(2,3) outpu_batch INV msgs_input]
+      [OF assms(2,3) outpu_batch INV msgs_input wf_upd]
     by blast
   have pointwise:
     \<open>\<And>v. v \<in> edge_vertices (all_edges os ?t) \<Longrightarrow> min_label os' ?t v \<le> min_label os ?t v\<close>
@@ -2103,15 +2104,11 @@ lemma label_prop_input1_loop_updates_measure_decrease_if_label_output_nonempty:
     and \<open>timestamps os_label_prop \<noteq> []\<close>
     and \<open>outpu os_label_prop' 1 \<noteq> []\<close>
     and INV: \<open>label_prop_upd_inv os_label_prop\<close>
-    and msgs_inv: \<open>\<And>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
-            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<Longrightarrow>
-      myfst t \<in> set (timestamps os_label_prop) \<and>
-      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
-      (\<forall>q. myfst t \<le> q \<longrightarrow>
-        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))\<close>
     and labels_os: \<open>\<And>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
     and labels_os'_all: \<open>\<And>t. labels_inv (all_edges os_label_prop' t) (min_label os_label_prop' t)\<close>
+    and wf_upd: \<open>wf_label_prop_updates os_label_prop
+  (set (outpu (os 2) 1 @ cbufs (1, 1) @ input os_label_prop 1)
+  \<union> set (map (\<lambda>(d, t). (d, t + MyPair 0 1)) (outpu os_label_prop 1 @ cbufs (2, 1) @ input (os 2) 1)))\<close>
   shows \<open>labels_measure
       (all_edges os_label_prop' (Max (set (timestamps os_label_prop'))))
       (min_label os_label_prop' (Max (set (timestamps os_label_prop'))))
@@ -2142,27 +2139,9 @@ proof -
     show \<open>label_prop_upd_inv (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
       using INV by simp
   next
-    fix d t
-    assume m: \<open>(d, t) \<in> set ?msgs\<close>
-    have ts_eq: \<open>set (timestamps (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)) =
-                 set (timestamps os_label_prop)\<close>
-      by simp
-    have de1_eq: \<open>de1 (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) = de1 os_label_prop\<close>
-      by simp
-    have all_v_eq: \<open>\<And>t'. all_vertices (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) t' =
-                          all_vertices os_label_prop t'\<close>
-      by simp
-    have all_e_eq: \<open>\<And>t'. all_edges (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) t' =
-                          all_edges os_label_prop t'\<close>
-      by simp
-    show \<open>myfst t \<in> set (timestamps (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)) \<and>
-          fst (de1 (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) d)
-            \<in> all_vertices (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) (myfst t) \<and>
-          (\<forall>q. myfst t \<le> q \<longrightarrow>
-            snd (de1 (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) d) \<in>
-              cc_of (all_edges (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) q)
-                (fst (de1 (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) d)))\<close>
-      using msgs_inv[OF m] ts_eq de1_eq all_v_eq all_e_eq by simp
+    show \<open>wf_label_prop_updates (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>) (set ?msgs)\<close>
+      using wf_upd unfolding wf_label_prop_updates_def
+      by simp blast
   qed
   have labels_consumed: \<open>\<And>t. labels_inv (all_edges ?os_consumed t) (min_label ?os_consumed t)\<close>
     using labels_os by simp
@@ -2170,6 +2149,9 @@ proof -
       (all_edges (fst (label_prop_input1_batched ?os_consumed (input ?os_consumed 1))) t)
       (min_label (fst (label_prop_input1_batched ?os_consumed (input ?os_consumed 1))) t)\<close>
     using labels_os'_all os_label_prop'_eq by simp
+  have wf_upd_consumed: \<open>wf_label_prop_updates ?os_consumed (set (input ?os_consumed 1))\<close>
+    using wf_upd unfolding wf_label_prop_updates_def
+    by (simp add: input_CONSUMES) blast
   have consumed_decrease:
     \<open>labels_measure
         (all_edges os_label_prop' (Max (set (timestamps os_label_prop'))))
@@ -2180,7 +2162,7 @@ proof -
     using labels_measure_fst_label_prop_input1_batched_decreases_if_output_nonempty
       [of os_label_prop' ?os_consumed \<open>input ?os_consumed 1\<close>]
       os_label_prop'_eq consumed_ts consumed_outpu assms(3) inv_consumed msgs_input_self
-      labels_consumed labels_os'_at_batched
+      labels_consumed labels_os'_at_batched wf_upd_consumed
     by simp
   have consumed_same:
     \<open>labels_measure
@@ -2194,10 +2176,6 @@ proof -
   show ?thesis
     using consumed_decrease consumed_same by simp
 qed
-
-
-
-
 
 lemma loop_move_all_data_label_prop_input1:
   assumes NO: "initia os_label_prop"
@@ -2443,6 +2421,9 @@ lemma loop_op_label_propagation_op_increment_op:
     (\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
     (\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t) \<and>
     label_prop_upd_inv os_label_prop \<and> input_ocaps_inv (os 1)\<close>
+    (* Might be needed: \<open>input_ocaps_inv (os 2)
+  \<and> wf_label_prop_updates os_label_prop (set (outpu (os 2) 1 @ cbufs (1, 1) @ input os_label_prop 1)
+    \<union> set (map (\<lambda>(d, t). (d, t + MyPair 0 1)) (outpu os_label_prop 1 @ cbufs (2, 1) @ input (os 2) 1)))\<close> *)
   assumes \<open>summ sg = antichain_from_list \<circ>\<circ> raw_summary \<and> nxt sg = graph_to_nxt (summ sg)\<close>
     \<open>INV os_label_prop os L\<close>
     \<open>T \<noteq> []\<close>
@@ -2470,6 +2451,204 @@ lemma loop_op_label_propagation_op_increment_op:
     using prems
     oops
 
+(* TODO: Move. *)
+lemma wf_label_prop_updates_consumes[simp]:
+  \<open>wf_label_prop_updates (consumes os p t d) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
+  by (simp add: wf_label_prop_updates_def consumes_def all_vertices_def all_edges_def neighbors_def)
+
+(* TODO: Move. *)
+lemma wf_label_prop_updates_cong:
+  \<open>de1 os = de1 os' \<Longrightarrow> timestamps os = timestamps os' \<Longrightarrow> graph os = graph os' \<Longrightarrow>
+  vertices os = vertices os' \<Longrightarrow> S = S' \<Longrightarrow>
+  wf_label_prop_updates os S \<longleftrightarrow> wf_label_prop_updates os' S'\<close>
+  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
+
+(* TODO: Move. *)
+lemma wf_label_prop_updates_subset:
+  \<open>wf_label_prop_updates os S \<Longrightarrow> S' \<subseteq> S \<Longrightarrow> wf_label_prop_updates os S'\<close>
+  unfolding wf_label_prop_updates_def by fast
+
+(* TODO: Move. *)
+lemma wf_label_prop_updates_Un:
+  \<open>S'' = S \<union> S' \<Longrightarrow> wf_label_prop_updates os S'' \<longleftrightarrow> wf_label_prop_updates os S \<and> wf_label_prop_updates os S'\<close>
+  unfolding wf_label_prop_updates_def by force
+
+(* TODO: Move. *)
+lemma wf_label_prop_updates_os_mono:
+  assumes \<open>wf_label_prop_updates os S\<close> \<open>de1 os = de1 os'\<close> \<open>set (timestamps os) \<subseteq> set (timestamps os')\<close>
+    \<open>\<forall>t. set (vertices os t) \<subseteq> set (vertices os' t) \<and> (\<forall>v. set (graph os t v) \<subseteq> set (graph os' t v))\<close>
+    \<open>S = S'\<close>
+  shows \<open>wf_label_prop_updates os' S'\<close>
+proof -
+  { fix d t
+    assume d_t: \<open>(d, t) \<in> S\<close>
+    let ?t0 = \<open>myfst t\<close>
+    have t0: \<open>?t0 \<in> set (timestamps os')\<close> (is ?A)
+      using assms(1,3) d_t unfolding wf_label_prop_updates_def by fast
+    have all_vertices_subset: \<open>\<forall>t'. all_vertices os t' \<subseteq> all_vertices os' t'\<close>
+      using assms(3,4) d_t unfolding wf_label_prop_updates_def all_vertices_def by blast
+    hence fst_de1: \<open>fst (de1 os d) \<in> all_vertices os' ?t0\<close> (is ?B)
+      using assms(1) d_t unfolding wf_label_prop_updates_def by fast
+    have \<open>\<forall>t' \<ge> ?t0. \<forall>v. set (neighbors os t' v) \<subseteq> set (neighbors os' t' v)\<close>
+      unfolding neighbors_def using assms(3,4) by force
+    hence \<open>\<forall>t' \<ge> ?t0. all_edges os t' \<subseteq> all_edges os' t'\<close>
+      unfolding all_edges_def using all_vertices_subset by fast
+    hence \<open>\<forall>t' \<ge> ?t0. snd (de1 os d) \<in> cc_of (all_edges os' t') (fst (de1 os d))\<close> (is ?C)
+      using assms(1) d_t cc_of_mono prod.simps(2) unfolding wf_label_prop_updates_def
+      by (metis (mono_tags, lifting))
+    hence \<open>?A \<and> ?B \<and> ?C\<close> using t0 fst_de1 by blast
+  }
+  thus ?thesis unfolding wf_label_prop_updates_def assms(5) using assms(2) by force
+qed
+
+(* TODO: Move. *)
+lemma label_prop_edge_batch_in_timestamps:
+  \<open>(d, cap) \<in> set (label_prop_edge_batch old_os updated_os event_t vertex new_label event_time)
+  \<Longrightarrow> myfst (capability.time cap) \<in> set (timestamps updated_os)\<close>
+  unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def by force
+
+(* TODO: Move. *)
+lemma label_prop_label_batch_in_timestamps:
+  \<open>(d, cap) \<in> set (label_prop_label_batch old_os updated_os event_t vertex new_label event_time)
+  \<Longrightarrow> myfst (capability.time cap) \<in> set (timestamps old_os)\<close>
+  unfolding label_prop_label_batch_def label_prop_neighbor_batch_def by force
+
+(* TODO: Move. *)
+lemma all_vertices_add_caps[simp]:
+  \<open>all_vertices (add_caps os caps) = all_vertices os\<close>
+  unfolding all_vertices_def by simp
+
+(* TODO: Move. *)
+lemma label_prop_edge_batch_all_vertices:
+  assumes \<open>updated_os = label_prop_edge_record_update (input_tl old_os 0) (event_t :: _ :: {plus, order}) v1 v2 vertex new_label\<close>
+    \<open>batch = label_prop_edge_batch old_os updated_os event_t vertex new_label event_time\<close>
+    \<open>en1 old_os = Inl\<close> \<open>de1 old_os = projl\<close> \<open>label_prop_upd_inv updated_os\<close> \<open>(d, cap) \<in> set batch\<close>
+    \<open>t = myfst (capability.time cap)\<close> \<open>v = fst (de1 old_os d)\<close>
+  shows \<open>v \<in> all_vertices updated_os t\<close>
+proof -
+  have \<open>v \<in> set (neighbors updated_os t vertex)\<close>
+    using assms(2-4,6,7,8) by (force simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def)
+  then obtain t' where t': \<open>t' \<in> set (timestamps updated_os)\<close> \<open>t' \<le> t\<close>
+    \<open>v \<in> set (graph updated_os t' vertex)\<close> unfolding neighbors_def by auto
+  hence \<open>v \<in> set (vertices updated_os t')\<close>
+    using label_prop_upd_inv_graph_edgeD[OF assms(5)] by blast
+  thus ?thesis unfolding all_vertices_def using t'(1,2) by blast
+qed
+
+(* TODO: Move. *)
+lemma label_prop_label_batch_all_vertices:
+  assumes \<open>updated_os = label_prop_label_record_update old_os event_t vertex assigned_label\<close>
+    \<open>batch = label_prop_label_batch old_os updated_os event_t vertex new_label event_time\<close>
+    \<open>en1 old_os = Inl\<close> \<open>de1 old_os = projl\<close> \<open>label_prop_upd_inv old_os\<close> \<open>(d, cap) \<in> set batch\<close>
+    \<open>t = myfst (capability.time cap)\<close> \<open>v = fst (de1 old_os d)\<close>
+  shows \<open>v \<in> all_vertices updated_os t\<close>
+proof -
+  have \<open>v \<in> set (neighbors old_os t vertex)\<close>
+    using assms(2-4,6,7,8) by (force simp add: label_prop_label_batch_def label_prop_neighbor_batch_def)
+  then obtain t' where t': \<open>t' \<in> set (timestamps old_os)\<close> \<open>t' \<le> t\<close>
+    \<open>v \<in> set (graph old_os t' vertex)\<close> unfolding neighbors_def by auto
+  hence \<open>v \<in> set (vertices old_os t')\<close>
+    using label_prop_upd_inv_graph_edgeD[OF assms(5)] by blast
+  hence \<open>v \<in> all_vertices old_os t\<close> unfolding all_vertices_def using t'(1,2) by blast
+  thus ?thesis by (simp add: assms(1) label_prop_label_record_update_def all_vertices_def)
+qed
+
+(* TODO: Move. *)
+lemma neighbors_reachable:
+  \<open>label_prop_upd_inv os \<Longrightarrow> w \<in> set (neighbors os t v) \<Longrightarrow> reachable (all_edges os t) v w\<close>
+  unfolding all_edges_def reachable_def using label_prop_upd_inv_neighborsD by blast
+
+(* TODO: Move. *)
+lemma reachable_subset:
+  \<open>A \<subseteq> B \<Longrightarrow> reachable A x y \<Longrightarrow> reachable B x y\<close>
+  using converse_mono rtrancl_mono_mp sup_mono unfolding reachable_def
+  by meson
+
+(* TODO: Move. *)
+lemma label_prop_edge_batch_cc_of_all_edges:
+  assumes \<open>updated_os = label_prop_edge_record_update (input_tl old_os 0) (myfst (t :: _ :: {plus, order})) v1 v2 vertex new_label\<close>
+    \<open>batch = label_prop_edge_batch old_os updated_os (myfst t) vertex new_label t\<close>
+    \<open>en1 old_os = Inl\<close> \<open>de1 old_os = projl\<close> \<open>label_prop_upd_inv updated_os\<close> \<open>(d, cap) \<in> set batch\<close>
+    \<open>myfst (capability.time cap) \<le> t'\<close> \<open>(v, w) = de1 old_os d\<close>
+    \<open>(vertex, new_label) = (if min_label old_os (myfst t) v2 < min_label old_os (myfst t) v1
+      then (v1, min_label old_os (myfst t) v2)
+      else (v2, min_label old_os (myfst t) v1))\<close>
+    \<open>\<forall>t. labels_inv (all_edges updated_os t) (min_label updated_os t)\<close>
+  shows \<open>w \<in> cc_of (all_edges updated_os t') v\<close>
+proof -
+  let ?t0 = \<open>myfst (capability.time cap)\<close>
+  have myfst_t_t': \<open>myfst t \<le> t'\<close> using assms(2-4,6,7)
+    by (force simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def)
+  have vertex_v1_v2: \<open>vertex = v1 \<or> vertex = v2\<close> using assms(9) by (simp split: if_splits)
+  have w_new_label: \<open>w = new_label\<close> using assms(2-4,6,8)
+    by (force simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def)
+  have \<open>v \<in> set (neighbors updated_os ?t0 vertex)\<close>
+    using assms(2-4,6,8) by (force simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def)
+  hence \<open>reachable (all_edges updated_os ?t0) vertex v\<close>
+    using neighbors_reachable[OF assms(5)] by blast
+  hence reachable_vertex_v: \<open>reachable (all_edges updated_os t') vertex v\<close>
+    using all_edges_mono[OF assms(7)] reachable_subset by metis
+  have new_label_le: \<open>new_label \<le> min_label old_os (myfst t) vertex\<close> using assms(9) by (simp split: if_splits)
+  hence \<open>min_label updated_os (myfst t) vertex = new_label\<close>
+  proof -
+    let ?A = \<open>(\<lambda>t'. label updated_os t' vertex) ` {t' \<in> set (timestamps updated_os). t' \<le> myfst t}\<close>
+    have \<open>\<forall>l \<in> ?A. new_label \<le> l\<close>
+      using new_label_le by (force simp add: assms(1) min_label_def label_prop_edge_record_update_def)
+    then show ?thesis using Min_insert2[where a=new_label and A=\<open>?A\<close>] unfolding min_label_def
+      by (force simp add: assms(1) label_prop_edge_record_update_def)
+  qed
+  moreover have \<open>vertex \<in> edge_vertices (all_edges updated_os (myfst t))\<close>
+    using edge_vertices_all_edges[OF assms(5)] vertex_v1_v2
+    by (force simp add: assms(1) label_prop_edge_record_update_def all_vertices_def)
+  ultimately have \<open>new_label \<in> cc_of (all_edges updated_os (myfst t)) vertex\<close>
+    using assms(10) unfolding labels_inv_def by fast
+  moreover have \<open>all_edges updated_os (myfst t) \<subseteq> all_edges updated_os t'\<close>
+    by (rule all_edges_mono[OF myfst_t_t'])
+  ultimately have \<open>new_label \<in> cc_of (all_edges updated_os t') vertex\<close> using cc_of_mono by blast
+  thus ?thesis using w_new_label cc_of_eq_if_reachable[OF reachable_vertex_v] by blast
+qed
+
+(* TODO: Move. *)
+lemma label_prop_label_batch_cc_of_all_edges:
+  assumes \<open>(updated_os :: (_, nat, nat, nat) label_propagation_state) = label_prop_label_record_update (input_tl old_os 1) (myfst t) vertex assigned_label\<close>
+    \<open>batch = label_prop_label_batch old_os updated_os (myfst t) vertex assigned_label t\<close>
+    \<open>en1 old_os = Inl\<close> \<open>de1 old_os = projl\<close> \<open>label_prop_upd_inv old_os\<close> \<open>(d, cap) \<in> set batch\<close>
+    \<open>myfst (capability.time cap) \<le> t'\<close> \<open>(v, w) = de1 old_os d\<close>
+    \<open>\<forall>t. labels_inv (all_edges updated_os t) (min_label updated_os t)\<close>
+    \<open>assigned_label = min (min_label old_os (myfst t) vertex) l\<close>
+    \<open>vertex \<in> edge_vertices (all_edges updated_os (myfst t))\<close>
+  shows \<open>w \<in> cc_of (all_edges old_os t') v\<close>
+proof -
+  let ?t0 = \<open>myfst (capability.time cap)\<close>
+  have myfst_t_t': \<open>myfst t \<le> t'\<close> using assms(2-4,6,7)
+    by (force simp add: label_prop_label_batch_def label_prop_neighbor_batch_def)
+  have w_assigned_label: \<open>w = assigned_label\<close> using assms(2-4,6,8)
+    by (force simp add: label_prop_label_batch_def label_prop_neighbor_batch_def)
+  have \<open>v \<in> set (neighbors old_os ?t0 vertex)\<close>
+    using assms(2-4,6,8)
+    by (force simp add: label_prop_label_batch_def label_prop_neighbor_batch_def)
+  hence \<open>reachable (all_edges updated_os ?t0) vertex v\<close>
+    using neighbors_reachable[OF assms(5)] by (simp add: assms(1))
+   hence reachable_vertex_v: \<open>reachable (all_edges updated_os t') vertex v\<close>
+    using all_edges_mono[OF assms(7)] reachable_subset by metis
+  have \<open>min_label updated_os (myfst t) vertex = assigned_label\<close>
+  proof -
+    let ?A = \<open>(\<lambda>t'. label updated_os t' vertex) ` {t' \<in> set (timestamps updated_os). t' \<le> myfst t}\<close>
+    have \<open>\<forall>l \<in> ?A. assigned_label \<le> l\<close>
+      by (simp add: assms(1,10) label_prop_label_record_update_def)
+        (insert min_label_le_current_labelI min_label_mono_time  le_trans min.coboundedI1, blast)
+    then show ?thesis using Min_insert2[where a=assigned_label and A=\<open>?A\<close>] unfolding min_label_def
+      by (force simp add: assms(1) label_prop_label_record_update_def)
+  qed
+  hence \<open>assigned_label \<in> cc_of (all_edges updated_os (myfst t)) vertex\<close>
+    using assms(9,11) unfolding labels_inv_def by fast
+  moreover have \<open>all_edges updated_os (myfst t) \<subseteq> all_edges updated_os t'\<close>
+    by (rule all_edges_mono[OF myfst_t_t'])
+  ultimately have \<open>assigned_label \<in> cc_of (all_edges updated_os t') vertex\<close> using cc_of_mono by blast
+  hence \<open>assigned_label \<in> cc_of (all_edges updated_os t') v\<close>
+    using cc_of_eq_if_reachable[OF reachable_vertex_v] by blast
+  thus ?thesis by (simp add: assms(1) w_assigned_label)
+qed
 
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
@@ -2515,6 +2694,7 @@ lemma label_propagation_correctness:
     \<open>\<forall>t \<in> time ` lset lxs \<union> snd ` set (chns (1, 0)) \<union> set (ocaps (os 1) 0). mysnd t = 0\<close>
     \<open>label_prop_upd_inv os_label_prop\<close>
     \<open>input_ocaps_inv (os 1)\<close>
+    \<open>wf_label_prop_updates os_label_prop (set (chns (1, 1) @ map (\<lambda>(d, t). (d, t + MyPair 0 1)) (chns (2, 1))))\<close>
   shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
          \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms
@@ -2615,7 +2795,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (simp add: label_prop_inv(3))
         using buffers_inv label_prop_inv(4) apply (simp add: BULK_BENQ_def subgraph_inv(1) outputs_at_target_raw_summary)
         using label_prop_inv(5) apply (simp add: os_inv(4,7) operator_state.defs(3))
-        apply (rule label_prop_inv(6))
+          apply (rule label_prop_inv(6))
+        using label_prop_inv(7) apply (simp add: os_inv(4,7) buffers_inv BULK_BENQ_def BENQ_def outputs_at_target_raw_summary subgraph_inv(1) image_Un operator_state.defs(3) Un_assoc)
         apply (clarsimp simp add: dataflow_tree_to_operator_def intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
         apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
         apply (fastforce simp add: BENQ_def)
@@ -2704,7 +2885,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           by (fastforce simp add: raw_summary_def BULK_BENQ_def BHD_def)
         using label_prop_inv(5) apply (simp add: os_inv(4,7) operator_state.defs(3) consumes_def)
         apply (subst label_prop_upd_inv_cong; simp add: BENQ_def)
-        apply (rule inputs_ocaps_inv_consumes[OF label_prop_inv(6)])
+          apply (rule inputs_ocaps_inv_consumes[OF label_prop_inv(6)])
+        using label_prop_inv(7) apply (simp add: os_inv(4,7) operator_state.defs(3) buffers_inv)
         apply (clarsimp simp add: dataflow_tree_to_operator_def intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
         apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
         apply (simp add: BTL_def fun_eq_iff map_tl split: sum.splits)
@@ -2755,6 +2937,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv)
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
+          using label_prop_inv(7) apply (simp add: os_inv(4) buffers_inv)
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         subgoal for lxs' t v w
@@ -2802,6 +2985,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BENQ_def)
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
+          using label_prop_inv(7) apply (simp add: os_inv(4) BENQ_def)
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         subgoal for lxs' t
@@ -2849,6 +3033,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
+          using label_prop_inv(7) apply (simp add: os_inv(4) buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def inputs_at_target_def)
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         subgoal for lxs' t
@@ -2896,6 +3081,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def add_cap_def)
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
+          using label_prop_inv(7) apply (simp add: os_inv(4) buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def inputs_at_target_def)
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         done
@@ -2964,6 +3150,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(6)
           unfolding input_ocaps_inv_def
           by auto
+          apply (subst wf_label_prop_updates_cong[where os'=os_label_prop
+                and S'=\<open>set (chns (1, 1) @ map (\<lambda>(d, t). (d, t -+- MyPair 0 1)) (chns (2, 1)))\<close>])
+        using label_prop_inv(7) apply (auto simp add: os_inv(4) operator_state.defs(3) buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def BENQ_def inputs_at_target_def image_Un)
         done
       subgoal for d t
         apply (intro exI conjI relcomppI)
@@ -3011,6 +3200,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def BTL_def BENQ_def)
         apply (rule label_prop_inv(5))
         using label_prop_inv(6) apply simp
+        using label_prop_inv(7)
+        apply (subst wf_label_prop_updates_cong[OF refl refl refl refl _])
+         defer
+         apply assumption
+        apply (simp add: buffers_inv BULK_BENQ_def BTL_def BENQ_def BHD_def image_set map_consI(2) flip: set_append)
         done
       subgoal for os'
         unfolding label_propagation_op_logic_def trace_simp
@@ -3496,6 +3690,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 done
               done
             done
+          subgoal
+            apply (subst wf_label_prop_updates_cong)
+            using label_prop_inv(7)
+            by (auto simp add: produces_def buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def inputs_at_target_def label_prop_output_batch_def)
           done
         subgoal
           apply (simp  del: filter.simps split: list.splits)
@@ -3777,12 +3975,82 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   apply (rule label_prop_inv(5))
                   apply (simp_all add: operator_state.defs os_inv(4))
                   unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
-                  by (auto simp add: operator_state.defs os_inv(4)  input_tl_def release_caps_def drop_caps_def produces_def)
+                  using label_prop_inv(7)
+                  by (auto intro: wf_label_prop_updates_subset simp add: buffers_inv BULK_BENQ_def inputs_at_target_def operator_state.defs os_inv(4) input_tl_def release_caps_def drop_caps_def produces_def)
                 subgoal premises aux
                   apply simp
                   apply (rule input_ocaps_inv_release_capsI)
                   apply (rule input_ocaps_inv_drop_produces_add_capsI)
                   using label_prop_inv(6) input_ocaps_inv_input_tlI apply fast
+                  done
+                subgoal
+                  apply (subst wf_label_prop_updates_Un[where S=\<open>set (chns (1, 1) @ map (\<lambda>(d, t). (d, t -+- MyPair 0 1)) (chns (2, 1)))\<close>
+                        and S'=\<open>set (map (\<lambda>(d, cap :: (2, (nat, nat) myprod) capability). (d, capability.time cap + MyPair 0 1)) (label_prop_edge_batch os_label_prop
+             (label_prop_edge_record_update (os_label_prop\<lparr>input := (input os_label_prop)(0 := xs)\<rparr>) (myfst t) v1 v2 l1 l2) (myfst t) l1 l2 t))\<close>])
+                   apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def input_tl_def image_Un flip: set_filter)
+                   apply (subst filter_True)
+                    apply (simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def)
+                   apply fast
+                  apply (rule conjI)
+                   apply (rule wf_label_prop_updates_os_mono[OF label_prop_inv(7) _ _ _ refl])
+                     apply simp
+                    apply (clarsimp simp add: label_prop_edge_record_update_def)
+                   apply (intro allI conjI)
+                    apply (clarsimp simp add: label_prop_edge_record_update_def)
+                   apply (force simp add: produces_def label_prop_edge_record_update_def)
+                  apply (clarsimp simp add: wf_label_prop_updates_def)
+                  subgoal for d' cap
+                    apply (intro conjI allI)
+                      apply (rule label_prop_edge_batch_in_timestamps[of d' cap os_label_prop _ \<open>myfst t\<close> l1 l2 t])
+                      apply (simp add: input_tl_def)
+                     apply (simp add: add_caps_def label_prop_edge_record_update_def)
+                     apply (rule label_prop_edge_batch_all_vertices[OF _ refl _ _ _ _ refl refl, of _ os_label_prop \<open>myfst t\<close> _ _ l1 l2 d' cap])
+                         apply (simp add: input_tl_def label_prop_edge_record_update_def)
+                    using os_inv(4) apply (simp add: operator_state.defs(3))
+                    using os_inv(4) apply (simp add: operator_state.defs(3))
+                    subgoal
+                      apply (rule label_prop_upd_inv_input0_preserved)
+                              apply (rule label_prop_inv(5))
+                             apply (simp_all add: operator_state.defs os_inv(4))
+                      unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
+                      using label_prop_inv(7)
+                      by (auto intro: wf_label_prop_updates_subset simp add: buffers_inv BULK_BENQ_def inputs_at_target_def operator_state.defs os_inv(4) input_tl_def release_caps_def drop_caps_def produces_def)
+                     apply (simp add: input_tl_def)
+                    apply (rule impI)
+                    apply (rule label_prop_edge_batch_cc_of_all_edges[OF refl refl])
+                    using os_inv(4) apply (simp add: operator_state.defs(3))
+                    using os_inv(4) apply (simp add: operator_state.defs(3))
+                    subgoal
+                      apply (rule label_prop_upd_inv_input0_preserved)
+                              apply (rule label_prop_inv(5))
+                             apply (simp_all add: operator_state.defs os_inv(4))
+                      unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
+                      using label_prop_inv(7)
+                      by (auto intro: wf_label_prop_updates_subset simp add: buffers_inv BULK_BENQ_def inputs_at_target_def operator_state.defs os_inv(4) input_tl_def release_caps_def drop_caps_def produces_def)
+                        apply (simp add: input_tl_def)
+                       apply assumption
+                      apply simp
+                     apply (erule sym)
+                    subgoal
+                      apply safe
+                      subgoal for t''
+                        apply (rule labels_inv_input0_preserved[where xs=xs])
+                        using label_prop_inv(1) apply blast
+                        subgoal
+                          using label_prop_inv(5) by assumption
+                        subgoal
+                          by (clarsimp simp add: input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                            apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                            apply simp
+                           apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                           apply simp
+                          apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                         apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                         apply simp
+                        apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                        done
+                      done
+                    done
                   done
                 done
               done
@@ -3932,7 +4200,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                           simplified])
                     apply (rule label_prop_inv(1)[rule_format])
                     apply (rule label_prop_inv(5))
-                    apply simp_all
+                      apply simp_all
+                    apply (rule wf_label_prop_updates_subset[OF label_prop_inv(7)])
+                    apply (fastforce simp add: buffers_inv BULK_BENQ_def inputs_at_target_def os_inv(4) operator_state.defs(3))
                     done
                   done
                 subgoal
@@ -3960,7 +4230,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   apply simp
                   apply (rule label_prop_upd_inv_input1_preserved[])
                   apply (rule label_prop_inv(5))
-                  apply (simp_all add: label_prop_label_record_update_def input_tl_def image_iff os_inv(4) operator_state.defs)
+                           apply (simp_all add: label_prop_label_record_update_def input_tl_def image_iff os_inv(4) operator_state.defs)
+                  using label_prop_inv(7) apply (auto intro: wf_label_prop_updates_subset simp add:  buffers_inv BULK_BENQ_def inputs_at_target_def os_inv(4) operator_state.defs(3))
                   done
                 subgoal
                   apply simp
@@ -3969,6 +4240,70 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   apply (rule input_ocaps_inv_input_tlI)
                   using label_prop_inv(6) apply -
                   apply (simp add: os_inv(4) operator_state.defs)
+                  done
+                subgoal
+                  apply (subst wf_label_prop_updates_Un[where S=\<open>set (tl (input (os 1) 1)) \<union> set (cbufs (1, 1)) \<union> set (outpu (os 2) 1) \<union> set (map (\<lambda>(d, t). (d, t -+- MyPair 0 1)) (chns (2, 1)))\<close>
+                        and S'=\<open>set (map (\<lambda>(d, cap :: (2, (nat, nat) myprod) capability). (d, capability.time cap + MyPair 0 1)) (label_prop_label_batch os_label_prop
+                     (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v (min (min_label os_label_prop (myfst t) v) l) t))\<close>])
+                   apply (simp add: os_inv(4) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def input_tl_def image_Un flip: set_filter)
+                   apply (subst filter_True)
+                    apply (simp add: label_prop_label_batch_def label_prop_neighbor_batch_def)
+                   apply (simp add: image_image split_beta Un_assoc)
+                  apply (rule conjI)
+                   apply (rule wf_label_prop_updates_subset[where S=\<open>set (chns (1, 1) @ map (\<lambda>(d, t). (d, t -+- MyPair 0 1)) (chns (2, 1)))\<close>])
+                    apply (rule wf_label_prop_updates_os_mono[OF label_prop_inv(7) _ _ _ refl])
+                      apply simp
+                     apply simp
+                    apply (intro allI conjI)
+                     apply simp
+                    apply (simp add: produces_def)
+                   apply (simp add: os_inv(4) operator_state.defs(3) buffers_inv BULK_BENQ_def inputs_at_target_def outputs_at_target_raw_summary subgraph_inv(1))
+                   apply blast
+                  apply (clarsimp simp add: wf_label_prop_updates_def)
+                  subgoal for d' cap
+                    apply (intro conjI allI)
+                      apply (rule label_prop_label_batch_in_timestamps[of d' cap os_label_prop _ \<open>myfst t\<close> v \<open>(min (min_label os_label_prop (myfst t) v) l)\<close> t])
+                      apply blast
+                     apply (rule label_prop_label_batch_all_vertices[OF refl refl, of \<open>input_tl os_label_prop 1\<close> d' cap \<open>myfst t\<close> v _ \<open>(min (min_label os_label_prop (myfst t) v) l)\<close> t])
+                          apply (simp add: os_inv(4) operator_state.defs(3))
+                         apply (simp add: os_inv(4) operator_state.defs(3))
+                    using label_prop_inv(5) apply (simp add: input_tl_def label_prop_upd_inv_def)
+                       apply (simp add: label_prop_label_batch_def label_prop_neighbor_batch_def input_tl_def neighbors_def)
+                      apply (rule refl)
+                     apply simp
+                    apply (rule impI)
+                    apply (rule label_prop_label_batch_cc_of_all_edges[OF refl refl])
+                    using os_inv(4) apply (simp add: operator_state.defs(3))
+                    using os_inv(4) apply (simp add: operator_state.defs(3))
+                          apply (rule label_prop_inv(5))
+                         apply blast
+                        apply assumption
+                       apply simp
+                    subgoal
+                      apply safe
+                      subgoal for ta
+                        apply simp
+                        apply (rule labels_inv_input1_preserved_record_update_tl[
+                              of os_label_prop d t v l "myfst t"
+                              "label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)" ta,
+                              simplified])
+                            apply (rule label_prop_inv(1)[rule_format])
+                           apply (rule label_prop_inv(5))
+                          apply simp_all
+                        apply (rule wf_label_prop_updates_subset[OF label_prop_inv(7)])
+                        apply (fastforce simp add: buffers_inv BULK_BENQ_def inputs_at_target_def os_inv(4) operator_state.defs(3))
+                        done
+                      done
+                     apply (rule refl)
+                    apply simp
+                    apply (insert label_prop_inv(7))
+                    apply (drule wf_label_prop_updates_subset[where S'=\<open>set (input os_label_prop 1)\<close>])
+                     apply (force simp add: buffers_inv BULK_BENQ_def inputs_at_target_def os_inv(4) operator_state.defs(3))
+                    apply (unfold wf_label_prop_updates_def)
+                    apply (drule bspec[of _ _ \<open>(d, t)\<close>])
+                     apply simp
+                    apply (simp add: edge_vertices_all_edges[OF label_prop_inv(5)])
+                    done
                   done
                 done
               done
@@ -4033,6 +4368,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
          apply (rule label_prop_inv(5))
         using label_prop_inv(6) apply simp
+        using label_prop_inv(7) apply (simp add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def filter_True split_beta)
         done
       subgoal 
         sorry
@@ -4126,6 +4462,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(6) 
           unfolding input_ocaps_inv_def
           by auto
+        subgoal
+          apply (subst wf_label_prop_updates_cong[where os'=os_label_prop])
+          using label_prop_inv(7)
+          by (simp_all add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
         done
       done
   qed
@@ -4289,6 +4629,10 @@ next
           subgoal
             using label_prop_inv(6) unfolding input_ocaps_inv_def
             by simp
+          subgoal
+            apply (subst wf_label_prop_updates_cong[where os'=os_label_prop])
+            using label_prop_inv(7)
+            by (simp_all add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) os_inv(4) operator_state.defs(3))
           done
         subgoal premises prems
           using timely_input_stream_advances_frontier[OF input_stream_inv, of t] apply -
