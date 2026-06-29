@@ -2298,6 +2298,72 @@ proof -
     using step by simp
 qed
 
+lemma fst_label_prop_input1_loop_updates_update[simp]:
+  \<open>fst (label_prop_input1_loop_updates cbufs os_label_prop (os(n := X))) =
+    fst (label_prop_input1_loop_updates cbufs os_label_prop os)\<close>
+  unfolding label_prop_input1_loop_updates_def
+  by clarsimp
+
+lemma fst_snd_label_prop_input1_loop_updates_update[simp]:
+  assumes n2: \<open>n \<noteq> (2 :: 3)\<close>
+  shows \<open>fst (snd (label_prop_input1_loop_updates cbufs os_label_prop (os(n := X)))) =
+    fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))\<close>
+  using n2
+  unfolding label_prop_input1_loop_updates_def
+  by clarsimp
+
+lemma snd_snd_label_prop_input1_loop_updates_unchanged[simp]:
+  assumes n2: \<open>n \<noteq> (2 :: 3)\<close>
+  shows \<open>snd (snd (label_prop_input1_loop_updates cbufs os_label_prop os)) n = os n\<close>
+  using n2
+  unfolding label_prop_input1_loop_updates_def
+  by clarsimp
+
+lemma snd_snd_label_prop_input1_loop_updates[simp]:
+  \<open>snd (snd (label_prop_input1_loop_updates cbufs os_label_prop os)) (0 :: 3) = os 0\<close>
+  by simp
+
+lemma snd_snd_label_prop_input1_loop_updates_1[simp]:
+  \<open>snd (snd (label_prop_input1_loop_updates cbufs os_label_prop os)) (1 :: 3) = os 1\<close>
+  by simp
+
+lemma snd_snd_label_prop_input1_loop_updates_update[simp]:
+  assumes nm: \<open>n \<noteq> m\<close>
+  shows \<open>snd (snd (label_prop_input1_loop_updates cbufs os_label_prop (os(n := X)))) m =
+    snd (snd (label_prop_input1_loop_updates cbufs os_label_prop os)) m\<close>
+  using nm
+  unfolding label_prop_input1_loop_updates_def
+  by clarsimp
+
+lemma fst_label_prop_input1_loop_updates_cbufs_cleared[simp]:
+  assumes k: \<open>k = (((1 :: 3), (1 :: 2))) \<or> k = (((2 :: 3), (1 :: 2)))\<close>
+  shows \<open>fst (label_prop_input1_loop_updates (cbufs(k := X)) os_label_prop os) =
+    fst (label_prop_input1_loop_updates cbufs os_label_prop os)\<close>
+  using k
+  unfolding label_prop_input1_loop_updates_def
+  by (auto simp add: fun_upd_twist)
+
+
+lemma fst_snd_label_prop_input1_loop_updates_cbufs_irrelevant[simp]:
+  assumes k11: \<open>k \<noteq> (((1 :: 3), (1 :: 2)))\<close>
+    and k21: \<open>k \<noteq> (((2 :: 3), (1 :: 2)))\<close>
+  shows \<open>fst (snd (label_prop_input1_loop_updates (cbufs(k := X)) os_label_prop os)) =
+    fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))\<close>
+  using k11 k21
+  unfolding label_prop_input1_loop_updates_def
+  by clarsimp
+
+lemma snd_snd_label_prop_input1_loop_updates_cbufs_irrelevant[simp]:
+  assumes k21: \<open>k \<noteq> (((2 :: 3), (1 :: 2)))\<close>
+  shows \<open>snd (snd (label_prop_input1_loop_updates (cbufs(k := X)) os_label_prop os)) =
+    snd (snd (label_prop_input1_loop_updates cbufs os_label_prop os))\<close>
+  using k21
+  unfolding label_prop_input1_loop_updates_def
+  by clarsimp
+
+
+
+
 section \<open>Dataplane invariant transfer lemmas\<close>
 
 lemma dataplane_tracker_inv_outpu_then_fold_consumes:
@@ -4251,66 +4317,6 @@ proof -
 qed
 
 
-
-(* Per-step invariant for label_prop_input1_loop_updates.
-
-   Goal: one application of the step preserves, per-label, the zmset of the
-   combined progress emitted by the "direct" form on both updated operator slots
-   (1 and 2). With this, foo follows by induction on loop_updates.
-
-   Caveats / known gaps (from review):
-   (a) The direct form for os 2 is written here as "release_caps (os 2) 1", but
-       the actual transformer used inside label_prop_input1_loop_updates is a
-       drop_caps . produces . CONSUMES composite (see
-       label_prop_input1_loop_updates_def). Proving this invariant likely
-       requires either (i) replacing release_caps (os 2) 1 with that composite
-       on both sides, or (ii) first showing release_caps (os 2) 1 equals the
-       composite under the assumptions below and using that fact here.
-   (b) release_caps reads ocaps AND input; the step clears input (os 2) 1,
-       so the set of caps releasable before vs. after differs. The buffer
-       invariant (dataplane_tracker_inv) is what balances this --- cbufs and
-       outpu entries that get consumed are accounted for as pending caps.
-
-   Assumptions, mirroring produ_fst_snd_loop_updates plus the buffer link:
-     - step:                the single-step relation;
-     - label_prop_extension: ties os_label_prop to (os 1) so labels match;
-     - INV / LABELS / TIMES: the good-branch guards used by
-                            produ_fst_snd_loop_updates;
-     - DATAPLANE:           the standard dataplane/control-plane glue from
-                            General.thy, which contains the Src_caps_inv /
-                            Trg_caps_inv pieces that link cbufs to ocaps and
-                            the progress fields. Whoever proves this lemma can
-                            narrow this down to just the elements actually
-                            needed (Src_caps_inv, Trg_caps_inv,
-                            produ_consu_inter_supported, change_deltas_inv).
-*)
-lemma label_prop_input1_loop_updates_preserves_release_progress_zmset:
-  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
-    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
-    and T :: \<open>nat list\<close>
-    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
-    and V :: \<open>nat \<Rightarrow> nat list\<close>
-    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
-  assumes step:
-    \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-  and label_prop_extension:
-    \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
-        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
-  and INV: \<open>label_prop_upd_inv os_label_prop\<close>
-  and LABELS: \<open>\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
-  and TIMES: \<open>myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
-        input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1)) \<subseteq> set (timestamps os_label_prop)\<close>
-  and DATAPLANE: \<open>dataplane_tracker_inv os cbufs sg\<close>
-  shows "\<forall> l. zmset (map snd (filter (\<lambda> (l', _, _). l = l') (
-      extract_progress (1 :: 3) nt (snd (obtain_progress (release_caps os_label_prop' 1))) @
-      extract_progress (2 :: 3) nt (snd (obtain_progress (drop_caps (os' 2) (map (\<lambda>t. Cap t 1) (ocaps (os 2) 1))))))))
-   = zmset (map snd (filter (\<lambda> (l', _, _). l = l') (
-      extract_progress (1 :: 3) nt (snd (obtain_progress (release_caps os_label_prop 1))) @
-      extract_progress (2 :: 3) nt (snd (obtain_progress (drop_caps (os 2) (map (\<lambda>t. Cap t 1) (ocaps (os 2) 1))))))))"
-  oops
-
 section \<open>loop_updates\<close>
 
 subsection \<open>Recursive function\<close>
@@ -4702,6 +4708,466 @@ lemma loop_op_label_propagation_op_increment_op:
 
 subsection \<open>Frame and produced-progress facts for loop_updates\<close>
 
+lemma snd_snd_0_loop_updates[simp]:
+  \<open>snd (snd (loop_updates cbufs os_label_prop os)) 0 = os 0\<close>
+  apply (induct cbufs os_label_prop os rule: loop_updates.induct)
+  apply (subst loop_updates.simps)
+  apply (clarsimp split: prod.splits)
+  apply (metis prod.sel(2) snd_snd_label_prop_input1_loop_updates)
+  done
+
+lemma fst_snd_loop_updates0[simp]:
+  \<open>fst (snd (loop_updates cbufs os_label_prop (os((0 :: 3) := X)))) = fst (snd (loop_updates cbufs os_label_prop os))\<close>
+proof (induct cbufs os_label_prop os arbitrary: X rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
+      map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+        (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+      myfst t \<in> set (timestamps os_label_prop) \<and>
+      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow>
+        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d))))\<close>
+  show ?case
+  proof (cases ?good)
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have step1_update0:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop (os((0 :: 3) := X)) =
+        (cbufs1, os_label_prop1, os1((0 :: 3) := X))\<close>
+      using step1
+      unfolding label_prop_input1_loop_updates_def Let_def
+      by (auto simp add: fun_upd_twist split: prod.splits)
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update0 True in simp)
+    next
+      case False
+      have rec:
+        \<open>fst (snd (loop_updates cbufs1 os_label_prop1 (os1((0 :: 3) := X)))) =
+          fst (snd (loop_updates cbufs1 os_label_prop1 os1))\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update0 False rec in simp)
+    qed
+  next
+    case False
+    have not_good_update0:
+      \<open>\<not> (label_prop_upd_inv os_label_prop \<and>
+        (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+        (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu ((os((0 :: 3) := X)) 2) 1 @
+          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+            (input ((os((0 :: 3) := X)) 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+          myfst t \<in> set (timestamps os_label_prop) \<and>
+          fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+          (\<forall>q. myfst t \<le> q \<longrightarrow>
+            snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))))\<close>
+      using False by simp
+    show ?thesis
+      by (subst loop_updates.simps, subst (2) loop_updates.simps)
+        (simp only: not_good_update0 False if_False fst_conv snd_conv)
+
+
+
+  qed
+qed
+
+lemma fst_snd_loop_updates1[simp]:
+  \<open>fst (snd (loop_updates cbufs os_label_prop (os((1 :: 3) := X)))) = fst (snd (loop_updates cbufs os_label_prop os))\<close>
+proof (induct cbufs os_label_prop os arbitrary: X rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
+      map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+        (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+      myfst t \<in> set (timestamps os_label_prop) \<and>
+      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow>
+        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d))))\<close>
+  show ?case
+  proof (cases ?good)
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have step1_update1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop (os((1 :: 3) := X)) =
+        (cbufs1, os_label_prop1, os1((1 :: 3) := X))\<close>
+      using step1
+      unfolding label_prop_input1_loop_updates_def Let_def
+      by (auto simp add: fun_upd_twist split: prod.splits)
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update1 True in simp)
+    next
+      case False
+      have rec:
+        \<open>fst (snd (loop_updates cbufs1 os_label_prop1 (os1((1 :: 3) := X)))) =
+          fst (snd (loop_updates cbufs1 os_label_prop1 os1))\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update1 False rec in simp)
+    qed
+  next
+    case False
+    have not_good_update1:
+      \<open>\<not> (label_prop_upd_inv os_label_prop \<and>
+        (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+        (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu ((os((1 :: 3) := X)) 2) 1 @
+          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+            (input ((os((1 :: 3) := X)) 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+          myfst t \<in> set (timestamps os_label_prop) \<and>
+          fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+          (\<forall>q. myfst t \<le> q \<longrightarrow>
+            snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))))\<close>
+      using False by simp
+    show ?thesis
+      by (subst loop_updates.simps, subst (2) loop_updates.simps)
+        (simp only: not_good_update1 False if_False fst_conv snd_conv)
+
+  qed
+qed
+
+lemma fst_snd_loop_updates_cbufs10[simp]:
+  \<open>fst (snd (loop_updates (cbufs(((1 :: 3), (0 :: 2)) := X)) os_label_prop os)) =
+    fst (snd (loop_updates cbufs os_label_prop os))\<close>
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
+      map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+        (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+      myfst t \<in> set (timestamps os_label_prop) \<and>
+      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow>
+        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d))))\<close>
+  let ?cbufs_update = \<open>cbufs(((1 :: 3), (0 :: 2)) := X)\<close>
+  show ?case
+  proof (cases ?good)
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have step1_update10:
+      \<open>label_prop_input1_loop_updates ?cbufs_update os_label_prop os =
+        (cbufs1(((1 :: 3), (0 :: 2)) := X), os_label_prop1, os1)\<close>
+      using step1
+      unfolding label_prop_input1_loop_updates_def Let_def
+      by (auto simp add: fun_upd_twist split: prod.splits)
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update10 True in simp)
+    next
+      case False
+      have rec:
+        \<open>fst (snd (loop_updates (cbufs1(((1 :: 3), (0 :: 2)) := X)) os_label_prop1 os1)) =
+          fst (snd (loop_updates cbufs1 os_label_prop1 os1))\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update10 False rec in simp)
+    qed
+  next
+    case False
+    have not_good_update10:
+      \<open>\<not> (label_prop_upd_inv os_label_prop \<and>
+        (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+        (\<forall>d t. (d, t) \<in> set (?cbufs_update (1, 1) @ outpu (os 2) 1 @
+          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+            (input (os 2) 1 @ ?cbufs_update (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+          myfst t \<in> set (timestamps os_label_prop) \<and>
+          fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+          (\<forall>q. myfst t \<le> q \<longrightarrow>
+            snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))))\<close>
+      using False by simp
+    show ?thesis
+      by (subst loop_updates.simps, subst (2) loop_updates.simps)
+        (simp only: not_good_update10 False if_False fst_conv snd_conv)
+  qed
+qed
+
+lemma fst_snd_loop_updates_cbufs_irrelevant[simp]:
+  fixes k :: \<open>3 \<times> 2\<close>
+  assumes k11: \<open>k \<noteq> ((1 :: 3), (1 :: 2))\<close>
+    and k21: \<open>k \<noteq> ((2 :: 3), (1 :: 2))\<close>
+  shows \<open>fst (snd (loop_updates (cbufs(k := X)) os_label_prop os)) =
+    fst (snd (loop_updates cbufs os_label_prop os))\<close>
+proof (induct cbufs os_label_prop os arbitrary: X rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
+      map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+        (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+      myfst t \<in> set (timestamps os_label_prop) \<and>
+      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow>
+        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d))))\<close>
+  let ?cbufs_update = \<open>cbufs(k := X)\<close>
+  show ?case
+  proof (cases ?good)
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have step1_update:
+      \<open>label_prop_input1_loop_updates ?cbufs_update os_label_prop os =
+        (cbufs1(k := X), os_label_prop1, os1)\<close>
+      using step1 k11 k21
+      unfolding label_prop_input1_loop_updates_def Let_def
+      by (auto simp add: fun_upd_twist split: prod.splits)
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update True k11 k21 in simp)
+    next
+      case False
+      have rec:
+        \<open>fst (snd (loop_updates (cbufs1(k := X)) os_label_prop1 os1)) =
+          fst (snd (loop_updates cbufs1 os_label_prop1 os1))\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update False rec k11 k21 in simp)
+
+    qed
+  next
+    case False
+    have not_good_update:
+      \<open>\<not> (label_prop_upd_inv os_label_prop \<and>
+        (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+        (\<forall>d t. (d, t) \<in> set (?cbufs_update (1, 1) @ outpu (os 2) 1 @
+          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+            (input (os 2) 1 @ ?cbufs_update (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+          myfst t \<in> set (timestamps os_label_prop) \<and>
+          fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+          (\<forall>q. myfst t \<le> q \<longrightarrow>
+            snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))))\<close>
+      using False k11 k21 by simp
+    show ?thesis
+      by (subst loop_updates.simps, subst (2) loop_updates.simps)
+        (simp only: not_good_update False if_False fst_conv snd_conv)
+  qed
+qed
+
+
+lemma snd_snd_loop_updates_unchanged[simp]:
+  assumes n2: \<open>n \<noteq> (2 :: 3)\<close>
+  shows \<open>snd (snd (loop_updates cbufs os_label_prop os)) n = os n\<close>
+  using n2
+  apply (induct cbufs os_label_prop os rule: loop_updates.induct)
+  apply (subst loop_updates.simps)
+  apply (clarsimp split: prod.splits)
+  apply (metis prod.sel(2) snd_snd_label_prop_input1_loop_updates_unchanged)
+  done
+
+lemma fst_snd_loop_updates_update[simp]:
+  assumes n2: \<open>n \<noteq> (2 :: 3)\<close>
+  shows \<open>fst (snd (loop_updates cbufs os_label_prop (os(n := X)))) =
+    fst (snd (loop_updates cbufs os_label_prop os))\<close>
+proof -
+  have \<open>n = (0 :: 3) \<or> n = (1 :: 3)\<close>
+    using n2 Locations.num3_cases by blast
+  then show ?thesis
+    by auto
+qed
+
+
+
+lemma snd_snd_loop_updates_update2[simp]:
+  assumes n2: \<open>n \<noteq> (2 :: 3)\<close>
+  shows \<open>snd (snd (loop_updates cbufs os_label_prop (os(n := X)))) 2 =
+    snd (snd (loop_updates cbufs os_label_prop os)) 2\<close>
+proof (induct cbufs os_label_prop os arbitrary: X rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
+      map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+        (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+      myfst t \<in> set (timestamps os_label_prop) \<and>
+      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow>
+        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d))))\<close>
+  show ?case
+  proof (cases ?good)
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have step1_update:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop (os(n := X)) =
+        (cbufs1, os_label_prop1, os1(n := X))\<close>
+      using step1 n2
+      unfolding label_prop_input1_loop_updates_def Let_def
+      by (auto simp add: fun_upd_twist split: prod.splits)
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update True n2 in simp)
+    next
+      case False
+      have rec:
+        \<open>snd (snd (loop_updates cbufs1 os_label_prop1 (os1(n := X)))) 2 =
+          snd (snd (loop_updates cbufs1 os_label_prop1 os1)) 2\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update False rec n2 in simp)
+    qed
+  next
+    case False
+    have not_good_update:
+      \<open>\<not> (label_prop_upd_inv os_label_prop \<and>
+        (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+        (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu ((os(n := X)) 2) 1 @
+          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+            (input ((os(n := X)) 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+          myfst t \<in> set (timestamps os_label_prop) \<and>
+          fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+          (\<forall>q. myfst t \<le> q \<longrightarrow>
+            snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))))\<close>
+      using False n2 by simp
+    have os2_update: \<open>(os(n := X)) 2 = os 2\<close>
+      using n2 by simp
+    show ?thesis
+      by (subst loop_updates.simps, subst (2) loop_updates.simps)
+        (simp only: not_good_update False if_False fst_conv snd_conv os2_update)
+
+
+  qed
+qed
+
+lemma snd_snd_loop_updates_update[simp]:
+  assumes nm: \<open>n \<noteq> m\<close>
+  shows \<open>snd (snd (loop_updates cbufs os_label_prop (os(n := X)))) m =
+    snd (snd (loop_updates cbufs os_label_prop os)) m\<close>
+proof (cases \<open>m = (2 :: 3)\<close>)
+  case True
+  then show ?thesis
+    using nm by simp
+next
+  case False
+  then show ?thesis
+    using nm by simp
+qed
+
+
+lemma snd_snd_loop_updates_cbufs_irrelevant2[simp]:
+  fixes k :: \<open>3 \<times> 2\<close>
+  assumes k11: \<open>k \<noteq> ((1 :: 3), (1 :: 2))\<close>
+    and k21: \<open>k \<noteq> ((2 :: 3), (1 :: 2))\<close>
+  shows \<open>snd (snd (loop_updates (cbufs(k := X)) os_label_prop os)) 2 =
+    snd (snd (loop_updates cbufs os_label_prop os)) 2\<close>
+proof (induct cbufs os_label_prop os arbitrary: X rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    (\<forall>d t. (d, t) \<in> set (cbufs (1, 1) @ outpu (os 2) 1 @
+      map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+        (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+      myfst t \<in> set (timestamps os_label_prop) \<and>
+      fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow>
+        snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d))))\<close>
+  let ?cbufs_update = \<open>cbufs(k := X)\<close>
+  show ?case
+  proof (cases ?good)
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have step1_update:
+      \<open>label_prop_input1_loop_updates ?cbufs_update os_label_prop os =
+        (cbufs1(k := X), os_label_prop1, os1)\<close>
+      using step1 k11 k21
+      unfolding label_prop_input1_loop_updates_def Let_def
+      by (auto simp add: fun_upd_twist split: prod.splits)
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update True k11 k21 in simp)
+    next
+      case False
+      have rec:
+        \<open>snd (snd (loop_updates (cbufs1(k := X)) os_label_prop1 os1)) 2 =
+          snd (snd (loop_updates cbufs1 os_label_prop1 os1)) 2\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps, subst (2) loop_updates.simps)
+          (use \<open>?good\<close> step1 step1_update False rec k11 k21 in simp)
+    qed
+  next
+    case False
+    have not_good_update:
+      \<open>\<not> (label_prop_upd_inv os_label_prop \<and>
+        (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+        (\<forall>d t. (d, t) \<in> set (?cbufs_update (1, 1) @ outpu (os 2) 1 @
+          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+            (input (os 2) 1 @ ?cbufs_update (2, 1) @ outpu os_label_prop 1)) \<longrightarrow>
+          myfst t \<in> set (timestamps os_label_prop) \<and>
+          fst (de1 os_label_prop d) \<in> all_vertices os_label_prop (myfst t) \<and>
+          (\<forall>q. myfst t \<le> q \<longrightarrow>
+            snd (de1 os_label_prop d) \<in> cc_of (all_edges os_label_prop q) (fst (de1 os_label_prop d)))))\<close>
+      using False k11 k21 by simp
+    show ?thesis
+      by (subst loop_updates.simps, subst (2) loop_updates.simps)
+        (simp only: not_good_update False if_False fst_conv snd_conv)
+  qed
+qed
+
+lemma snd_snd_loop_updates_cbufs_irrelevant[simp]:
+  fixes k :: \<open>3 \<times> 2\<close>
+  assumes k11: \<open>k \<noteq> ((1 :: 3), (1 :: 2))\<close>
+    and k21: \<open>k \<noteq> ((2 :: 3), (1 :: 2))\<close>
+  shows \<open>snd (snd (loop_updates (cbufs(k := X)) os_label_prop os)) =
+    snd (snd (loop_updates cbufs os_label_prop os))\<close>
+proof (rule ext)
+  fix n :: 3
+  show \<open>snd (snd (loop_updates (cbufs(k := X)) os_label_prop os)) n =
+    snd (snd (loop_updates cbufs os_label_prop os)) n\<close>
+  proof (cases \<open>n = (2 :: 3)\<close>)
+    case True
+    then show ?thesis
+      using k11 k21 by simp
+  next
+    case False
+    then show ?thesis
+      by simp
+  qed
+qed
+lemma snd_snd_loop_updates_cbufs11:
+  \<open>snd (snd (loop_updates (cbufs(((1 :: 3), (1 :: 2)) := X)) os_label_prop os)) =
+    snd (snd (loop_updates cbufs os_label_prop os))\<close>
+oops
+
+
+
+
+
+
 lemma fst_loop_updates[simp]:
   \<open>fst (loop_updates cbufs os_label_prop os) = cbufs((2, 1) := [], (1, 1) := [])\<close>
 proof (induct cbufs os_label_prop os rule: loop_updates.induct)
@@ -4748,263 +5214,6 @@ proof (induct cbufs os_label_prop os rule: loop_updates.induct)
     qed
   qed
 qed
-
-
-lemma produ_fst_snd_loop_updates_prefix:
-  fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
-    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
-  obtains produced where
-    \<open>produ (fst (snd (loop_updates cbufs os_label_prop os))) = produ os_label_prop @ produced\<close>
-    \<open>\<forall>p pt n. (p, pt, n) \<in> set produced \<longrightarrow>
-      p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-  oops
-(* proof (induct cbufs os_label_prop os arbitrary: thesis rule: loop_updates.induct)
-  case (1 cbufs os_label_prop os)
-  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
-    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
-    myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
-      input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1))
-      \<subseteq> set (timestamps os_label_prop)\<close>
-  show ?case
-  proof (cases ?good)
-    case False
-    have loop_eq: \<open>loop_updates cbufs os_label_prop os =
-      (cbufs((2, 1) := [], (1, 1) := []), os_label_prop, os)\<close>
-      by (subst loop_updates.simps) (use False in auto)
-    show ?thesis
-    proof (rule "1.prems"[of Nil])
-      show \<open>produ (fst (snd (loop_updates cbufs os_label_prop os))) = produ os_label_prop @ []\<close>
-        using loop_eq by simp
-      show \<open>\<forall>p pt n. (p, pt, n) \<in> set [] \<longrightarrow>
-        p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-        by simp
-    qed
-  next
-    case True
-    obtain cbufs' :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
-      and os_label_prop' :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-      and os' :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
-      where step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
-      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
-    let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
-      map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-        (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
-    let ?consumed = \<open>CONSUMES 1 ?msgs (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
-    let ?produced1 = \<open>map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-      (snd (label_prop_input1_batched ?consumed (input ?consumed 1)))\<close>
-    have consumed_ts: \<open>timestamps ?consumed = timestamps os_label_prop\<close>
-      by simp
-    have produced1_props: \<open>\<forall>p pt n. (p, pt, n) \<in> set ?produced1 \<longrightarrow>
-      p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-    proof (intro allI impI)
-      fix p pt n
-      assume \<open>(p, pt, n) \<in> set ?produced1\<close>
-      then show \<open>p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-        by (elim label_prop_input1_batched_produced_memberD) (simp add: consumed_ts)
-    qed
-    have step_prod0:
-      \<open>produ (fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))) =
-        produ os_label_prop @ ?produced1\<close>
-      unfolding label_prop_input1_loop_updates_def Let_def
-      by (simp add: fold_consumes split_beta split: capability.splits)
-    have step_prod: \<open>produ os_label_prop' = produ os_label_prop @ ?produced1\<close>
-      using step_prod0 step by simp
-    have step_os_label_prop':
-      \<open>os_label_prop' = fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))\<close>
-      using step by simp
-    have step_ts: \<open>timestamps os_label_prop' = timestamps os_label_prop\<close>
-      using step_os_label_prop'
-      unfolding label_prop_input1_loop_updates_def Let_def
-      by (simp add: fold_consumes split_beta)
-    show ?thesis
-    proof (cases \<open>outpu os_label_prop' 1 = []\<close>)
-      case True
-      have loop_eq: \<open>loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
-        by (subst loop_updates.simps) (use \<open>?good\<close> step True in auto)
-      show ?thesis
-      proof (rule "1.prems"[of \<open>?produced1 @ []\<close>])
-        show \<open>produ (fst (snd (loop_updates cbufs os_label_prop os))) =
-          produ os_label_prop @ (?produced1 @ [])\<close>
-          using loop_eq step_prod by simp
-        show \<open>\<forall>p pt n. (p, pt, n) \<in> set (?produced1 @ []) \<longrightarrow>
-          p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-          using produced1_props by simp
-      qed
-    next
-      case False
-      obtain produced2 where rec_prod:
-        \<open>produ (fst (snd (loop_updates cbufs' os_label_prop' os'))) =
-          produ os_label_prop' @ produced2\<close>
-        and rec_props: \<open>\<forall>p pt n. (p, pt, n) \<in> set produced2 \<longrightarrow>
-          p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop') \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-        using "1.hyps"[OF \<open>?good\<close> step[symmetric] refl refl False]
-        by blast
-      have loop_eq: \<open>loop_updates cbufs os_label_prop os = loop_updates cbufs' os_label_prop' os'\<close>
-        by (subst loop_updates.simps) (use \<open>?good\<close> step False in auto)
-      show ?thesis
-      proof (rule "1.prems"[of \<open>?produced1 @ produced2\<close>])
-        show \<open>produ (fst (snd (loop_updates cbufs os_label_prop os))) =
-          produ os_label_prop @ (?produced1 @ produced2)\<close>
-          using loop_eq rec_prod step_prod by (simp add: append_assoc)
-        show \<open>\<forall>p pt n. (p, pt, n) \<in> set (?produced1 @ produced2) \<longrightarrow>
-          p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-          using produced1_props rec_props step_ts by auto
-      qed
-    qed
-  qed
-qed
- *)
-
-lemma produ_fst_snd_loop_updatesE:
-  fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
-    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and os_label_prop_consumed :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
-  assumes INV: \<open>label_prop_upd_inv os_label_prop\<close>
-    and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
-    and TIMES: \<open>myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
-        input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1))
-      \<subseteq> set (timestamps os_label_prop)\<close>
-    and os_label_prop_consumed_def:
-    \<open>os_label_prop_consumed =
-      CONSUMES 1
-        (cbufs (1, 1) @ outpu (os 2) 1 @
-          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-            (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
-        (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
-  obtains produced where
-    \<open>produ (fst (snd (loop_updates cbufs os_label_prop os))) =
-      produ os_label_prop @
-        map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-          (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))) @
-        produced\<close>
-    \<open>\<forall>p pt n. (p, pt, n) \<in> set (
-        map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-          (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))) @ produced) \<longrightarrow>
-      p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop_consumed) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-(* proof -
-  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
-    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
-    myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
-      input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1))
-      \<subseteq> set (timestamps os_label_prop)\<close>
-  have good: ?good
-    using INV LABELS TIMES by simp
-  obtain cbufs' :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
-    and os_label_prop' :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and os' :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
-    where step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
-    by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
-  let ?produced1 = \<open>map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-    (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1)))\<close>
-  have consumed_ts: \<open>timestamps os_label_prop_consumed = timestamps os_label_prop\<close>
-    using os_label_prop_consumed_def by simp
-  have produced1_props: \<open>\<forall>p pt n. (p, pt, n) \<in> set ?produced1 \<longrightarrow>
-    p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop_consumed) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-  proof (intro allI impI)
-    fix p pt n
-    assume \<open>(p, pt, n) \<in> set ?produced1\<close>
-    then show \<open>p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop_consumed) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-      by (elim label_prop_input1_batched_produced_memberD) simp
-  qed
-  have step_prod0:
-    \<open>produ (fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))) =
-      produ os_label_prop @ ?produced1\<close>
-    using os_label_prop_consumed_def
-    unfolding label_prop_input1_loop_updates_def Let_def
-    by (simp add: fold_consumes split_beta split: capability.splits)
-  have step_prod: \<open>produ os_label_prop' = produ os_label_prop @ ?produced1\<close>
-    using step_prod0 step by simp
-  have step_os_label_prop':
-    \<open>os_label_prop' = fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))\<close>
-    using step by simp
-  have step_ts: \<open>timestamps os_label_prop' = timestamps os_label_prop_consumed\<close>
-    using step_os_label_prop' os_label_prop_consumed_def
-    unfolding label_prop_input1_loop_updates_def Let_def
-    by (simp add: fold_consumes split_beta)
-  show ?thesis
-  proof (cases \<open>outpu os_label_prop' 1 = []\<close>)
-    case True
-    have \<open>loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
-      by (subst loop_updates.simps) (use good step True in auto)
-    then have prod_eq: \<open>produ (fst (snd (loop_updates cbufs os_label_prop os))) =
-      produ os_label_prop @ ?produced1 @ []\<close>
-      using step_prod by simp
-    show ?thesis
-      by (rule that[OF prod_eq]) (use produced1_props in simp)
-  next
-    case False
-    obtain produced2 where rec_prod:
-      \<open>produ (fst (snd (loop_updates cbufs' os_label_prop' os'))) =
-        produ os_label_prop' @ produced2\<close>
-      and rec_props: \<open>\<forall>p pt n. (p, pt, n) \<in> set produced2 \<longrightarrow>
-        p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop') \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-      by (elim produ_fst_snd_loop_updates_prefix)
-    have \<open>loop_updates cbufs os_label_prop os = loop_updates cbufs' os_label_prop' os'\<close>
-      by (subst loop_updates.simps) (use good step False in auto)
-    then have prod_eq: \<open>produ (fst (snd (loop_updates cbufs os_label_prop os))) =
-      produ os_label_prop @ ?produced1 @ produced2\<close>
-      using rec_prod step_prod by (simp add: append_assoc)
-    have props: \<open>\<forall>p pt n. (p, pt, n) \<in> set (?produced1 @ produced2) \<longrightarrow>
-      p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop_consumed) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-      using produced1_props rec_props step_ts by auto
-    show ?thesis
-      by (rule that[OF prod_eq props])
-  qed
-qed *)
-  oops
-
-lemma produ_fst_snd_loop_updates:
-  fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
-    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and os_label_prop_consumed :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
-  assumes INV: \<open>label_prop_upd_inv os_label_prop\<close>
-    and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
-    and TIMES: \<open>myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @
-        input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1))
-      \<subseteq> set (timestamps os_label_prop)\<close>
-    and os_label_prop_consumed_def:
-    \<open>os_label_prop_consumed =
-      CONSUMES 1
-        (cbufs (1, 1) @ outpu (os 2) 1 @
-          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-            (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
-        (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
-  shows \<open>\<exists>produced.
-    produ (fst (snd (loop_updates cbufs os_label_prop os))) =
-      produ os_label_prop @
-        map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-          (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))) @
-        produced \<and>
-    (\<forall>p pt n. (p, pt, n) \<in> set produced \<longrightarrow>
-      p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop_consumed) \<and> MyPair (myfst pt) 0 \<le> pt) \<and>
-    (\<forall>p pt n. (p, pt, n) \<in> set (
-        map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-          (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1)))) \<longrightarrow>
-      p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop_consumed) \<and> MyPair (myfst pt) 0 \<le> pt)\<close>
-(* proof -
-  obtain produced where prod_eq:
-    \<open>produ (fst (snd (loop_updates cbufs os_label_prop os))) =
-      produ os_label_prop @
-        map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-          (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))) @
-        produced\<close>
-    and props: \<open>\<forall>p pt n. (p, pt, n) \<in> set (
-        map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-          (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))) @ produced) \<longrightarrow>
-      p = 1 \<and> n = 1 \<and> myfst pt \<in> set (timestamps os_label_prop_consumed) \<and> MyPair (myfst pt) 0 \<le> pt\<close>
-    by (rule produ_fst_snd_loop_updatesE
-        [where os = os and os_label_prop = os_label_prop
-          and os_label_prop_consumed = os_label_prop_consumed and cbufs = cbufs,
-          OF INV LABELS TIMES os_label_prop_consumed_def])
-  show ?thesis
-    using prod_eq props
-    by (smt (verit, del_insts) append.assoc in_set_conv_decomp label_prop_input1_batched_produced_memberD)
-qed
- *)
-  oops
 
 
 subsection \<open>Dataplane invariant preservation for loop_updates\<close>
@@ -5147,54 +5356,6 @@ qed
 
 subsection \<open>Progress comparison for loop_updates\<close>
 
-(* foo: the loop's combined emitted progress should match the direct
-   release/drop progress, per location, after compressing timestamps with zmset.
-
-   Current proof strategy/discoveries:
-   - Do not rely on label_prop_input1_loop_updates_preserves_release_progress_zmset
-     as currently stated. Its os2 side looks suspicious: the one-step update has
-     already inserted the negative inter entries for the old os2 caps, while that
-     lemma drops ocaps (os 2) again after the step.
-   - The earlier one-step-collapse idea is not the intended strategy: loop_updates
-     should be treated as an iteration of label_prop_input1_loop_updates until no
-     more label-propagation output is produced.  The proof should therefore use a
-     loop_updates induction or an iteration invariant, not a single-step rewrite.
-   - nt must be tied to the graph used by dataplane_tracker_inv; otherwise the
-     extract_progress labels can be arbitrary and the dataplane invariant says
-     nothing useful about them. Hence NT below.
-   - MSGS is needed to preserve label_prop_upd_inv/LABELS/TIMES through each
-     iteration and to rule out malformed input-1 messages.
-   - The topology/intsum/input-ocaps assumptions are the ones needed to apply
-     loop_updates_preserves_dataplane_tracker_inv to the result of loop_updates.
-   - If the final state still has label-propagation output, xs contains fresh
-     positive progress at the target of port 1. There is no corresponding term in
-     the current ys. Therefore either the theorem needs NO_LABEL_OUTPUT, or ys/the
-     conclusion must be changed to account for the remaining output/channel
-     progress.
-   - NO_LABEL_OUTPUT may be derivable in the larger correctness proof from a
-     quiescence/fixpoint condition: the existing lemma
-     label_prop_input1_loop_updates_sum_measure_decrease_if_label_output_nonempty
-     gives final output nonempty \<Longrightarrow> strict decrease of the label-measure sum.
-     A no-decrease/minimality/fixpoint fact for the current state would give the
-     contrapositive.
-   - Plain labels_stable is probably not enough for that contrapositive: it makes
-     min_label constant along a connected component, but an incoming label carried
-     by a message can still be a smaller vertex in the same component. A more
-     local replacement for NO_LABEL_OUTPUT would be a "no lower pending label"
-     assumption for every input-1 message consumed by the loop.
-   - A new strategy should probably prove an induction invariant for the
-     accumulated progress of all loop_updates iterations: each iteration cancels
-     the positive target progress produced by the previous iteration with the
-     negative source/drop progress of the next, leaving only the initial
-     release/drop contribution once the final buffers/output are empty.
-*)
-
-
-(* This packages the existing invariant-preservation theorem in exactly the
-   final-state shape needed by the progress comparison.  The important wrinkle is
-   that loop_updates_preserves_dataplane_tracker_inv talks about os with slot 1
-   replaced by op_state_base os_label_prop; label_prop_extension identifies that
-   slot with the original os 1. *)
 lemma loop_updates_final_dataplane_tracker_inv_for_progress:
   fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -8384,7 +8545,7 @@ let ?loop_res =
             (snd (obtain_progress (?os_after_loop_progress n 0))))
           (pt_tr ?sg_first_propa)\<rparr>)\<close>
       by (rule dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>])
-        (simp_all add: op_state_base_def operator_state.defs obtain_progress_def)
+        (simp_all add: op_state_base_def operator_state.defs obtain_progress_def flip: map_append filter_append fold_append)
     show ?thesis
       using clean_upfro inv_no_upfro by simp
   qed
@@ -8398,7 +8559,7 @@ let ?loop_res =
         (?os_after_ooo_input_progress n) =
        graph_summar_nt (summ ?sg_first_propa) (nxt ?sg_first_propa) (?os_after_loop_progress n)\<close>
       by (rule graph_summar_nt_intsum_cong)
-        (simp add: op_state_base_def operator_state.defs obtain_progress_def)
+        (simp add: op_state_base_def operator_state.defs obtain_progress_def flip: map_append filter_append fold_append)
     show ?thesis
       using eq0 G_loop by simp
   qed
@@ -8439,7 +8600,18 @@ let ?loop_res =
           (extract_progress (1 :: 3) (nxt (?sg_after_ooo_input_progress n))
             (snd (obtain_progress (?os_label_after_loop_updates n))))
           (pt_tr (?sg_after_ooo_input_progress n))\<rparr>)\<close>
-      by (rule dataplane_tracker_inv_progress[OF dataplane_after_ooo_input_progress D_ooo G_ooo progress_st])
+      apply (rule dataplane_tracker_inv_progress
+          [where os="?os_after_ooo_input_progress n"
+             and cbufs="?cbufs_after_loop_updates n"
+             and sg="?sg_after_ooo_input_progress n"
+             and nid="1 :: 3"
+             and st="snd (obtain_progress (?os_label_after_loop_updates n))"])
+         apply (rule dataplane_after_ooo_input_progress)
+        apply (rule D_ooo)
+       apply (rule G_ooo)
+      apply (rule progress_st)
+      done
+
     show ?thesis
       using inv_progress base_progress
       by simp
@@ -8466,16 +8638,34 @@ let ?loop_res =
       \<open>graph_summar_nt (summ (?sg_after_label_progress n)) (nxt (?sg_after_label_progress n))
         (?os_after_label_progress n)\<close>
     proof -
-      have eq:
-        \<open>graph_summar_nt (summ (?sg_after_label_progress n)) (nxt (?sg_after_label_progress n))
+      have intsum_eq:
+        \<open>\<And>nid. intsum (?os_after_label_progress n nid) =
+          intsum (?os_after_ooo_input_progress n nid)\<close>
+      proof -
+        fix nid :: 3
+        show \<open>intsum (?os_after_label_progress n nid) =
+          intsum (?os_after_ooo_input_progress n nid)\<close>
+        proof (cases \<open>nid = (1 :: 3)\<close>)
+          case True
+          then show ?thesis
+            by (simp add: op_state_base_def operator_state.defs obtain_progress_def)
+        next
+          case False
+          then show ?thesis
+            by simp
+        qed
+      qed
+      have eq0:
+        \<open>graph_summar_nt (summ (?sg_after_ooo_input_progress n)) (nxt (?sg_after_ooo_input_progress n))
           (?os_after_label_progress n) =
          graph_summar_nt (summ (?sg_after_ooo_input_progress n)) (nxt (?sg_after_ooo_input_progress n))
           (?os_after_ooo_input_progress n)\<close>
-        by (rule graph_summar_nt_intsum_cong)
-          (simp add: op_state_base_def operator_state.defs obtain_progress_def)
+        by (rule graph_summar_nt_intsum_cong) (rule intsum_eq)
+
       show ?thesis
-        using eq G_ooo by simp
+        using eq0 G_ooo by simp
     qed
+
     have base_progress:
       \<open>fst (obtain_progress (?os_after_label_progress n 2)) =
         op_state_base (fst (obtain_progress (?os_after_label_progress n 2)))\<close>
@@ -8639,8 +8829,8 @@ let ?loop_res =
           using timely_input_stream_advances_frontier[OF input_stream_inv, of t] apply -
           apply clarsimp
           subgoal premises stream_move for n
-              (* first_propa is obtained above from the dataplane invariant. *)
-                apply (intro exI conjI[rotated])
+
+            apply (intro exI conjI[rotated])
                  apply (intro relcomppI)
                    apply (rule bisim_refl)
                   defer
@@ -8890,12 +9080,123 @@ let ?loop_res =
                     apply (rule refl)+
                    apply (simp add: flip: fold_append change_multiplicities_append_alt)
 
-        subgoal premises
-                  apply (rule FalseE)
+                subgoal premises prems
                   using dataplane_after_loop_updates[of n] apply -
-                  apply (simp flip: map_append fold_append filter_append)
+                  unfolding dataplane_tracker_inv_def
+                  apply (clarsimp simp add: simp flip: fold_append change_multiplicities_append_alt)
+                  subgoal premises dt_inv' for caps'
+                using propagate_all_frontier_change_multiplicities_c_imp_correctnessE
+                  [OF D, of \<open>c'\<close>
+                    \<open>extract_progress 0 (subgraph.nxt sg)
+                    (snd (obtain_progress
+                           (fst (obtain_progress os_input)
+                            \<lparr>es := map_entry 0 (ldropn n) (es (fst (obtain_progress os_input))),
+                               ocaps :=
+                                 (ocaps (fst (obtain_progress os_input)))(0 := ocaps_updates (ocaps (fst (obtain_progress os_input)) 0) (ltaken n (es (fst (obtain_progress os_input)) 0))),
+                               inter := map (case_event (\<lambda>a aa. undefined) (\<lambda>t. (0, t, - 1)) (\<lambda>t. (0, t, 1))) (filter (Not \<circ> is_Data) (ltaken n (es (fst (obtain_progress os_input)) 0))),
+                               produ := map (case_event (\<lambda>t d. (0, t, 1)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (es (fst (obtain_progress os_input)) 0))),
+                               outpu := (outpu os_input)(0 := [])\<rparr>))) @
+                   extract_progress 1 (subgraph.nxt sg)
+                    (snd (obtain_progress
+                           (fst (snd (loop_updates cbufs
+                                       (fst (label_prop_input0_batched
+                                              (CONSUMES 0 (map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))
+                                                (CONSUMES 0 (outpu (os 0) 0) (CONSUMES 0 (cbufs (1, 0)) (os_label_prop\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c' (Loc 1 (Trg p))), initia := True\<rparr>))))
+                                              (input (os 1) 0 @
+                                               cbufs (1, 0) @ outpu (os 0) 0 @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))))
+                                       os))))) @
+                   extract_progress 2 (subgraph.nxt sg)
+                    (snd (obtain_progress
+                           (snd (snd (loop_updates cbufs
+                                       (fst (label_prop_input0_batched
+                                              (CONSUMES 0 (map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))
+                                                (CONSUMES 0 (outpu (os 0) 0) (CONSUMES 0 (cbufs (1, 0)) (os_label_prop\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c' (Loc 1 (Trg p))), initia := True\<rparr>))))
+                                              (input (os 1) 0 @
+                                               cbufs (1, 0) @ outpu (os 0) 0 @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))))
+                                       os))
+                             2)))\<close>,
+                    unfolded subgraph_inv(1), simplified]
+                apply -
+                apply (drule meta_mp)
+                subgoal
+                  using dt_inv'(8)[unfolded propagation_inv_def subgraph_inv(1)] by simp
+                apply (drule meta_mp)
+                subgoal
+                  using dt_inv'(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
+                apply (drule meta_mp)
+                subgoal
+                  using dt_inv'(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
+                apply (drule meta_mp)
+                subgoal
+                  apply (clarsimp simp flip: fold_append change_multiplicities_append_alt simp add: split_beta Misc.set_map_filter op_state_base_def extract_progress_def image_iff split: prod.splits option.splits event.splits)
+                  subgoal for l t 
+                    apply (elim disjE exE; (clarsimp simp add: obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)?)
+                    subgoal
+                      by (metis event.exhaust is_Data_def surj_pair)
+                    subgoal
+                      by (metis event.exhaust is_Data_def surj_pair)
+                    subgoal for p
+                      using  conjunct1[OF dt_inv'(7)[unfolded change_deltas_inv_def, rule_format, of p t 0 1, simplified]] apply -
+                      by (clarsimp simp add: op_state_base_def obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)
+                    subgoal for p
+                      using  dt_inv'(7)[unfolded change_deltas_inv_def, rule_format, of p t 0 1, simplified] apply -
+                      by (clarsimp simp add: op_state_base_def obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)
+                    subgoal for p
+                      using  dt_inv'(7)[unfolded change_deltas_inv_def, rule_format, of p t 0 1, simplified] apply -
+                      by (clarsimp simp add: op_state_base_def obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)
+                    subgoal for p
+                      using  dt_inv'(7)[unfolded change_deltas_inv_def, rule_format, of p t 0 2, simplified] apply -
+                      by (clarsimp simp add: op_state_base_def obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)
+                    subgoal for p
+                      using  dt_inv'(7)[unfolded change_deltas_inv_def, rule_format, of p t 0 2, simplified] apply -
+                      by (clarsimp simp add: op_state_base_def obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)
+                    subgoal for p
+                      using  dt_inv'(7)[unfolded change_deltas_inv_def, rule_format, of p t 0 2, simplified] apply -
+                      by (clarsimp simp add: op_state_base_def obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)
+                    done
+                  done
+                apply (drule meta_mp)
+                subgoal
+                  apply clarsimp
+                  subgoal for l t m
+                    apply (subst frontier_less_equal_iff2[symmetric])
+                    apply (rule frontier_less_equal_le_trans[rotated])
+                     apply (rule dt_inv'(5)[unfolded imp_front_inv_def, rule_format, of l])
+                    apply (elim disjE)
+                    subgoal
+                      apply (rule dt_inv'(9)[unfolded extract_prog_changes_above_impl_inv_def
+                            changes_above_impl_inv_def, simplified, rule_format,
+                            where xs=Nil and x=\<open>(l, t, m)\<close> and nid=0, simplified])
+                      apply (clarsimp simp add: op_state_base_def obtain_progress_def subgraph_inv(1,2) set_map_filter
+                          split_beta operator_state.defs os_inv(1) image_iff split: option.splits)
+                      done
+                    subgoal
+                      apply (rule dt_inv'(9)[unfolded extract_prog_changes_above_impl_inv_def
+                            changes_above_impl_inv_def, simplified, rule_format,
+                            where xs=Nil and x=\<open>(l, t, m)\<close> and nid=1, simplified])
+                      apply (clarsimp simp add: op_state_base_def obtain_progress_def subgraph_inv(1,2) set_map_filter
+                          split_beta operator_state.defs os_inv(1) image_iff split: option.splits)
+                      done
+                    subgoal
+                      apply (rule dt_inv'(9)[unfolded extract_prog_changes_above_impl_inv_def
+                            changes_above_impl_inv_def, simplified, rule_format,
+                            where xs=Nil and x=\<open>(l, t, m)\<close> and nid=2, simplified])
+                      apply (clarsimp simp add: op_state_base_def obtain_progress_def subgraph_inv(1,2) set_map_filter
+                          split_beta operator_state.defs os_inv(1) image_iff split: option.splits)
+                      done
+                    done
+                  done
+                apply (drule meta_mp)
+                subgoal
+                  subgoal
+                    using raw_summary_no_self_loop by auto
+                  done
+                apply (clarsimp simp flip: fold_append map_append)
+                subgoal for c'
 
-                find_theorems propagate_all
+
+end
+   
 
                 sorry
               done
