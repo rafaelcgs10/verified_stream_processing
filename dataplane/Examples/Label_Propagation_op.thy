@@ -101,10 +101,7 @@ definition label_prop_upd_inv where
       edge_vertices {(v, w). w \<in> set (graph os t v)} \<noteq> {}) \<and>
     (\<forall>t. set (vertices os t) = edge_vertices {(v, w). w \<in> set (graph os t v)}) \<and>
     (\<forall>t. sym {(v, w). w \<in> set (graph os t v)}) \<and>
-    (\<forall>t v. v \<notin> all_vertices os t \<longrightarrow> label os t v = v) \<and>
-    (\<forall>d t. (d, t) \<in> set (input os 1) \<longrightarrow>
-      myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t) \<and>
-      (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d))))"
+    (\<forall>t v. v \<notin> all_vertices os t \<longrightarrow> label os t v = v)"
 
 lemma label_prop_upd_inv_intsum_update[simp]:
   "label_prop_upd_inv (os\<lparr>intsum := xs\<rparr>) = label_prop_upd_inv os"
@@ -171,6 +168,15 @@ lemma label_prop_upd_inv_fold_consumes_port0I:
   shows \<open>label_prop_upd_inv (fold (\<lambda>(d, t) os. consumes os 0 t d) xs os)\<close>
   using inv by simp
 
+definition wf_label_prop_updates where
+  \<open>wf_label_prop_updates os S \<longleftrightarrow> (\<forall>(d, t) \<in> S. myfst t \<in> set (timestamps os)
+    \<and> fst (de1 os d) \<in> all_vertices os (myfst t)
+    \<and> (\<forall>t' \<ge> myfst t. snd (de1 os d) \<in> cc_of (all_edges os t') (fst (de1 os d))))\<close>
+
+lemma wf_label_prop_updates_un:
+  "wf_label_prop_updates os (S1 \<union> S2) \<longleftrightarrow> wf_label_prop_updates os S1 \<and> wf_label_prop_updates os S2"
+  unfolding wf_label_prop_updates_def
+  by auto
 
 lemma label_prop_upd_inv_vertices_timestamps_iff:
   assumes "label_prop_upd_inv os"
@@ -1479,8 +1485,9 @@ definition label_propagation_op_logic where
         (v, l) = de1 os d;
         t1 = myfst t;
         os' = input_tl os 1;
-        os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l);
-        batch = label_prop_label_batch os os'' t1 v l t
+        l' = min (min_label os t1 v) l;
+        os'' = label_prop_label_record_update os' t1 v l';
+        batch = label_prop_label_batch os os'' t1 v l' t
       in
         {|release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1|}))
   (let
@@ -1579,6 +1586,10 @@ lemma all_vertices_drop_caps[simp]:
   unfolding all_vertices_def drop_caps_def
   apply clarsimp
   done
+
+lemma all_vertices_add_caps[simp]:
+  "all_vertices (add_caps os caps) = all_vertices os"
+  unfolding all_vertices_def add_caps_def by simp
 
 lemma all_vertices_produces[simp]:
   "all_vertices (produces os batch) = all_vertices os"
@@ -2384,6 +2395,7 @@ lemma label_prop_upd_inv_input0_preserved:
     "(v, l) = (if min_label os t1 v1 > min_label os t1 v2
         then (v1, min_label os t1 v2)
         else (v2, min_label os t1 v1))"
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows "label_prop_upd_inv os'"
 proof -
   have ts_old: "\<And>q. q \<in> set (timestamps os) \<longleftrightarrow>
@@ -2391,11 +2403,7 @@ proof -
     and vertices_old: "\<And>q. set (vertices os q) = edge_vertices {(a, b). b \<in> set (graph os q a)}"
     and sym_old: "\<And>q. sym {(a, b). b \<in> set (graph os q a)}"
     and label_old: "\<And>q x. x \<notin> all_vertices os q \<Longrightarrow> label os q x = x"
-    and pending_old: "\<And>d t. (d, t) \<in> set (input os 1) \<Longrightarrow>
-      myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t) \<and>
-      (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d)))"
     using inv unfolding label_prop_upd_inv_def by metis+
-
   have old_edges_subset: "\<And>q. all_edges os q \<subseteq> all_edges os' q"
     using timestamps_eq graph_eq vertices_eq
     unfolding all_edges_def all_vertices_def set_neighbors
@@ -2443,41 +2451,12 @@ proof -
         using label_old[OF not_old] label_eq False by auto
     qed
   qed
-  have pending_new: "\<And>d t. (d, t) \<in> set (input os' 1) \<Longrightarrow>
-      myfst t \<in> set (timestamps os') \<and> fst (de1 os' d) \<in> all_vertices os' (myfst t) \<and>
-      (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os' d) \<in> cc_of (all_edges os' q) (fst (de1 os' d)))"
-  proof -
-    fix d t
-    assume in_new: "(d, t) \<in> set (input os' 1)"
-    then have in_old: "(d, t) \<in> set (input os 1)"
-      using input1_eq by auto
-    then have old:
-      "myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t) \<and>
-        (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d)))"
-      by (rule pending_old)
-    have ts_new': "myfst t \<in> set (timestamps os')"
-      using old timestamps_eq by auto
-    have vertex_new: "fst (de1 os' d) \<in> all_vertices os' (myfst t)"
-      using old de1_eq all_vertices_mono by auto
-    have msg_new: "\<And>q. myfst t \<le> q \<Longrightarrow>
-        snd (de1 os' d) \<in> cc_of (all_edges os' q) (fst (de1 os' d))"
-    proof -
-      fix q
-      assume q_ge: "myfst t \<le> q"
-      have "snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d))"
-        using old q_ge by blast
-      then show "snd (de1 os' d) \<in> cc_of (all_edges os' q) (fst (de1 os' d))"
-        using old_edges_subset de1_eq cc_of_mono by metis
-    qed
-    from ts_new' vertex_new msg_new
-    show "myfst t \<in> set (timestamps os') \<and> fst (de1 os' d) \<in> all_vertices os' (myfst t) \<and>
-        (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os' d) \<in> cc_of (all_edges os' q) (fst (de1 os' d)))"
-      by blast
-  qed
-
+  have wf_upd_new: \<open>wf_label_prop_updates os' (set (input os' 1))\<close>
+    using input1_eq timestamps_eq all_vertices_mono de1_eq old_edges_subset cc_of_mono wf_upd
+    unfolding wf_label_prop_updates_def by (smt (verit, best) list.set_intros(2) split_beta')
   show ?thesis
     unfolding label_prop_upd_inv_def
-    using ts_new vertices_eq_new sym_new label_new pending_new by blast
+    using ts_new vertices_eq_new sym_new label_new wf_upd_new by blast
 qed
 
 lemma label_prop_upd_inv_cong:
@@ -2498,6 +2477,7 @@ lemma label_prop_upd_inv_input1_preserved:
     and vertices_eq: "vertices os' = vertices os"
     and de1_eq: "de1 os' = de1 os"
     and label_eq: "label os' = (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))"
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows "label_prop_upd_inv os'"
 proof -
   have ts_old: "\<And>q. q \<in> set (timestamps os) \<longleftrightarrow>
@@ -2505,9 +2485,6 @@ proof -
     and vertices_old: "\<And>q. set (vertices os q) = edge_vertices {(a, b). b \<in> set (graph os q a)}"
     and sym_old: "\<And>q. sym {(a, b). b \<in> set (graph os q a)}"
     and label_old: "\<And>q x. x \<notin> all_vertices os q \<Longrightarrow> label os q x = x"
-    and pending_old: "\<And>d' t'. (d', t') \<in> set (input os 1) \<Longrightarrow>
-      myfst t' \<in> set (timestamps os) \<and> fst (de1 os d') \<in> all_vertices os (myfst t') \<and>
-      (\<forall>q. myfst t' \<le> q \<longrightarrow> snd (de1 os d') \<in> cc_of (all_edges os q) (fst (de1 os d')))"
     using inv unfolding label_prop_upd_inv_def by metis+
 
   have all_edges_eq: "\<And>q. all_edges os' q = all_edges os q"
@@ -2518,7 +2495,7 @@ proof -
   proof -
     have in_set: "(d, t) \<in> set (input os 1)" using input1 by simp
     then have "fst (de1 os d) \<in> all_vertices os (myfst t)"
-      using pending_old by blast
+      using wf_upd unfolding wf_label_prop_updates_def by fast
     then show ?thesis using msg t1_def by auto
   qed
 
@@ -2552,28 +2529,12 @@ proof -
         using label_old[OF not_in_old] label_eq by auto
     qed
   qed
-
-  have pending_new: "\<And>d' t'. (d', t') \<in> set (input os' 1) \<Longrightarrow>
-      myfst t' \<in> set (timestamps os') \<and> fst (de1 os' d') \<in> all_vertices os' (myfst t') \<and>
-      (\<forall>q. myfst t' \<le> q \<longrightarrow> snd (de1 os' d') \<in> cc_of (all_edges os' q) (fst (de1 os' d')))"
-  proof -
-    fix d' t'
-    assume in_new: "(d', t') \<in> set (input os' 1)"
-    then have in_old: "(d', t') \<in> set (input os 1)"
-      using input1_eq input1 by auto
-    have old:
-      "myfst t' \<in> set (timestamps os) \<and> fst (de1 os d') \<in> all_vertices os (myfst t') \<and>
-        (\<forall>q. myfst t' \<le> q \<longrightarrow> snd (de1 os d') \<in> cc_of (all_edges os q) (fst (de1 os d')))"
-      by (rule pending_old[OF in_old])
-    then show "myfst t' \<in> set (timestamps os') \<and> fst (de1 os' d') \<in> all_vertices os' (myfst t') \<and>
-        (\<forall>q. myfst t' \<le> q \<longrightarrow> snd (de1 os' d') \<in> cc_of (all_edges os' q) (fst (de1 os' d')))"
-      using timestamps_eq vertices_eq de1_eq all_edges_eq
-      unfolding all_vertices_def by auto
-  qed
-
+  have wf_upd_new: \<open>wf_label_prop_updates os' (set (input os' 1))\<close>
+    using input1_eq input1 timestamps_eq vertices_eq de1_eq all_edges_eq wf_upd
+    unfolding wf_label_prop_updates_def all_vertices_def by simp
   show ?thesis
     unfolding label_prop_upd_inv_def
-    using ts_new vertices_new sym_new label_new pending_new by blast
+    using ts_new vertices_new sym_new label_new wf_upd_new by blast
 qed
 
 
@@ -2981,6 +2942,7 @@ lemma labels_inv_input1_preserved:
     and vertices_eq: "vertices os' = vertices os"
     and label_eq:
       "label os' = (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))"
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows "labels_inv (all_edges os' q) (min_label os' q)"
 proof -
   have msg_valid: "\<And>q. t1 \<le> q \<Longrightarrow> l \<in> cc_of (all_edges os q) v"
@@ -2988,7 +2950,7 @@ proof -
     fix q assume "t1 \<le> q"
     then have "myfst t \<le> q" using t1_def by simp
     then have "snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d))"
-      using inv pending unfolding label_prop_upd_inv_def by blast
+      using wf_upd pending unfolding wf_label_prop_updates_def by blast
     then show "l \<in> cc_of (all_edges os q) v"
       using msg by simp
   qed
@@ -3069,8 +3031,9 @@ lemma labels_inv_input1_preserved_record_update:
     and t1_def: "t1 = myfst t"
     and update:
       "os' = label_prop_label_record_update os t1 v (min (min_label os t1 v) l)"
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows "labels_inv (all_edges os' q) (min_label os' q)"
-proof (rule labels_inv_input1_preserved[OF labels inv pending msg t1_def])
+proof (rule labels_inv_input1_preserved[OF labels inv pending msg t1_def _ _ _ _ wf_upd])
   show "timestamps os' = timestamps os"
     using update by simp
   show "graph os' = graph os"
@@ -3090,8 +3053,9 @@ lemma labels_inv_input1_preserved_record_update_tl:
     and t1_def: "t1 = myfst t"
     and update:
       "os' = label_prop_label_record_update (input_tl os 1) t1 v (min (min_label os t1 v) l)"
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows "labels_inv (all_edges os' q) (min_label os' q)"
-proof (rule labels_inv_input1_preserved[OF labels inv pending msg t1_def])
+proof (rule labels_inv_input1_preserved[OF labels inv pending msg t1_def _ _ _ _ wf_upd])
   show "timestamps os' = timestamps os"
     using update by simp
   show "graph os' = graph os"
@@ -3613,6 +3577,85 @@ lemma timestamps_fst_label_prop_input0_batched[simp]:
     rev (map (\<lambda>(d, t). myfst t) msgs) @ timestamps os\<close>
   by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
 
+lemma wf_label_prop_updates_label_prop_input0_step_stateI:
+  assumes inv: \<open>label_prop_upd_inv os\<close>
+    and H: \<open>wf_label_prop_updates os (set (input os 1))\<close>
+  shows \<open>wf_label_prop_updates (label_prop_input0_step_state os d t)
+    (set (input (label_prop_input0_step_state os d t) 1))\<close>
+proof -
+  let ?v1 = \<open>fst (de1 os d)\<close>
+  let ?v2 = \<open>snd (de1 os d)\<close>
+  let ?t1 = \<open>myfst t\<close>
+  let ?l1 = \<open>min_label os ?t1 ?v1\<close>
+  let ?l2 = \<open>min_label os ?t1 ?v2\<close>
+  let ?v = \<open>if ?l1 > ?l2 then ?v1 else ?v2\<close>
+  let ?l = \<open>if ?l1 > ?l2 then ?l2 else ?l1\<close>
+  let ?os'' = \<open>label_prop_edge_record_update (input_tl os 0) ?t1 ?v1 ?v2 ?v ?l\<close>
+  let ?step = \<open>label_prop_input0_step_state os d t\<close>
+  have step_edges: \<open>all_edges ?step = all_edges ?os''\<close>
+    by simp
+  have step_input1: \<open>input ?step 1 = input os 1\<close>
+    by simp
+  have step_de1: \<open>de1 ?step = de1 os\<close>
+    by simp
+  have step_ts: \<open>timestamps ?step = ?t1 # timestamps os\<close>
+    by simp
+  have old_vertices_mono_os'': \<open>\<And>q x. x \<in> all_vertices os q \<Longrightarrow> x \<in> all_vertices ?os'' q\<close>
+  proof -
+    fix q x assume *: \<open>x \<in> all_vertices os q\<close>
+    then obtain t' where t': \<open>t' \<in> set (timestamps os)\<close> \<open>t' \<le> q\<close> \<open>x \<in> set (vertices os t')\<close>
+      unfolding all_vertices_def by auto
+    have ts': \<open>t' \<in> set (timestamps ?os'')\<close>
+      using t' by (simp add: label_prop_edge_record_update_def input_tl_def)
+    have v': \<open>x \<in> set (vertices ?os'' t')\<close>
+      using t'(3) by (cases \<open>t' = myfst t\<close>)
+        (auto simp: label_prop_edge_record_update_def input_tl_def)
+    show \<open>x \<in> all_vertices ?os'' q\<close>
+      unfolding all_vertices_def using ts' t'(2) v' by auto
+  qed
+
+  have old_neighbors_mono_os'': \<open>\<And>q x y. y \<in> set (neighbors os q x) \<Longrightarrow> y \<in> set (neighbors ?os'' q x)\<close>
+  proof -
+    fix q x y assume *: \<open>y \<in> set (neighbors os q x)\<close>
+    then obtain t' where t': \<open>t' \<in> set (timestamps os)\<close> \<open>t' \<le> q\<close>
+      \<open>y \<in> set (graph os t' x)\<close>
+      unfolding set_neighbors by auto
+    have ts': \<open>t' \<in> set (timestamps ?os'')\<close>
+      using t' by (simp add: label_prop_edge_record_update_def input_tl_def)
+    have g': \<open>y \<in> set (graph ?os'' t' x)\<close>
+      using t'(3) by (cases \<open>t' = myfst t\<close>)
+        (auto simp: label_prop_edge_record_update_def input_tl_def)
+    show \<open>y \<in> set (neighbors ?os'' q x)\<close>
+      unfolding set_neighbors using ts' t'(2) g' by auto
+  qed
+
+  have old_edges_subset: \<open>\<And>q. all_edges os q \<subseteq> all_edges ?step q\<close>
+  proof (intro subsetI)
+    fix q e
+    assume e_in: \<open>e \<in> all_edges os q\<close>
+    obtain x y where e: \<open>e = (x, y)\<close>
+      by (cases e)
+    have x_old: \<open>x \<in> all_vertices os q\<close>
+      using e_in e unfolding all_edges_def by auto
+    have y_old: \<open>y \<in> all_vertices os q\<close>
+      using e_in e unfolding all_edges_def by auto
+    have neigh_old: \<open>y \<in> set (neighbors os q x)\<close>
+      using e_in e unfolding all_edges_def by auto
+    show \<open>e \<in> all_edges ?step q\<close>
+      using e old_vertices_mono_os''[OF x_old] old_vertices_mono_os''[OF y_old]
+        old_neighbors_mono_os''[OF neigh_old]
+      unfolding all_edges_def step_edges by auto
+  qed
+  have old_vertices_mono: \<open>\<And>q x. x \<in> all_vertices os q \<Longrightarrow> x \<in> all_vertices ?step q\<close>
+    using old_vertices_mono_os''
+    unfolding label_prop_input0_step_state_def Let_def by simp
+  show ?thesis
+    using H old_vertices_mono old_edges_subset cc_of_mono
+    unfolding wf_label_prop_updates_def step_input1 step_de1 step_ts
+    by (smt (verit, best) list.set_intros(2) split_beta')
+qed
+
+
 lemma labels_inv_label_prop_input0_step_stateI:
   fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
   assumes labels: \<open>\<And>q. labels_inv (all_edges os q) (min_label os q)\<close>
@@ -3660,6 +3703,7 @@ lemma label_prop_upd_inv_label_prop_input0_step_stateI:
   fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
   assumes inv: \<open>label_prop_upd_inv os\<close>
     and input0: \<open>input os 0 = (d, t) # xs\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows \<open>label_prop_upd_inv (label_prop_input0_step_state os d t)\<close>
 proof -
   let ?v1 = \<open>fst (de1 os d)\<close>
@@ -3694,6 +3738,8 @@ proof -
         then (?v1, min_label os ?t1 ?v2)
         else (?v2, min_label os ?t1 ?v1))\<close>
       by simp
+    show \<open>wf_label_prop_updates os (set (input os 1))\<close>
+      by (rule wf_upd)
   qed
   then show ?thesis
     unfolding step_eq by simp
@@ -3704,9 +3750,10 @@ lemma labels_inv_fst_label_prop_input0_batched_prefixI:
   assumes input_eq: \<open>input os 0 = msgs @ rest\<close>
     and labels: \<open>\<And>q. labels_inv (all_edges os q) (min_label os q)\<close>
     and inv: \<open>label_prop_upd_inv os\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows \<open>labels_inv (all_edges (fst (label_prop_input0_batched os msgs)) q)
     (min_label (fst (label_prop_input0_batched os msgs)) q)\<close>
-  using input_eq labels inv
+  using input_eq labels inv wf_upd
 proof (induct msgs arbitrary: os)
   case Nil
   then show ?case by simp
@@ -3720,12 +3767,14 @@ next
   have labels_step: \<open>\<And>q. labels_inv (all_edges ?step q) (min_label ?step q)\<close>
     by (rule labels_inv_label_prop_input0_step_stateI[OF Cons.prems(2) Cons.prems(3) input0])
   have inv_step: \<open>label_prop_upd_inv ?step\<close>
-    by (rule label_prop_upd_inv_label_prop_input0_step_stateI[OF Cons.prems(3) input0])
+    by (rule label_prop_upd_inv_label_prop_input0_step_stateI[OF Cons.prems(3) input0 Cons.prems(4)])
+  have wf_step: \<open>wf_label_prop_updates ?step (set (input ?step 1))\<close>
+    by (rule wf_label_prop_updates_label_prop_input0_step_stateI[OF Cons.prems(3) Cons.prems(4)])
   have input_step: \<open>input ?step 0 = msgs @ rest\<close>
     using input0 by simp
   have ih: \<open>labels_inv (all_edges (fst (label_prop_input0_batched ?step msgs)) q)
     (min_label (fst (label_prop_input0_batched ?step msgs)) q)\<close>
-    by (rule Cons.hyps[OF input_step labels_step inv_step])
+    by (rule Cons.hyps[OF input_step labels_step inv_step wf_step])
   then show ?case
     using msg_eq
     by (cases \<open>label_prop_input0_batched ?step msgs\<close>) simp
@@ -3736,6 +3785,7 @@ lemma labels_inv_fst_label_prop_input0_batched_inputI:
   assumes input_eq: \<open>input os 0 = msgs\<close>
     and labels: \<open>\<And>q. labels_inv (all_edges os q) (min_label os q)\<close>
     and inv: \<open>label_prop_upd_inv os\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows \<open>labels_inv (all_edges (fst (label_prop_input0_batched os msgs)) q)
     (min_label (fst (label_prop_input0_batched os msgs)) q)\<close>
   by (rule labels_inv_fst_label_prop_input0_batched_prefixI[where rest=Nil])
@@ -3745,8 +3795,9 @@ lemma label_prop_upd_inv_fst_label_prop_input0_batched_prefixI:
   fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
   assumes input_eq: \<open>input os 0 = msgs @ rest\<close>
     and inv: \<open>label_prop_upd_inv os\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows \<open>label_prop_upd_inv (fst (label_prop_input0_batched os msgs))\<close>
-  using input_eq inv
+  using input_eq inv wf_upd
 proof (induct msgs arbitrary: os)
   case Nil
   then show ?case by simp
@@ -3758,11 +3809,13 @@ next
     using Cons.prems(1) msg_eq by simp
   let ?step = \<open>label_prop_input0_step_state os d t\<close>
   have inv_step: \<open>label_prop_upd_inv ?step\<close>
-    by (rule label_prop_upd_inv_label_prop_input0_step_stateI[OF Cons.prems(2) input0])
+    by (rule label_prop_upd_inv_label_prop_input0_step_stateI[OF Cons.prems(2) input0 Cons.prems(3)])
+  have wf_step: \<open>wf_label_prop_updates ?step (set (input ?step 1))\<close>
+    by (rule wf_label_prop_updates_label_prop_input0_step_stateI[OF Cons.prems(2) Cons.prems(3)])
   have input_step: \<open>input ?step 0 = msgs @ rest\<close>
     using input0 by simp
   have ih: \<open>label_prop_upd_inv (fst (label_prop_input0_batched ?step msgs))\<close>
-    by (rule Cons.hyps[OF input_step inv_step])
+    by (rule Cons.hyps[OF input_step inv_step wf_step])
   then show ?case
     using msg_eq
     by (cases \<open>label_prop_input0_batched ?step msgs\<close>) simp
@@ -3772,6 +3825,7 @@ lemma label_prop_upd_inv_fst_label_prop_input0_batched_inputI:
   fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
   assumes input_eq: \<open>input os 0 = msgs\<close>
     and inv: \<open>label_prop_upd_inv os\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
   shows \<open>label_prop_upd_inv (fst (label_prop_input0_batched os msgs))\<close>
   by (rule label_prop_upd_inv_fst_label_prop_input0_batched_prefixI[where rest=Nil])
     (use assms in simp_all)
@@ -3863,8 +3917,9 @@ definition label_prop_input1_step_state where
          l = snd (de1 os d);
          t1 = myfst t;
          os' = input_tl os 1;
-         os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l);
-         batch = label_prop_label_batch os os'' t1 v l t
+         l' = min (min_label os t1 v) l;
+         os'' = label_prop_label_record_update os' t1 v l';
+         batch = label_prop_label_batch os os'' t1 v l' t
      in release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1)\<close>
 
 definition label_prop_input1_step_batch ::
@@ -3874,8 +3929,9 @@ definition label_prop_input1_step_batch ::
          l = snd (de1 os d);
          t1 = myfst t;
          os' = input_tl os 1;
-         os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l)
-     in label_prop_label_batch os os'' t1 v l t)\<close>
+         l' = min (min_label os t1 v) l;
+         os'' = label_prop_label_record_update os' t1 v l'
+     in label_prop_label_batch os os'' t1 v l' t)\<close>
 
 fun label_prop_input1_batched where
   \<open>label_prop_input1_batched os [] = (os, [])\<close>
@@ -3951,6 +4007,34 @@ lemma produ_label_prop_input1_step_state[simp]:
       (label_prop_input1_step_batch os d t)\<close>
   unfolding label_prop_input1_step_state_def label_prop_input1_step_batch_def produces_def
   by (simp add: Let_def)
+
+lemma timestamps_label_prop_input1_step_state[simp]:
+  \<open>timestamps (label_prop_input1_step_state os d t) = timestamps os\<close>
+  unfolding label_prop_input1_step_state_def label_prop_label_record_update_def input_tl_def
+  by (simp add: Let_def)
+
+lemma graph_label_prop_input1_step_state[simp]:
+  \<open>label_propagation_state.graph (label_prop_input1_step_state os d t) = label_propagation_state.graph os\<close>
+  unfolding label_prop_input1_step_state_def label_prop_label_record_update_def input_tl_def
+    produces_def drop_caps_def release_caps_def
+  by (simp add: Let_def)
+
+lemma vertices_label_prop_input1_step_state[simp]:
+  \<open>vertices (label_prop_input1_step_state os d t) = vertices os\<close>
+  unfolding label_prop_input1_step_state_def label_prop_label_record_update_def input_tl_def
+  by (simp add: Let_def)
+
+lemma all_vertices_label_prop_input1_step_state[simp]:
+  \<open>all_vertices (label_prop_input1_step_state os d t) = all_vertices os\<close>
+  unfolding all_vertices_def by simp
+
+lemma neighbors_label_prop_input1_step_state[simp]:
+  \<open>neighbors (label_prop_input1_step_state os d t) = neighbors os\<close>
+  unfolding neighbors_def by (simp add: fun_eq_iff)
+
+lemma all_edges_label_prop_input1_step_state[simp]:
+  \<open>all_edges (label_prop_input1_step_state os d t) = all_edges os\<close>
+  unfolding all_edges_def by simp
 
 lemma input_fst_label_prop_input1_batched[simp]:
   \<open>input (fst (label_prop_input1_batched os msgs)) =
@@ -4043,8 +4127,9 @@ lemma label_propagation_op_logic_input1I[intro]:
     and \<open>de1 os d = (v, l)\<close>
     and \<open>t1 = myfst t\<close>
     and \<open>os' = input_tl os 1\<close>
-    and \<open>os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l)\<close>
-    and \<open>batch = label_prop_label_batch os os'' t1 v l t\<close>
+    and \<open>l' = min (min_label os t1 v) l\<close>
+    and \<open>os'' = label_prop_label_record_update os' t1 v l'\<close>
+    and \<open>batch = label_prop_label_batch os os'' t1 v l' t\<close>
     and \<open>os_next = release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1\<close>
   shows \<open>os_next |\<in>| label_propagation_op_logic os\<close>
   using assms unfolding label_propagation_op_logic_def by auto
@@ -4054,8 +4139,9 @@ lemma step_label_propagation_op_input1[intro]:
     and \<open>de1 os d = (v, l)\<close>
     and \<open>t1 = myfst t\<close>
     and \<open>os' = input_tl os 1\<close>
-    and \<open>os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l)\<close>
-    and \<open>batch = label_prop_label_batch os os'' t1 v l t\<close>
+    and \<open>l' = min (min_label os t1 v) l\<close>
+    and \<open>os'' = label_prop_label_record_update os' t1 v l'\<close>
+    and \<open>batch = label_prop_label_batch os os'' t1 v l' t\<close>
     and \<open>os_next = release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1\<close>
     and \<open>initia os\<close>
     and \<open>op = label_propagation_op os_next\<close>
@@ -4071,8 +4157,9 @@ proof -
   let ?v = \<open>fst (de1 os d)\<close>
   let ?l = \<open>snd (de1 os d)\<close>
   let ?t1 = \<open>myfst t\<close>
-  let ?os'' = \<open>label_prop_label_record_update (input_tl os 1) ?t1 ?v (min (min_label os ?t1 ?v) ?l)\<close>
-  let ?batch = \<open>label_prop_label_batch os ?os'' ?t1 ?v ?l t\<close>
+  let ?l' = \<open>min (min_label os ?t1 ?v) ?l\<close>
+  let ?os'' = \<open>label_prop_label_record_update (input_tl os 1) ?t1 ?v ?l'\<close>
+  let ?batch = \<open>label_prop_label_batch os ?os'' ?t1 ?v ?l' t\<close>
   have vl_eq: \<open>de1 os d = (?v, ?l)\<close> by simp
   have state_eq:
     \<open>label_prop_input1_step_state os d t =
@@ -4082,7 +4169,7 @@ proof -
   show ?thesis
     using op_eq[unfolded state_eq]
     by (rule step_label_propagation_op_input1
-            [OF inp vl_eq refl refl refl refl refl ini])
+            [OF inp vl_eq refl refl refl refl refl refl ini])
 qed
 
 lemma step_compower_label_propagation_op_input1[intro]:
