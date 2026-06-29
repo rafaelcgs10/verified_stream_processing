@@ -9174,9 +9174,7 @@ next
                apply (simp add: flip: fold_append change_multiplicities_append_alt)
             subgoal       
               unfolding label_prop_output_batch_def
-              apply (simp add: flip: fold_append change_multiplicities_append_alt)
-
-              find_theorems Nil remdups
+              apply (clarsimp simp add: filter_empty_conv obtain_progress_def simp flip: fold_append change_multiplicities_append_alt)
               sorry
             apply (rule refl)+
                           apply simp
@@ -9187,6 +9185,8 @@ next
             apply (rule refl)+
                         apply simp
             apply (rule refl)+
+
+               apply (simp add: obtain_progress_def flip: fold_append change_multiplicities_append_alt)
 
 
 
