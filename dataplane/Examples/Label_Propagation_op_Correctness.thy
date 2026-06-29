@@ -4370,8 +4370,97 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(6) apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def filter_True split_beta)
         done
-      subgoal 
-        sorry
+      subgoal for _ d t
+        apply (simp add: ran_loop_wire cUNIV_def cin_def)
+        apply hypsubst_thin
+        apply (intro exI conjI relcomppI)
+           apply (rule rtranclp.rtrancl_refl)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def[simplified])
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(1 := consumes (os 1) 1 t d)\<close>])
+        apply (rule exI[of _ \<open>consumes os_label_prop 1 t d\<close>])
+        apply (rule exI[of _ \<open>BTL (1, 1) cbufs\<close>])
+        apply (rule exI[of _ sg])
+        apply (intro conjI)
+                          apply (clarsimp simp add: dataflow_tree_to_operator_def
+            intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>]
+            arg_cong[where f=\<open>map_op _ _\<close>])
+                          apply (rule comp_op_buf_cong[OF refl])
+        using os_inv(1) apply simp
+                           apply (rule loop_op_buf_cong[OF refl])
+                            apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+                            apply (rule comp_op_buf_cong[OF refl refl refl])
+                            apply (simp add: ran_comp_wire BTL_def)
+                           apply (simp add: ran_loop_wire BTL_def map_tl)
+                          apply (simp add: BTL_def ran_def split: sum.splits)
+                          apply (metis prod.exhaust sum.exhaust)
+                         apply (simp add: csets_inv buffers_inv BULK_BENQ_def BENQ_def BTL_def)
+                         apply (subgoal_tac \<open>timestamps (consumes os_label_prop 1 t d) = timestamps os_label_prop\<close>)
+                          apply (simp add: cimage_cUn)
+                         apply (simp add: consumes_def)
+                        apply (rule subgraph_inv(1))
+                       apply (rule subgraph_inv(2))
+        using os_inv(2) apply simp
+        using os_inv(3) apply simp
+        using os_inv(4) apply (simp add: consumes_def add_caps_def operator_state.defs(3))
+        using os_inv(1,5) apply (simp add: ty1_check_def BTL_def)
+        using os_inv(1,4-6)
+                  apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BTL_def BHD_def)
+                  apply (erule conjE)
+                  apply (rotate_tac 5)
+                  apply (drule spec[of _ 1])
+                  apply (simp add: Ball_def)
+                  apply (meson img_fst in_fst_imageE in_set_tlD)
+        using os_inv(7) apply simp
+        using os_inv(8) apply simp
+               apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (1, 1))\<close>])
+               apply (simp add: BHD_def)
+        using input_stream_inv apply simp
+        using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
+        using label_prop_inv(2) unfolding min_label_def apply (simp add: consumes_def all_edges_def all_vertices_def neighbors_def)
+        subgoal
+          using dataplane_inv unfolding dataplane_tracker_inv_def
+          apply (simp add: label_prop_inv(3))
+          apply (elim exE conjE)
+          subgoal premises prems for caps
+            using prems(1,6-8) prems(2)[symmetric] unfolding front_inv_def imp_front_inv_def chnls_imp_front_inv_def
+            apply simp
+            apply (rule contrapos_pp[OF _ frontier_less_equal_exit_scope, rotated, where t1=t])
+             apply simp
+            apply (drule spec2[of _ 1 1])
+            apply (drule spec[of _ \<open>Loc 1 (Trg 1)\<close>])
+            apply (drule spec2[of _ 1 1])
+            apply (drule bspec[of _ _ \<open>(d, t)\<close>])
+             apply (simp add: BULK_BENQ_def BHD_def)
+             apply (rule disjI1)
+             apply (metis list.set_sel(1))
+            apply (rule frontier_less_equal_le_trans[rotated])
+             apply (rule order.trans)
+              apply assumption
+             apply assumption
+            apply simp
+            done
+          done
+        using os_inv(7) label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def BENQ_def BTL_def raw_summary_def)
+        subgoal
+          apply (insert label_prop_inv(1,5))
+          apply (unfold label_prop_upd_inv_def)
+          apply (elim conjE)
+          apply (intro conjI)
+              apply (simp add: consumes_def)
+             apply (simp add: consumes_def)
+            apply (simp add: consumes_def)
+          apply (simp add: consumes_def all_vertices_def)
+          done
+        using inputs_ocaps_inv_consumes[OF label_prop_inv(6)] apply simp
+        using label_prop_inv(7) apply (simp add: buffers_inv flip: BULK_BENQ_assoc)
+        done
       subgoal 
         sorry
       subgoal 
