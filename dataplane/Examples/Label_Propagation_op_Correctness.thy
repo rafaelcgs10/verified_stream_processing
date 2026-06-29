@@ -9133,12 +9133,63 @@ next
                  apply simp
                 apply (rule refl)+
                apply (simp add: flip: fold_append change_multiplicities_append_alt)
-            thm second_propa[of n, simplified]
-            sorry
-          done
-        done
-      done
-  qed
+
+               apply (rule converse_rtranclp_into_rtranclp) 
+                apply (rule step_set_op_intro_Tau_2)
+                  apply simp
+                 apply (rule step_Tau_dataflow_op_Inp_Inl_intro[where ?conf'="c'' n"])
+                    apply (rule step_map_op)
+                     apply (rule step_comp_op_R_Inp)
+                        apply (rule step_Inp_loop_op)
+                         apply (rule step_map_op)
+                          apply (rule step_comp_op_L_Inp)
+                            apply (rule step_map_op)
+                             apply (rule step_label_propagation_op_Read_None)
+                              apply (rule refl)+
+                            apply simp
+                           apply (rule refl)+
+                         apply simp
+                        apply (auto simp add: ran_def split: sum.splits option.splits prod.splits)[1]
+                       apply (auto simp add: ran_def split: sum.splits option.splits prod.splits)[1]
+                      apply (rule refl)+
+                    apply simp
+            subgoal
+              using second_propa(1)[of n, simplified]
+              by (simp add: os_inv(1,4) op_state_base_def operator_state.defs obtain_progress_def  flip: fold_append change_multiplicities_append_alt )
+                  apply (rule refl)+
+               apply (simp add: flip: fold_append change_multiplicities_append_alt)
+
+               apply (rule converse_rtranclp_into_rtranclp) 
+                apply (rule step_set_op_intro_Tau_2)
+                  apply simp
+                 apply (rule step_Tau_dataflow_op_Tau_intro)
+            apply (rule step_map_op)
+            apply (rule step_comp_op_R_Tau)
+                    apply (rule step_Tau_loop_op)
+            apply (rule step_map_op)
+            apply (rule step_comp_op_L_Tau)
+                        apply (rule step_map_op)
+                         apply (rule step_label_propagation_op_output)
+            apply (rule refl)+
+               apply (simp add: flip: fold_append change_multiplicities_append_alt)
+            subgoal sorry
+
+            thm step_label_propagation_op_output
+
+            find_theorems t
+
+
+end
+  apply (rule refl)+
+
+
+
+thm second_propa[of n, simplified]
+  sorry
+  done
+  done
+  done
+qed
 qed
 
 end
