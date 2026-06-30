@@ -8278,7 +8278,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   prefer 3
                   apply (rule dataplane_tracker_inv_progress[OF dataplane_inv D G, where nid=2])
                   apply simp
-        using subgraph.fold_congs(1) subgraph.unfold_congs(1) prod.sel(2) subgraph.simps(6,9) subgraph.surjective apply (metis (no_types, lifting))
+                 apply (simp add: obtain_progress_def)
                 apply (simp add: obtain_progress_def)
         using input_stream_inv apply simp
               apply (rule label_prop_inv(1))
@@ -8289,8 +8289,49 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(6) apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def obtain_progress_def image_Un Un_assoc)
         done
-      subgoal 
-        sorry
+      subgoal for st os_label_prop'
+        apply (intro exI conjI relcomppI)
+           apply (rule rtranclp.rtrancl_refl)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def[simplified])
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(1 := fst (obtain_progress (os 1)))\<close>])
+        apply (rule exI[of _ os_label_prop'])
+        apply (rule exI[of _ cbufs])
+        apply (intro exI conjI)
+                            apply (simp add: dataflow_tree_to_operator_def os_inv(1))
+                            apply (simp add: csets_inv buffers_inv obtain_progress_def BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def cimage_cUn)
+        using subgraph_inv(1) apply simp
+        using subgraph_inv(2) apply simp
+        using os_inv(2) apply simp
+        using os_inv(3) apply simp
+        using os_inv(4) apply (simp add: obtain_progress_def operator_state.defs(3))
+        using os_inv(1,5) apply simp
+        using os_inv(6) apply (simp add: obtain_progress_def label_prob_ty2_check_def)
+        using os_inv(7) apply (simp add: obtain_progress_def)
+        using os_inv(8) apply simp
+        using os_inv(9) apply simp
+        using os_inv(10) apply (simp add: obtain_progress_def)
+                apply (subst dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>])
+                  prefer 3
+                  apply (rule dataplane_tracker_inv_progress[OF dataplane_inv D G, where nid=1])
+                  apply simp
+                 apply (simp add: obtain_progress_def os_inv(4) operator_state.defs(3))
+                apply simp
+        using input_stream_inv apply simp
+        using label_prop_inv(1) apply (simp add: obtain_progress_def)
+        using label_prop_inv(2) apply (simp add: obtain_progress_def)
+        using label_prop_inv(3) apply (simp add: obtain_progress_def)
+        using label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def obtain_progress_def)
+        using label_prop_inv(5) apply (simp add: obtain_progress_def)
+        using label_prop_inv(6) apply (simp add: obtain_progress_def input_ocaps_inv_def)
+        using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def obtain_progress_def image_Un Un_assoc)
+        done
       subgoal 
         sorry
       subgoal
