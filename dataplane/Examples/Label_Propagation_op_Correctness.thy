@@ -9792,14 +9792,9 @@ next
                 done
               done
             subgoal
-              apply (rule wf_label_prop_updates_subset)
-               apply (rule wf_label_prop_updates_fst_label_prop_input0_batched_output1_shiftI
+              apply (simp only: image_Un set_append set_map flip: Un_assoc)
+              apply (rule wf_label_prop_updates_fst_label_prop_input0_batched_output1_shiftI
                   [where rest=\<open>[]\<close>])
-                     prefer 8
-                     apply (rule equalityD1)
-                     apply simp
-                     apply blast
-
                     apply (simp add: os_inv(4) operator_state.defs input_CONSUMES)
                    apply (simp add: os_inv(4) operator_state.defs input_CONSUMES)
                   apply (simp add: os_inv(4) operator_state.defs input_CONSUMES)
@@ -9815,140 +9810,189 @@ next
                 apply simp
                 using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified] 
                 apply (auto del: disjCI simp add: split_beta  wf_label_prop_updates_clean_image[unfolded split_beta]  image_iff input_CONSUMES os_inv(4) operator_state.defs wf_label_prop_updates_un split: capability.splits)
+                done
+              done
+            subgoal
+              by (simp add:  operator_state.defs os_inv(4))
+            subgoal
+              by (simp add:  operator_state.defs os_inv(4))
+                apply (rule refl)+
 
-                find_theorems outpu CONSUMES
+               apply (rule converse_rtranclp_into_rtranclp) 
+                apply (rule step_set_op_intro_Tau_2)
+                  apply simp
+                 apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=0])
+                  apply (rule step_map_op)
+                   apply (rule step_comp_op_L_Out)
+                      apply (rule step_map_op)
+                       apply (rule step_ooo_input_op_Write_None_alt)
+                        apply (rule refl)+
+                      apply simp
+                     apply force
+                    apply (rule refl)+
+                  apply simp
+                 apply fastforce
+                apply (rule refl)+
+
+
+               apply (rule converse_rtranclp_into_rtranclp) 
+                apply (rule step_set_op_intro_Tau_2)
+                  apply simp
+                 apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=1])
+                  apply (rule step_map_op)
+                   apply (rule step_comp_op_R_Out)
+                     apply (rule step_Out_loop_op)
+                       apply (rule step_map_op)
+                        apply (rule step_comp_op_L_Out)
+                           apply (rule step_map_op)
+                            apply (rule step_label_propagation_op_Write_None_alt)
+                             apply (rule refl)+
+                           apply simp
+                          apply force
+                         apply (rule refl)+
+                       apply simp
+                      apply force
+                     apply (rule refl)+
+                  apply simp
+                 apply simp
+                apply (rule refl)+
+
+               apply (rule converse_rtranclp_into_rtranclp) 
+                apply (rule step_set_op_intro_Tau_2)
+                  apply simp
+                 apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=2])
+                  apply (rule step_map_op)
+                   apply (rule step_comp_op_R_Out)
+                     apply (rule step_Out_loop_op)
+                       apply (rule step_map_op)
+                        apply (rule step_comp_op_R_Out)
+                          apply (rule step_map_op)
+                           apply (rule step_increment_op_Write_None_alt)
+                            apply (rule refl)+
+                          apply simp
+                         apply (rule refl)+
+                       apply simp
+                      apply force
+                     apply (rule refl)+
+                  apply simp
+                 apply simp
+                apply (rule refl)+
+               apply (simp add: flip: fold_append change_multiplicities_append_alt)
+
+               apply (rule converse_rtranclp_into_rtranclp) 
+                apply (rule step_set_op_intro_Tau_2)
+                  apply simp
+                 apply (rule step_Tau_dataflow_op_Inp_Inl_intro[where ?conf'="c'' n"])
+                    apply (rule step_map_op)
+                     apply (rule step_comp_op_R_Inp)
+                        apply (rule step_Inp_loop_op)
+                         apply (rule step_map_op)
+                          apply (rule step_comp_op_L_Inp)
+                            apply (rule step_map_op)
+                             apply (rule step_label_propagation_op_Read_None)
+                              apply (rule refl)+
+                            apply simp
+                           apply (rule refl)+
+                         apply simp
+                        apply (auto simp add: ran_def split: sum.splits option.splits prod.splits)[1]
+                       apply (auto simp add: ran_def split: sum.splits option.splits prod.splits)[1]
+                      apply (rule refl)+
+                    apply simp
+            subgoal
+              using second_propa(1)[of n, simplified]
+              by (simp add: os_inv(1,4) op_state_base_def operator_state.defs obtain_progress_def  flip: fold_append change_multiplicities_append_alt )
+                  apply (rule refl)+
+               apply (simp add: flip: fold_append change_multiplicities_append_alt)
+
+               apply (rule converse_rtranclp_into_rtranclp) 
+                apply (rule step_set_op_intro_Tau_2)
+                  apply simp
+                 apply (rule step_Tau_dataflow_op_Tau_intro)
+                 apply (rule step_map_op)
+                  apply (rule step_comp_op_R_Tau)
+                    apply (rule step_Tau_loop_op)
+                     apply (rule step_map_op)
+                      apply (rule step_comp_op_L_Tau)
+                        apply (rule step_map_op)
+                         apply (rule step_label_propagation_op_output)
+                              apply (rule refl)+
+                            apply (simp add: flip: fold_append change_multiplicities_append_alt)
+            subgoal       
+              unfolding label_prop_output_batch_def
+              apply (clarsimp del: disjCI simp add: image_iff filter_empty_conv obtain_progress_def simp flip: fold_append change_multiplicities_append_alt)
+              apply (subst ocaps_0_fst_snd_loop_updates)
+               apply simp
+              subgoal
+                using os_inv(7) by (simp add: operator_state.defs os_inv(4) raw_summary_def)
+              subgoal
+                apply (rule bexI[of _ t, rotated])
+                subgoal
+                  sorry
+                subgoal
+                  apply (intro conjI)
+                  subgoal
+                    sorry
+                  subgoal
+                    using prems(2) apply -
+                    apply (clarsimp del: disjCI simp add: image_iff cimage_iff split_beta split: event.splits)
+                    apply (elim disjE)
+                    subgoal
+                      apply (clarsimp del: disjCI simp add: ts_def operator_state.defs os_inv(4) split: event.splits) 
+                      apply (rule disjI1)
+                      subgoal for e
+                        apply (cases e; simp)
+                        subgoal for tt d
+                          apply (cases d; simp)
+                          subgoal for v1 v2
+                        apply (rule exI[of _ e])
+                        apply simp
+                          using stream_move(3)[rule_format, of v1 v2] apply -
+                          apply (drule meta_mp)
+                          subgoal
+                            by (meson cin_code)
+                          subgoal
+                            by simp
+                          done
+                        done
+                      done
+                    done
+                  subgoal
+                    apply (clarsimp del: disjCI simp add: outputs_at_target_raw_summary subgraph_inv inputs_at_target_def BULK_BENQ_def ts_def operator_state.defs os_inv(4) split: event.splits) 
+                    subgoal for e
+                      apply (cases e; simp)
+                      subgoal for l
+                        apply (cases l; cases t; simp)
+                        apply (metis myprod.sel(1) snd_eqD)
+                        done
+                  subgoal
+                    using os_inv(5)[unfolded ty1_check_def os_inv operator_state.defs, simplified]
+                     os_inv(6)[unfolded label_prob_ty2_check_def os_inv operator_state.defs, simplified]
+                    by (metis snd_eqD)
+                  done
+                done
+              subgoal
+                by (force simp add: os_inv operator_state.defs)
+              done
+
 
 end
-  using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified] 
-  apply (auto del: disjCI simp add: input_CONSUMES os_inv(4) operator_state.defs wf_label_prop_updates_un)
+              sorry
+                           apply (rule refl)+
+                          apply simp
+                         apply (rule refl)+
+                        apply simp
+                       apply (rule refl)+
+                     apply simp
+                    apply (rule refl)+
+                 apply simp
+                apply (rule refl)+
 
-end
-  sorry 
-  subgoal
-    by (simp add:  operator_state.defs os_inv(4))
-  subgoal
-    by (simp add:  operator_state.defs os_inv(4))
-  apply (rule refl)+
-
-  apply (rule converse_rtranclp_into_rtranclp) 
-  apply (rule step_set_op_intro_Tau_2)
-  apply simp
-  apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=0])
-  apply (rule step_map_op)
-  apply (rule step_comp_op_L_Out)
-  apply (rule step_map_op)
-  apply (rule step_ooo_input_op_Write_None_alt)
-  apply (rule refl)+
-  apply simp
-  apply force
-  apply (rule refl)+
-  apply simp
-  apply fastforce
-  apply (rule refl)+
-
-
-  apply (rule converse_rtranclp_into_rtranclp) 
-  apply (rule step_set_op_intro_Tau_2)
-  apply simp
-  apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=1])
-  apply (rule step_map_op)
-  apply (rule step_comp_op_R_Out)
-  apply (rule step_Out_loop_op)
-  apply (rule step_map_op)
-  apply (rule step_comp_op_L_Out)
-  apply (rule step_map_op)
-  apply (rule step_label_propagation_op_Write_None_alt)
-  apply (rule refl)+
-  apply simp
-  apply force
-  apply (rule refl)+
-  apply simp
-  apply force
-  apply (rule refl)+
-  apply simp
-  apply simp
-  apply (rule refl)+
-
-  apply (rule converse_rtranclp_into_rtranclp) 
-  apply (rule step_set_op_intro_Tau_2)
-  apply simp
-  apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=2])
-  apply (rule step_map_op)
-  apply (rule step_comp_op_R_Out)
-  apply (rule step_Out_loop_op)
-  apply (rule step_map_op)
-  apply (rule step_comp_op_R_Out)
-  apply (rule step_map_op)
-  apply (rule step_increment_op_Write_None_alt)
-  apply (rule refl)+
-  apply simp
-  apply (rule refl)+
-  apply simp
-  apply force
-  apply (rule refl)+
-  apply simp
-  apply simp
-  apply (rule refl)+
-  apply (simp add: flip: fold_append change_multiplicities_append_alt)
-
-  apply (rule converse_rtranclp_into_rtranclp) 
-  apply (rule step_set_op_intro_Tau_2)
-  apply simp
-  apply (rule step_Tau_dataflow_op_Inp_Inl_intro[where ?conf'="c'' n"])
-  apply (rule step_map_op)
-  apply (rule step_comp_op_R_Inp)
-  apply (rule step_Inp_loop_op)
-  apply (rule step_map_op)
-  apply (rule step_comp_op_L_Inp)
-  apply (rule step_map_op)
-  apply (rule step_label_propagation_op_Read_None)
-  apply (rule refl)+
-  apply simp
-  apply (rule refl)+
-  apply simp
-  apply (auto simp add: ran_def split: sum.splits option.splits prod.splits)[1]
-  apply (auto simp add: ran_def split: sum.splits option.splits prod.splits)[1]
-  apply (rule refl)+
-  apply simp
-  subgoal
-    using second_propa(1)[of n, simplified]
-    by (simp add: os_inv(1,4) op_state_base_def operator_state.defs obtain_progress_def  flip: fold_append change_multiplicities_append_alt )
-  apply (rule refl)+
-  apply (simp add: flip: fold_append change_multiplicities_append_alt)
-
-  apply (rule converse_rtranclp_into_rtranclp) 
-  apply (rule step_set_op_intro_Tau_2)
-  apply simp
-  apply (rule step_Tau_dataflow_op_Tau_intro)
-  apply (rule step_map_op)
-  apply (rule step_comp_op_R_Tau)
-  apply (rule step_Tau_loop_op)
-  apply (rule step_map_op)
-  apply (rule step_comp_op_L_Tau)
-  apply (rule step_map_op)
-  apply (rule step_label_propagation_op_output)
-  apply (rule refl)+
-  apply (simp add: flip: fold_append change_multiplicities_append_alt)
-  subgoal       
-    unfolding label_prop_output_batch_def
-    apply (clarsimp simp add: filter_empty_conv obtain_progress_def simp flip: fold_append change_multiplicities_append_alt)
-    sorry
-  apply (rule refl)+
-  apply simp
-  apply (rule refl)+
-  apply simp
-  apply (rule refl)+
-  apply simp
-  apply (rule refl)+
-  apply simp
-  apply (rule refl)+
-
-  apply (simp add: obtain_progress_def flip: fold_append change_multiplicities_append_alt)
-  sorry
-  done
-  done
-  done
-qed
+               apply (simp add: obtain_progress_def flip: fold_append change_multiplicities_append_alt)
+            sorry
+          done
+        done
+      done
+  qed
 qed
 
 end
