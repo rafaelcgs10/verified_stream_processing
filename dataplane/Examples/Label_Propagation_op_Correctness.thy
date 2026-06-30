@@ -8192,8 +8192,60 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using inputs_ocaps_inv_consumes[OF label_prop_inv(6)] apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv flip: BULK_BENQ_assoc)
         done
-      subgoal 
-        sorry
+      subgoal for d t xs
+        apply (intro exI conjI relcomppI)
+           apply (rule rtranclp.rtrancl_refl)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def[simplified])
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(2 := (os 2)\<lparr>outpu := (outpu (os 2))(1 := xs)\<rparr>)\<close>])
+        apply (rule exI[of _ os_label_prop])
+        apply (rule exI[of _ \<open>BENQ (1, 1) (d, t) cbufs\<close>])
+        apply (rule exI[of _ sg])
+        apply (intro conjI)
+                           apply (clarsimp simp add: dataflow_tree_to_operator_def
+            intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>]
+            arg_cong[where f=\<open>map_op _ _\<close>])
+                           apply (rule comp_op_buf_cong[OF refl])
+                            apply (simp add: os_inv(1))
+                            apply (rule loop_op_buf_cong[OF refl])
+                            apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+                            apply (rule comp_op_buf_cong[OF refl refl refl])
+                            apply (simp add: ran_comp_wire BENQ_def)
+                            apply (simp add: ran_loop_wire)
+                           apply (clarsimp simp add: BENQ_def ran_def split: sum.splits)
+                           apply (metis obj_sumE prod.exhaust)
+                          apply (simp add: csets_inv buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) BENQ_def cimage_cUn)
+                         apply (rule subgraph_inv(1))
+                        apply (rule subgraph_inv(2))
+        using os_inv(2) apply simp
+        using os_inv(3) apply simp
+        using os_inv(4) apply force
+        using os_inv(5) apply (simp add: os_inv(1) ty1_check_def BENQ_def)
+        using os_inv(6,10) apply (simp add: label_prob_ty2_check_def BENQ_def)
+        using os_inv(7) apply simp
+        using os_inv(8) apply (simp add: input_ocaps_inv_def)
+        using os_inv(9) apply simp
+        using os_inv(6,10) apply (simp add: label_prob_ty2_check_def BENQ_def)
+                apply (rule dataplane_tracker_inv_update_outputs[OF dataplane_inv _ _ _ _ G, where nid=2 and xs=\<open>[(d, t)]\<close> and ys=xs and p=1])
+                   apply simp
+                  apply (simp add: fun_eq_iff)
+                 apply (simp add: BENQ_def)
+                apply (simp add: subgraph_inv(1) raw_summary_def antichain_from_list_singleton)
+        using input_stream_inv apply simp
+              apply (rule label_prop_inv(1))
+        using label_prop_inv(2) apply simp
+        using label_prop_inv(3) apply simp
+        using label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
+          apply (rule label_prop_inv(5))
+        using label_prop_inv(6) apply simp
+        using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def BENQ_def outputs_at_target_raw_summary subgraph_inv(1) image_Un Un_assoc)
+        done
       subgoal 
         sorry
       subgoal 
