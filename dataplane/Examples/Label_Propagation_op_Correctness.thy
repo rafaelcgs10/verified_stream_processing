@@ -3276,41 +3276,45 @@ lemma label_prop_input1_loop_updates_preserves_dataplane_tracker_inv:
 
 proof -
   define b1 where "b1 = cbufs (1, 1)"
-  note b1_def[simp]
+
   define b21 where "b21 = cbufs (2, 1)"
-  note b21_def[simp]
+
   define out1 where "out1 = outpu os_label_prop 1"
-  note out1_def[simp]
+
   define in21 where "in21 = input (os 2) 1"
-  note in21_def[simp]
+
   define inc where "inc = MyPair (0 :: nat) (Suc 0)"
   define ts_caps2_extra where "ts_caps2_extra = map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- inc) (b21 @ out1)"
-  note ts_caps2_extra_def[simp]
+
   define ts_drop where "ts_drop = ocaps (os 2) 1 @ ts_caps2_extra"
-  note ts_drop_def[simp]
+
   define batch where "batch = map (\<lambda>x. (fst x, Cap (snd x -+- inc) (1 :: 2))) (in21 @ b21 @ out1)"
-  note batch_def[simp]
+
   define os2_consumed where "os2_consumed = CONSUMES 1 (b21 @ out1) (os 2)"
-  note os2_consumed_def[simp]
+
   define os2_after_prod where "os2_after_prod = produces os2_consumed batch"
-  note os2_after_prod_def[simp]
+
   define os2_after_drop where "os2_after_drop = drop_caps os2_after_prod (map (\<lambda>t. Cap t 1) ts_drop)"
-  note os2_after_drop_def[simp]
+
   define os2' where
     "os2' = os2_after_drop\<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>"
-  note os2'_def[simp]
+
 
   have cbufs'_eq: "cbufs' = cbufs((2, 1) := [], (1, 1) := [])"
     and os'_eq: "os' = os(2 := os2')"
-    using step unfolding label_prop_input1_loop_updates_def Let_def inc_def
-    by (simp_all add: inc_def split: prod.splits)
+    using step
+    unfolding label_prop_input1_loop_updates_def Let_def
+      os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+      ts_drop_def ts_caps2_extra_def batch_def
+      b21_def out1_def in21_def inc_def
+    by (simp_all split: prod.splits)
 
   define os_label_prop_consumed where
     "os_label_prop_consumed = CONSUMES 1
       (b1 @ outpu (os 2) 1 @
         map (\<lambda>(d, t). (d, t -+- inc)) (in21 @ b21 @ out1))
       (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)"
-  note os_label_prop_consumed_def[simp]
+
 
   have base_label_prop: "op_state_base os_label_prop = os 1"
     using label_prop_extension
@@ -3327,7 +3331,7 @@ proof -
     by (simp add: raw_summary_def zero_myprod_def operator_state.defs)
 
   have out1_eq: "out1 = outpu (os 1) 1"
-    using label_prop_extension by (simp add: operator_state.defs)
+    using label_prop_extension by (simp add: out1_def operator_state.defs)
 
   have edge12: "summ sg (Loc (1 :: 3) (Src (1 :: 2))) (Loc (2 :: 3) (Trg (1 :: 2))) \<noteq> {}\<^sub>A"
     using Summ
@@ -3340,9 +3344,9 @@ proof -
   define osA where
     "osA = os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(1 := [])\<rparr>,
                2 := os2_consumed)"
-  note osA_def[simp]
+
   define cbufsA where "cbufsA = cbufs((2, 1) := [])"
-  note cbufsA_def[simp]
+
 
   have invA: "dataplane_tracker_inv osA cbufsA sg"
   proof -
@@ -3354,25 +3358,27 @@ proof -
           [where nid_up=1 and p_up=1 and nid_dn=2 and p_dn=1,
             OF Inv D GR Nxt edge12]) simp
     show ?thesis
-      using raw out1_eq by simp
+      using raw out1_eq
+      by (simp add: osA_def cbufsA_def os2_consumed_def b21_def)
   qed
 
   have GA: "graph_summar_nt (summ sg) (nxt sg) osA"
   proof -
     have "graph_summar_nt (summ sg) (nxt sg) osA = graph_summar_nt (summ sg) (nxt sg) os"
-      by (rule graph_summar_nt_intsum_cong) (simp add: fold_consumes)
+      by (rule graph_summar_nt_intsum_cong)
+        (simp add: osA_def os2_consumed_def fold_consumes)
     then show ?thesis
       using GR by simp
   qed
 
   define msgsA where "msgsA = b1 @ outpu (os 2) 1"
-  note msgsA_def[simp]
+
   define osB where
     "osB = osA(2 := (osA 2)\<lparr>outpu := (outpu (osA 2))(1 := [])\<rparr>,
                 1 := CONSUMES 1 msgsA (osA 1))"
-  note osB_def[simp]
+
   define cbufsB where "cbufsB = cbufsA((1, 1) := [])"
-  note cbufsB_def[simp]
+
 
   have invB: "dataplane_tracker_inv osB cbufsB sg"
   proof -
@@ -3384,23 +3390,26 @@ proof -
           [where nid_up=2 and p_up=1 and nid_dn=1 and p_dn=1,
             OF invA D GA Nxt edge21]) simp
     show ?thesis
-      using raw by (simp add: fold_consumes)
+      using raw
+      by (simp add: osB_def cbufsB_def msgsA_def b1_def
+          cbufsA_def osA_def os2_consumed_def fold_consumes)
   qed
 
   have GB: "graph_summar_nt (summ sg) (nxt sg) osB"
   proof -
     have "graph_summar_nt (summ sg) (nxt sg) osB = graph_summar_nt (summ sg) (nxt sg) os"
-      by (rule graph_summar_nt_intsum_cong) (simp add: fold_consumes)
+      by (rule graph_summar_nt_intsum_cong)
+        (simp add: osB_def osA_def os2_consumed_def fold_consumes)
     then show ?thesis
       using GR by simp
   qed
 
   define caps_drop where "caps_drop = map (\<lambda>t. Cap t (1 :: 2)) ts_drop"
-  note caps_drop_def[simp]
+
   define produs where "produs = map (\<lambda>(x, cap). (out cap, capability.time cap, 1 :: int)) batch"
-  note produs_def[simp]
+
   define oputs where "oputs = (\<lambda>p. map (\<lambda>(x, cap). (x, capability.time cap)) (filter (\<lambda>(x, cap). out cap = p) batch))"
-  note oputs_def[simp]
+
 
 
   have concat_shift:
@@ -3409,7 +3418,7 @@ proof -
   have osB2_ocaps1:
     "ocaps (osB 2) 1 = ocaps (os 2) 1 @ map (\<lambda>(d, t). t -+- inc) (b21 @ out1)"
     using Intsum unfolding concat_shift[symmetric]
-    by (simp add:  fold_consumes raw_summary_def  inc_def)
+    by (simp add: osB_def osA_def os2_consumed_def fold_consumes raw_summary_def inc_def)
 
   have input_caps2:
     "\<And>d t. (d, t) \<in> set in21 \<Longrightarrow> t -+- inc \<in> set (ocaps (os 2) 1)"
@@ -3419,7 +3428,7 @@ proof -
     have inc: "inc \<in> set (intsum (os 2) 1 1)"
       using Intsum by (simp add: inc_def raw_summary_def)
     show "t -+- inc \<in> set (ocaps (os 2) 1)"
-      using IOC2 mem inc unfolding input_ocaps_inv_def by fastforce
+      using IOC2 mem inc unfolding input_ocaps_inv_def in21_def by fastforce
   qed
 
   have shifted_caps_B:
@@ -3433,7 +3442,7 @@ proof -
     assume y: "y \<in> set produs"
     then obtain x where x_mem: "x \<in> set (in21 @ b21 @ out1)"
       and y_eq: "y = (1, snd x -+- inc, 1)"
-      by auto
+      unfolding produs_def batch_def by auto
     obtain d t where x_eq: "x = (d, t)"
       by (cases x)
     show "case y of (p, t, m) \<Rightarrow> 0 < m \<and> t \<in> set (ocaps (osB 2) p)"
@@ -3441,21 +3450,24 @@ proof -
   qed
 
   have ts_drop_subset_B: "mset ts_drop \<subseteq># mset (ocaps (osB 2) 1)"
-    using osB2_ocaps1 by (simp add: split_beta)
+    using osB2_ocaps1 by (simp add: split_beta ts_drop_def ts_caps2_extra_def)
 
   have drops_subset_B:
     "\<forall>p'. mset (map capability.time (filter (\<lambda>c. out c = p') caps_drop)) \<subseteq># mset (ocaps (osB 2) p')"
+    unfolding caps_drop_def
     by (rule cap_times_filter_single_port_subset[OF ts_drop_subset_B])
 
   have oputs_caps_B: "\<forall>p. snd ` set (oputs p) \<subseteq> set (ocaps (osB 2) p)"
-    by (rule produced_oputs_caps_from_produs[OF prod_caps_B])
+    unfolding oputs_def
+    by (rule produced_oputs_caps_from_produs[OF prod_caps_B[unfolded produs_def]])
 
   have oputs_produs_B:
     "\<forall>p. to_zmset (map snd (oputs p)) = zmset (map snd (filter (\<lambda>x. p = fst x) produs))"
+    unfolding oputs_def produs_def
     by (rule produced_oputs_produs_zmset)
 
-  define drop_times where "drop_times = \<lambda>p. map capability.time (filter (\<lambda>c. out c = p) caps_drop)"
-  note drop_times_def[simp]
+  define drop_times where "drop_times = (\<lambda>p. map capability.time (filter (\<lambda>c. out c = p) caps_drop))"
+
   define os2C_abs where
     "os2C_abs = (osB 2)\<lparr>
     outpu := (\<lambda>p. outpu (osB 2) p @ oputs p),
@@ -3463,18 +3475,19 @@ proof -
     input := (\<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drop_times p)) (input (osB 2) p)),
     produ := produ (osB 2) @ produs,
     inter := operator_state.inter (osB 2) @ map (\<lambda>cap. (out cap, capability.time cap, - 1)) caps_drop\<rparr>"
-  note os2C_abs_def[simp]
+
   define osC_abs where "osC_abs = osB(2 := os2C_abs)"
-  note osC_abs_def[simp]
+
 
   have invC_abs: "dataplane_tracker_inv osC_abs cbufsB sg"
+    unfolding osC_abs_def os2C_abs_def drop_times_def
     by (rule dataplane_tracker_inv_produces_drops_dropcaps_shape
         [OF D refl refl refl refl refl drops_subset_B prod_caps_B oputs_caps_B oputs_produs_B GB Nxt invB])
 
   have GC_abs: "graph_summar_nt (summ sg) (nxt sg) osC_abs"
   proof -
     have "graph_summar_nt (summ sg) (nxt sg) osC_abs = graph_summar_nt (summ sg) (nxt sg) osB"
-      by (rule graph_summar_nt_intsum_cong) simp
+      by (rule graph_summar_nt_intsum_cong) (simp add: osC_abs_def os2C_abs_def)
     then show ?thesis
       using GB by simp
   qed
@@ -3482,9 +3495,10 @@ proof -
   define osD where
     "osD = osC_abs(2 := (osC_abs 2)\<lparr>outpu := (outpu (osC_abs 2))(1 := [])\<rparr>,
                    1 := CONSUMES 1 (cbufsB (1, 1) @ outpu (osC_abs 2) 1) (osC_abs 1))"
-  note osD_def[simp]
+
 
   have invD: "dataplane_tracker_inv osD (cbufsB((1, 1) := [])) sg"
+    unfolding osD_def
     by (rule dataplane_tracker_inv_outpu_then_fold_consumes
         [where nid_up=2 and p_up=1 and nid_dn=1 and p_dn=1,
           OF invC_abs D GC_abs Nxt edge21]) simp
@@ -3498,6 +3512,7 @@ proof -
 
   have oputs1_eq:
     "oputs 1 = map (\<lambda>(d, t). (d, t -+- inc)) (in21 @ b21 @ out1)"
+    unfolding oputs_def batch_def
     by (simp add: oputs1_map)
 
   have out_label_prop: "outpu os_label_prop = outpu (os 1)"
@@ -3510,20 +3525,20 @@ proof -
 
   have osB1:
     "osB 1 = CONSUMES 1 msgsA ((os 1)\<lparr>outpu := (outpu (os 1))(1 := [])\<rparr>)"
-    by simp
+    by (simp add: osB_def osA_def)
 
   have osC_abs_1: "osC_abs 1 = osB 1"
-    by simp
+    by (simp add: osC_abs_def)
 
   have osC_abs_out2_1: "outpu (osC_abs 2) 1 = oputs 1"
-    by (simp add: oputs1_map)
+    by (simp add: osC_abs_def os2C_abs_def osB_def osA_def os2_consumed_def fold_consumes)
 
   have osD_to_B: "osD 1 = CONSUMES 1 (oputs 1) (osB 1)"
   proof -
     have raw: "osD 1 = CONSUMES 1 (cbufsB (1, 1) @ outpu (osC_abs 2) 1) (osC_abs 1)"
-      by simp
+      by (simp add: osD_def)
     have msgs: "cbufsB (1, 1) @ outpu (osC_abs 2) 1 = oputs 1"
-      using osC_abs_out2_1 by simp
+      using osC_abs_out2_1 by (simp add: cbufsB_def cbufsA_def)
     show ?thesis
       apply (subst raw)
       apply (subst msgs)
@@ -3542,11 +3557,12 @@ proof -
   have msgs_oputs_eq:
     "msgsA @ oputs 1 =
       b1 @ outpu (os 2) 1 @ map (\<lambda>(d, t). (d, t -+- inc)) (in21 @ b21 @ out1)"
-    using oputs1_eq by simp
+    using oputs1_eq by (simp add: msgsA_def)
 
   have label_prop_consumed_base:
     "op_state_base os_label_prop_consumed =
       CONSUMES 1 (msgsA @ oputs 1) ((os 1)\<lparr>outpu := (outpu (os 1))(1 := [])\<rparr>)"
+    unfolding os_label_prop_consumed_def
     apply (simp only: op_state_base_CONSUMES)
     apply (subst base_clear)
     apply (subst msgs_oputs_eq)
@@ -3559,10 +3575,12 @@ proof -
     apply (rule refl)
     done
 
-  define osE where "osE = osD(2 := (osD 2)\<lparr>input := (input (os 2))(1 := [])\<rparr>)"
-  note osE_def[simp]
+  define osE :: "3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state"
+    where "osE = osD(2 := (osD 2)\<lparr>input := (input (os 2))(1 := [])\<rparr>)"
+
 
   have invE: "dataplane_tracker_inv osE (cbufsB((1, 1) := [])) sg"
+    unfolding osE_def
     by (rule dataplane_tracker_inv_input_update
         [where nid=2 and inp="(input (os 2))(1 := [])", OF invD])
 
@@ -3575,10 +3593,11 @@ proof -
     by (induct xs) (auto split: prod.splits)
 
   have oputs_other: "p \<noteq> 1 \<Longrightarrow> oputs p = []" for p :: 2
+    unfolding oputs_def batch_def
     by (rule oputs_other_map)
 
   have osB2_eq: "osB 2 = os2_consumed\<lparr>outpu := (outpu (os 2))(1 := [])\<rparr>"
-    by simp
+    by (simp add: osB_def osA_def os2_consumed_def fold_consumes)
 
   have osE2_outpu: "outpu (osE 2) = outpu os2'"
   proof (rule ext)
@@ -3587,37 +3606,59 @@ proof -
     proof (cases "p = 1")
       case True
       then show ?thesis
-        by (simp add: drop_caps_def produces_def)
+        by (simp add: osE_def osD_def os2'_def drop_caps_def produces_def)
     next
       case False
       then show ?thesis
         using oputs_other[OF False]
-        by (simp add: osB2_eq drop_caps_def produces_def)
+        by (simp add: osE_def osD_def osC_abs_def os2C_abs_def osB2_eq
+            os2'_def drop_caps_def produces_def)
     qed
   qed
 
   have osE2_eq: "osE 2 = os2'"
   proof (rule operator_state_eqI)
     show "intsum (osE 2) = intsum os2'"
-      by (simp add: osB2_eq drop_caps_def produces_def)
+      by (simp add: osE_def osD_def osC_abs_def os2C_abs_def osB2_eq
+          os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+          fold_consumes drop_caps_def produces_def)
     show "consu (osE 2) = consu os2'"
-      by (simp add: osB2_eq drop_caps_def produces_def)
+      by (simp add: osE_def osD_def osC_abs_def os2C_abs_def osB2_eq
+          os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+          fold_consumes drop_caps_def produces_def)
     show "operator_state.inter (osE 2) = operator_state.inter os2'"
-      by (simp add: osB2_eq drop_caps_def produces_def)
+      by (simp add: osE_def osD_def osC_abs_def os2C_abs_def osB2_eq
+          os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+          caps_drop_def
+          fold_consumes drop_caps_def produces_def)
     show "produ (osE 2) = produ os2'"
-      by (simp add: osB2_eq drop_caps_def produces_def)
+      by (simp add: osE_def osD_def osC_abs_def os2C_abs_def osB2_eq
+          os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+          produs_def
+          fold_consumes drop_caps_def produces_def)
     show "input (osE 2) = input os2'"
-      by (simp add: osB2_eq drop_caps_def produces_def)
+      by (simp add: osE_def osD_def osC_abs_def os2C_abs_def osB2_eq
+          os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+          fold_consumes drop_caps_def produces_def)
     show "outpu (osE 2) = outpu os2'"
       by (rule osE2_outpu)
     show "front (osE 2) = front os2'"
-      by (simp add: osB2_eq drop_caps_def produces_def)
+      by (simp add: osE_def osD_def osC_abs_def os2C_abs_def osB2_eq
+          os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+          fold_consumes drop_caps_def produces_def)
     show "ocaps (osE 2) = ocaps os2'"
-      by (simp add: osB2_eq drop_caps_def produces_def)
+      by (simp add: osE_def osD_def osC_abs_def os2C_abs_def osB2_eq
+          os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+          drop_times_def caps_drop_def
+          fold_consumes drop_caps_def produces_def)
     show "initia (osE 2) = initia os2'"
-      by (simp add: osB2_eq drop_caps_def produces_def)
+      by (simp add: osE_def osD_def osC_abs_def os2C_abs_def osB2_eq
+          os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+          fold_consumes drop_caps_def produces_def)
     show "operator_state.more (osE 2) = operator_state.more os2'"
-      by (simp add: osB2_eq drop_caps_def produces_def)
+      by (simp add: osE_def osD_def osC_abs_def os2C_abs_def osB2_eq
+          os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+          fold_consumes drop_caps_def produces_def)
   qed
 
   have osE_eq: "osE = os(2 := os2', 1 := op_state_base os_label_prop_consumed)"
@@ -3627,7 +3668,7 @@ proof -
     proof (cases "nid' = 1")
       case True
       then show ?thesis
-        using osD_slot1 by simp
+        using osD_slot1 by (simp add: osE_def)
     next
       case False
       then show ?thesis
@@ -3638,20 +3679,22 @@ proof -
       next
         case False2: False
         then show ?thesis
-          using False by simp
+          using False
+          by (simp add: osE_def osD_def osC_abs_def osB_def osA_def)
       qed
     qed
   qed
 
   have intsum_os2': "intsum os2' = intsum (os 2)"
-    by (simp add: drop_caps_def produces_def)
+    by (simp add: os2'_def os2_after_drop_def os2_after_prod_def os2_consumed_def
+        fold_consumes drop_caps_def produces_def)
 
   have intsum_consumed_base:
     "intsum (op_state_base os_label_prop_consumed) = intsum (os 1)"
   proof -
     have "intsum (op_state_base os_label_prop_consumed) =
       intsum (op_state_base (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>))"
-      by simp
+      by (simp add: os_label_prop_consumed_def intsum_consumes_fold)
     also have "... = intsum ((op_state_base os_label_prop)\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)"
       by simp
     also have "... = intsum (op_state_base os_label_prop)"
@@ -3686,11 +3729,13 @@ proof -
     have "input_ocaps_inv (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)"
       using IOC_label_prop unfolding input_ocaps_inv_def by simp
     then show ?thesis
+      unfolding os_label_prop_consumed_def
       by (rule input_ocaps_inv_CONSUMES)
   qed
 
   have zero_consumed: "0 \<in> set (intsum os_label_prop_consumed 1 1)"
-    using zero_label_prop by simp
+    using zero_label_prop
+    by (simp add: os_label_prop_consumed_def intsum_consumes_fold)
 
   have upd: "osE(1 := op_state_base os_label_prop_consumed) = osE"
     apply (subst osE_eq)
@@ -3729,7 +3774,9 @@ proof -
 
   have os_label_prop'_eq:
     "os_label_prop' = fst (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))"
-    using step unfolding label_prop_input1_loop_updates_def Let_def
+    using step
+    unfolding label_prop_input1_loop_updates_def Let_def
+      os_label_prop_consumed_def b1_def in21_def b21_def out1_def inc_def
     by (simp split: prod.splits)
 
   have os_final_eq:
@@ -3742,7 +3789,7 @@ proof -
     done
 
   have cbufs_final_eq: "cbufs' = cbufsB((1, 1) := [])"
-    using cbufs'_eq by simp
+    using cbufs'_eq by (simp add: cbufsB_def cbufsA_def)
 
   show ?thesis
     apply (subst os_final_eq)
@@ -7599,17 +7646,18 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   unfolding ty1_check_def
                   by (auto simp add: operator_state.defs produces_def release_caps_def drop_caps_def)
                 subgoal premises aux
-                  using os_inv(4,6) aux(1,2,3) apply -
-                  unfolding label_prob_ty2_check_def add_caps_def input_tl_def label_prop_edge_batch_def label_prop_edge_record_update_def label_prop_neighbor_batch_def
-                  apply (auto 0 0 simp add: os_inv(1,4) image_iff operator_state.defs produces_def release_caps_def drop_caps_def)
+                  apply simp
+                  apply (rule label_prob_ty2_check_producesI)
                   subgoal
-                    by (metis UnI1 img_fst list.set_intros(2))
+                    using os_inv(4,6) by auto
                   subgoal
-                    by auto
+                    using os_inv(4,6) aux(1,2,3) apply -
+                    unfolding label_prob_ty2_check_def add_caps_def input_tl_def label_prop_edge_batch_def label_prop_edge_record_update_def label_prop_neighbor_batch_def
+                    by (auto 0 0 simp add: os_inv(1,4) image_iff operator_state.defs produces_def release_caps_def drop_caps_def)
                   subgoal
-                    by force
-                  subgoal
-                    by force
+                    using os_inv(4,6) aux(1,2,3) apply -
+                    unfolding label_prob_ty2_check_def add_caps_def input_tl_def label_prop_edge_batch_def label_prop_edge_record_update_def label_prop_neighbor_batch_def
+                    by (auto 0 0 simp add: os_inv(1,4) image_iff operator_state.defs produces_def release_caps_def drop_caps_def)
                   done
                 subgoal premises aux
                   unfolding add_caps_def
@@ -8403,12 +8451,12 @@ next
     by clarsimp
 
   define os_progress where \<open>os_progress = os(0 := op_state_base (fst (obtain_progress os_input)))\<close>
-  note os_progress_def[simp]
+
   define sg_progress where \<open>sg_progress = sg\<lparr>upfro := (\<lambda>_. True),
     pt_tr := change_multiplicities (summ sg)
       (extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress os_input)))
       (pt_tr sg)\<rparr>\<close>
-  note sg_progress_def[simp]
+
   have dataplane_after_input_progress:
     \<open>dataplane_tracker_inv os_progress cbufs sg_progress\<close>
   proof -
@@ -8426,27 +8474,28 @@ next
           (extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress os_input)))
           (pt_tr sg)\<rparr>)\<close>
       using dataplane_tracker_inv_progress[OF dataplane_inv D G refl]
-      by (simp add: base_progress progress_st)
+      by (simp add: os_progress_def base_progress progress_st)
     have clean_upfro:
       \<open>dataplane_tracker_inv os_progress cbufs sg_progress \<longleftrightarrow>
         dataplane_tracker_inv os_progress cbufs
           (sg\<lparr>pt_tr := change_multiplicities (summ sg)
             (extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress os_input)))
             (pt_tr sg)\<rparr>)\<close>
-      by (rule dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>]) simp_all
+      by (rule dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>])
+        (simp_all add: sg_progress_def)
     show ?thesis
       using clean_upfro inv_no_upfro by simp
   qed
 
   define sg_first_propa where \<open>sg_first_propa = sg_progress\<lparr>pt_tr := c', upfro := (upfro sg_progress)(1 := False)\<rparr>\<close>
-  note sg_first_propa_def[simp]
+
   define label_front_after_first_propa where
     \<open>label_front_after_first_propa = frontier \<circ> (\<lambda>p. c_imp (pt_tr sg_first_propa) (Loc (1 :: 3) (Trg p)))\<close>
-  note label_front_after_first_propa_def[simp]
+
   define os_first_propa where
     \<open>os_first_propa = os_progress(1 := op_state_base
       (os_label_prop\<lparr>front := label_front_after_first_propa, initia := True\<rparr>))\<close>
-  note os_first_propa_def[simp]
+
   have dataplane_after_first_propa:
     \<open>dataplane_tracker_inv os_first_propa cbufs sg_first_propa\<close>
   proof -
@@ -8464,26 +8513,26 @@ next
       have \<open>graph_summar_nt (summ sg) (nxt sg) os_progress =
         graph_summar_nt (summ sg) (nxt sg) os\<close>
         by (rule graph_summar_nt_intsum_cong)
-          (simp add: os_inv(1) obtain_progress_def op_state_base_def operator_state.defs)
+          (simp add: os_progress_def os_inv(1) obtain_progress_def op_state_base_def operator_state.defs)
       then show ?thesis
-        using G by simp
+        using G by (simp add: sg_progress_def)
     qed
     have D_progress: \<open>dataflow_topology (summ sg_progress) (-+-)\<close>
-      using D by simp
+      using D by (simp add: sg_progress_def)
     have reachable_progress: \<open>reachable_locations (summ sg_progress) = UNIV\<close>
-      using subgraph_inv(1) by simp
+      using subgraph_inv(1) by (simp add: sg_progress_def)
     have propagate_progress: \<open>propagate_all (summ sg_progress) (pt_tr sg_progress) = Some c'\<close>
-      using first_propa(1) subgraph_inv by simp
+      using first_propa(1) subgraph_inv by (simp add: sg_progress_def)
     define front_c where \<open>front_c = frontier \<circ> (\<lambda>p. c_imp c' (Loc (1 :: 3) (Trg p)))\<close>
-    note front_c_def[simp]
+
     have inv_front_no_upfro:
       \<open>dataplane_tracker_inv os_first_propa cbufs (sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>
     proof -
       define os_front where \<open>os_front = map_entry (1 :: 3) (front_update (\<lambda>_. front_c)) os_progress\<close>
-      note os_front_def[simp]
+
       have inv_map:
         \<open>dataplane_tracker_inv os_front cbufs (sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>
-        apply simp
+        unfolding os_front_def front_c_def
         by (rule dataplane_tracker_inv_front_update
             [OF D_progress reachable_progress propagate_progress G_progress dataplane_after_input_progress,
               where nid = \<open>1 :: 3\<close>, simplified])
@@ -8492,27 +8541,30 @@ next
         \<open>dataplane_tracker_inv os_first_propa cbufs (sg_progress\<lparr>pt_tr := c'\<rparr>) \<longleftrightarrow>
           dataplane_tracker_inv os_front cbufs (sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>
         by (rule dataplane_tracker_inv_clean[where f=\<open>upfro (sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>])
-          (simp_all add: os_inv(4) op_state_base_def operator_state.defs)
+          (simp_all add: os_first_propa_def os_front_def os_progress_def
+            label_front_after_first_propa_def sg_first_propa_def front_c_def
+            os_inv(4) op_state_base_def operator_state.defs)
       show ?thesis
         using clean_initia inv_map by simp
     qed
     have clean_upfro:
       \<open>dataplane_tracker_inv os_first_propa cbufs sg_first_propa \<longleftrightarrow>
         dataplane_tracker_inv os_first_propa cbufs (sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>
-      by (rule dataplane_tracker_inv_clean[where f=\<open>(upfro sg_progress)(1 := False)\<close>]) simp_all
+      by (rule dataplane_tracker_inv_clean[where f=\<open>(upfro sg_progress)(1 := False)\<close>])
+        (simp_all add: sg_first_propa_def)
     show ?thesis
       using clean_upfro inv_front_no_upfro by simp
   qed
 
   define os_label_after_first_propa where
     \<open>os_label_after_first_propa = os_label_prop\<lparr>front := label_front_after_first_propa, initia := True\<rparr>\<close>
-  note os_label_after_first_propa_def[simp]
+
   define input_events where \<open>input_events = (\<lambda>n. ltaken n lxs)\<close>
-  note input_events_def[simp]
+
   define input_data where
     \<open>input_data = (\<lambda>n. map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d :: _ + nat set set, t))
       (filter is_Data (input_events n)))\<close>
-  note input_data_def[simp]
+
   define os_input_after_stream where
     \<open>os_input_after_stream = (\<lambda>n. (fst (obtain_progress os_input))\<lparr>
       es := (es (fst (obtain_progress os_input)))(0 := ldropn n lxs),
@@ -8526,55 +8578,57 @@ next
           (filter is_Data (input_events n)),
       outpu := (outpu (fst (obtain_progress os_input)))(0 :=
         outpu (fst (obtain_progress os_input)) 0 @ input_data n)\<rparr>)\<close>
-  note os_input_after_stream_def[simp]
+
   define os_after_input_stream where
     \<open>os_after_input_stream = (\<lambda>n. os_first_propa(0 := op_state_base (os_input_after_stream n)))\<close>
-  note os_after_input_stream_def[simp]
+
   have dataplane_after_input_stream:
     \<open>dataplane_tracker_inv (os_after_input_stream n) cbufs sg_first_propa\<close>
     for n
   proof -
     have D_first: \<open>dataflow_topology (summ sg_first_propa) (-+-)\<close>
-      using D by simp
+      using D by (simp add: sg_first_propa_def sg_progress_def)
     have Nxt_first: \<open>nxt sg_first_propa = graph_to_nxt (summ sg_first_propa)\<close>
-      using subgraph_inv(2) by simp
+      using subgraph_inv(2) by (simp add: sg_first_propa_def sg_progress_def)
     have G_first: \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) os_first_propa\<close>
     proof -
       have \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) os_first_propa =
         graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) os\<close>
         by (rule graph_summar_nt_intsum_cong)
-          (simp add: os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs)
+          (simp add: os_first_propa_def os_progress_def
+            os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs)
       then show ?thesis
-        using G by simp
+        using G by (simp add: sg_first_propa_def sg_progress_def)
     qed
 
     define xs where \<open>xs = ltaken n lxs\<close>
-    note xs_def[simp]
+
     define mint_times where \<open>mint_times = map event.time (filter is_Mint xs)\<close>
-    note mint_times_def[simp]
+
     define drop_times where \<open>drop_times = map event.time (filter is_Drop xs)\<close>
-    note drop_times_def[simp]
+
     define produs where \<open>produs = map (\<lambda>ev. ((0 :: 2), event.time ev, 1 :: int)) (filter is_Data xs)\<close>
-    note produs_def[simp]
+
     define oputs where \<open>oputs = (\<lambda>_. [])((0 :: 2) := input_data n)\<close>
-    note oputs_def[simp]
+
     define base where \<open>base = os_first_propa 0\<close>
-    note base_def[simp]
+
     define os_minted where
       \<open>os_minted = os_first_propa(0 := base\<lparr>
         ocaps := (ocaps base)((0 :: 2) := ocaps base 0 @ mint_times),
         inter := inter base @ map (\<lambda>t. ((0 :: 2), t, 1 :: int)) mint_times\<rparr>)\<close>
-    note os_minted_def[simp]
+
     have OSB1[simp]: \<open>\<And> F I. op_state_base (os_label_prop\<lparr>front := F, initia := I\<rparr>) = os 1\<lparr>front := F, initia := I\<rparr>\<close>
       by (simp add: op_state_base_def os_inv(4) operator_state.defs)
     have OSB0[simp]: \<open>op_state_base (fst (obtain_progress os_input)) = fst (obtain_progress (os 0))\<close>
       by (simp add: op_state_base_def obtain_progress_def os_inv(1) operator_state.defs)
-    have inv_minted: \<open>dataplane_tracker_inv os_minted cbufs sg_first_propa\<close> sorry
-     (*  apply simp
-      using dataplane_tracker_inv_mints_many[OF D_first, simplified]
-      apply (rule dataplane_tracker_inv_mints_many[OF D_first, simplified])
+    have inv_minted: \<open>dataplane_tracker_inv os_minted cbufs sg_first_propa\<close>
+      unfolding os_minted_def base_def
+      apply (rule dataplane_tracker_inv_mints_many[OF D_first, simplified,
+            where nid=0 and p=0 and xs=mint_times])
         apply (rule dataplane_after_first_propa)
        apply (rule G_first)
+      unfolding mint_times_def xs_def
       apply clarsimp
       subgoal for e
         apply (cases e; clarsimp)
@@ -8583,43 +8637,44 @@ next
           apply (drule Mint_in_Stream_le_Mint_in_C[rotated])
           using input_stream_inv[unfolded timely_input_stream_def] apply blast
           using os_inv(1)
-          by (auto simp add: obtain_progress_def op_state_base_def operator_state.defs)
+          by (auto simp add: os_first_propa_def os_progress_def
+              obtain_progress_def op_state_base_def operator_state.defs)
         done
-      done *)
-    
+      done
+
     have G_minted: \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) os_minted\<close>
     proof -
       have \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) os_minted =
         graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) os_first_propa\<close>
-        by (rule graph_summar_nt_intsum_cong) simp
+        by (rule graph_summar_nt_intsum_cong) (simp add: os_minted_def base_def)
       then show ?thesis
         using G_first by simp
     qed
 
     define drops where \<open>drops = (\<lambda>_. [])((0 :: 2) := drop_times)\<close>
-    note drops_def[simp]
+
     define canon_ocaps_port0 where \<open>canon_ocaps_port0 = list_diff (ocaps base 0 @ mint_times) drop_times\<close>
-    note canon_ocaps_port0_def[simp]
+
     define canon_ocaps where \<open>canon_ocaps = (ocaps base)((0 :: 2) := canon_ocaps_port0)\<close>
-    note canon_ocaps_def[simp]
+
     define canon_output where \<open>canon_output = (outpu base)((0 :: 2) := outpu base 0 @ input_data n)\<close>
-    note canon_output_def[simp]
+
     define canon_inter where
       \<open>canon_inter = inter base @ map (\<lambda>t. ((0 :: 2), t, 1 :: int)) mint_times @
         map (\<lambda>t. ((0 :: 2), t, -1 :: int)) drop_times\<close>
-    note canon_inter_def[simp]
+
     define canon0 where
       \<open>canon0 = base\<lparr>outpu := canon_output, ocaps := canon_ocaps, input := input base,
         produ := produ base @ produs, inter := canon_inter\<rparr>\<close>
-    note canon0_def[simp]
+
     define os_canon where \<open>os_canon = os_first_propa(0 := canon0)\<close>
-    note os_canon_def[simp]
+
     have concat_drops:
       \<open>concat (map (\<lambda>p. map (\<lambda>t. (p, t, - 1 :: int)) (drops p)) Enum.enum) =
         map (\<lambda>t. ((0 :: 2), t, - 1 :: int)) drop_times\<close>
       using concat_map_empty_except_1[OF Enum.enum_distinct Enum.in_enum,
           where x=\<open>0 :: 2\<close> and f=\<open>\<lambda>p. map (\<lambda>t. (p, t, - 1 :: int)) (drops p)\<close>]
-      by auto
+      by (auto simp: drops_def)
     have oputs_produs:
       \<open>\<forall>p. to_zmset (map snd (oputs p)) =
         zmset (map snd (filter (\<lambda>x. p = fst x) produs))\<close>
@@ -8636,25 +8691,20 @@ next
         have lhs_time:
           \<open>to_zmset (map snd (oputs (0 :: 2))) =
             to_zmset (map event.time (filter is_Data xs))\<close>
-          apply (simp add: comp_def)
+          apply (simp add: oputs_def input_data_def input_events_def xs_def[symmetric] comp_def)
           apply (rule arg_cong[where f=to_zmset])
           apply (rule data_time)
           done
-        sorry
         have rhs_time:
           \<open>zmset (map snd (filter (\<lambda>x. (0 :: 2) = fst x) produs)) =
             to_zmset (map event.time (filter is_Data xs))\<close>
-          by (simp add: filter_True comp_def zmset_map_one)
+          by (simp add: produs_def filter_True comp_def zmset_map_one)
         show ?thesis
           using True lhs_time rhs_time by simp
-
-
-
-
       next
         case False
         then show ?thesis
-          by (simp add: filter_False)
+          by (simp add: oputs_def produs_def filter_False)
       qed
     qed
 
@@ -8667,41 +8717,51 @@ next
       apply (rule dataplane_tracker_inv_produces_drops[OF D_first,
             where os = os_minted and nid = \<open>0 :: 3\<close>
               and oputs = oputs and produs = produs and drops = drops])
-                 apply (rule ext; simp)
-                apply (rule ext; simp add: fun_upd_def)
-               apply (rule ext; simp add: os_inv(1,2) obtain_progress_def op_state_base_def operator_state.defs)
-              apply simp
-             apply (simp add: concat_drops)
+                 apply (rule ext; simp add: canon_output_def oputs_def os_minted_def)
+                apply (rule ext; simp add: canon_ocaps_def canon_ocaps_port0_def
+          drops_def os_minted_def fun_upd_def)
+               apply (rule ext; simp add: drops_def os_minted_def base_def
+          os_first_propa_def os_progress_def
+          os_inv(1,2) obtain_progress_def op_state_base_def operator_state.defs)
+              apply (simp add: os_minted_def)
+             apply (simp add: canon_inter_def os_minted_def drops_def concat_drops)
       using timely_input_stream_drops_subseteq_C_mints[OF input_stream_inv, of n] os_inv(1)
-            apply (auto simp add: obtain_progress_def op_state_base_def operator_state.defs split: if_splits)[1]
-           apply (clarsimp del: disjCI simp add: image_iff)
-      subgoal for e
-        apply (cases e; clarsimp del: disjCI simp add: image_iff)
+            apply (auto simp add: drops_def os_minted_def base_def
+          os_first_propa_def os_progress_def drop_times_def mint_times_def xs_def
+          obtain_progress_def op_state_base_def operator_state.defs split: if_splits)[1]
+           apply (clarsimp del: disjCI simp add: produs_def os_minted_def base_def
+          os_first_propa_def os_progress_def
+          image_iff)
+      subgoal for ev
+        apply (cases ev; clarsimp del: disjCI simp add: image_iff)
         subgoal for t d
           using timely_input_stream_Data_in_C_in[OF _ input_stream_inv, of _ _ n] os_inv(1)
-          by (force simp add: obtain_progress_def op_state_base_def operator_state.defs)
+          by (force simp add: xs_def mint_times_def
+              obtain_progress_def op_state_base_def operator_state.defs)
         done
-          apply (clarsimp del: disjCI simp add: image_iff split: if_splits)
+          apply (clarsimp del: disjCI simp add: oputs_def os_minted_def base_def
+          os_first_propa_def os_progress_def
+          input_data_def input_events_def image_iff split: if_splits)
       subgoal for t d
         using timely_input_stream_Data_in_C_in[OF _ input_stream_inv, of _ _ n] os_inv(1)
-        by (auto simp add: obtain_progress_def op_state_base_def operator_state.defs split: event.splits)
+        by (auto simp add: mint_times_def xs_def
+            obtain_progress_def op_state_base_def operator_state.defs split: event.splits)
          apply (rule oputs_produs)
-
-
         apply (rule G_minted)
        apply (rule Nxt_first)
       apply (rule inv_minted)
       done
     have inv_canon: \<open>dataplane_tracker_inv os_canon cbufs sg_first_propa\<close>
-      using inv_canon_step by (simp add: fun_upd_def)
+      using inv_canon_step
+      by (simp add: os_canon_def canon0_def os_minted_def base_def fun_upd_def)
 
     define target0_canon_ocaps where
       \<open>target0_canon_ocaps = (os_after_input_stream n 0)\<lparr>ocaps :=
         (ocaps (os_after_input_stream n 0))((0 :: 2) := canon_ocaps_port0)\<rparr>\<close>
-    note target0_canon_ocaps_def[simp]
+
 
     define os_target_canon_ocaps where \<open>os_target_canon_ocaps = (os_after_input_stream n)(0 := target0_canon_ocaps)\<close>
-    note os_target_canon_ocaps_def[simp]
+
     have inter_events_mset:
       \<open>mset (map (\<lambda>t. ((0 :: 2), t, 1 :: int)) (map event.time (filter is_Mint xs))) +
         mset (map (\<lambda>t. ((0 :: 2), t, -1 :: int)) (map event.time (filter is_Drop xs))) =
@@ -8711,7 +8771,13 @@ next
     have inter_mset:
       \<open>mset canon_inter = mset (inter (target0_canon_ocaps))\<close>
       using inter_events_mset[of xs]
-      by (simp add: obtain_progress_def op_state_base_def operator_state.defs mset_append split: event.splits)
+      by (simp add: canon_inter_def target0_canon_ocaps_def
+          os_after_input_stream_def os_input_after_stream_def
+          os_first_propa_def os_progress_def base_def
+          mint_times_def drop_times_def
+          input_events_def xs_def
+          obtain_progress_def op_state_base_def operator_state.defs mset_append
+          split: event.splits)
 
     have fields_inter:
       \<open>\<forall>nid. intsum (os_canon nid) = intsum (os_target_canon_ocaps nid) \<and>
@@ -8722,7 +8788,12 @@ next
         outpu (os_canon nid) = outpu (os_target_canon_ocaps nid) \<and>
         front (os_canon nid) = front (os_target_canon_ocaps nid)\<close>
       using inter_mset os_inv(1)
-      by (auto simp add: obtain_progress_def op_state_base_def operator_state.defs split: event.splits)
+      by (auto simp add: os_canon_def canon0_def base_def
+          os_target_canon_ocaps_def target0_canon_ocaps_def
+          os_after_input_stream_def os_input_after_stream_def
+          os_first_propa_def os_progress_def
+          canon_ocaps_def canon_output_def produs_def xs_def input_events_def
+          obtain_progress_def op_state_base_def operator_state.defs split: event.splits)
     have inv_target_canon_ocaps:
       \<open>dataplane_tracker_inv os_target_canon_ocaps cbufs sg_first_propa\<close>
       using iffD1[OF dataplane_tracker_inv_clean_reorder_inter[OF fields_inter, of cbufs sg_first_propa]]
@@ -8733,29 +8804,30 @@ next
       \<open>mset (ocaps (os_after_input_stream n 0) (0 :: 2)) = mset canon_ocaps_port0\<close>
       using mset_ocaps_updates[of xs \<open>ldropn n lxs\<close> \<open>ocaps (fst (obtain_progress os_input)) (0 :: 2)\<close>]
         input_stream_inv os_inv(1)
-      by (simp add: obtain_progress_def op_state_base_def operator_state.defs mset_list_diff)
+      by (simp add: os_after_input_stream_def os_input_after_stream_def
+          canon_ocaps_port0_def base_def os_first_propa_def os_progress_def
+          mint_times_def drop_times_def xs_def input_events_def
+          obtain_progress_def op_state_base_def operator_state.defs mset_list_diff)
     show ?thesis
       apply (rule dataplane_tracker_inv_replace_ocaps
           [where os' = os_target_canon_ocaps and nid = \<open>0 :: 3\<close> and p = \<open>0 :: 2\<close> and C = canon_ocaps_port0])
-
-
         apply (rule inv_target_canon_ocaps)
        apply (rule ocaps_mset)
-      apply simp
+      apply (simp add: os_target_canon_ocaps_def target0_canon_ocaps_def)
       done
   qed
 
   define input0_msgs where \<open>input0_msgs = (\<lambda>n. cbufs (1, 0) @ outpu (os 0) 0 @ input_data n)\<close>
-  note input0_msgs_def[simp]
+
   define cbufs_after_input_output where \<open>cbufs_after_input_output = (\<lambda>n. cbufs((1, 0) := input0_msgs n))\<close>
-  note cbufs_after_input_output_def[simp]
+
   define os_input_after_output where
     \<open>os_input_after_output = (\<lambda>n. (os_input_after_stream n)\<lparr>outpu :=
       (outpu (os_input_after_stream n))(0 := [])\<rparr>)\<close>
-  note os_input_after_output_def[simp]
+
   define os_after_input_output where
     \<open>os_after_input_output = (\<lambda>n. (os_after_input_stream n)(0 := op_state_base (os_input_after_output n)))\<close>
-  note os_after_input_output_def[simp]
+
   have dataplane_after_input_output:
     \<open>dataplane_tracker_inv
       (os_after_input_output n) (cbufs_after_input_output n) sg_first_propa\<close>
@@ -8766,18 +8838,21 @@ next
     proof -
       have \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_input_stream n) =
         graph_summar_nt (summ sg) (nxt sg) (os_after_input_stream n)\<close>
-        by simp
+        by (simp add: sg_first_propa_def sg_progress_def)
       also have \<open>... = graph_summar_nt (summ sg) (nxt sg) os\<close>
         by (rule graph_summar_nt_intsum_cong)
-          (simp add: os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs)
+          (simp add: os_after_input_stream_def os_input_after_stream_def
+            os_first_propa_def os_progress_def
+            os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs)
 
       then show ?thesis
-        using G by simp
+        using G by (simp add: sg_first_propa_def sg_progress_def)
     qed
 
     have edge_input0_label0:
       \<open>summ sg_first_propa (Loc (0 :: 3) (Src (0 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) \<noteq> {}\<^sub>A\<close>
-      by (simp add: subgraph_inv(1) raw_summary_def antichain_from_list_singleton)
+      by (simp add: sg_first_propa_def sg_progress_def
+          subgraph_inv(1) raw_summary_def antichain_from_list_singleton)
     show ?thesis
       apply (rule dataplane_tracker_inv_update_outputs
           [where os = \<open>os_after_input_stream n\<close> and cbufs = cbufs and sg = sg_first_propa
@@ -8787,8 +8862,12 @@ next
             and nid' = \<open>1 :: 3\<close> and p' = \<open>0 :: 2\<close>])
            apply (rule dataplane_after_input_stream)
           apply simp
-         apply (simp add: fun_upd_def op_state_base_def)
-        apply (simp add: fun_upd_def os_inv(1) obtain_progress_def op_state_base_def operator_state.defs)
+         apply (simp add: os_after_input_output_def os_input_after_output_def
+          os_after_input_stream_def os_input_after_stream_def
+          fun_upd_def op_state_base_def operator_state.defs)
+        apply (simp add: cbufs_after_input_output_def input0_msgs_def
+          os_after_input_stream_def os_input_after_stream_def
+          fun_upd_def os_inv(1) obtain_progress_def op_state_base_def operator_state.defs)
        apply (rule edge_input0_label0)
       apply (rule G_after_input_stream)
       done
@@ -8797,13 +8876,13 @@ next
 
   define os_label_after_read_input0 where
     \<open>os_label_after_read_input0 = (\<lambda>n. CONSUMES 0 (input0_msgs n) os_label_after_first_propa)\<close>
-  note os_label_after_read_input0_def[simp]
+
   define cbufs_after_label_read_input0 where
     \<open>cbufs_after_label_read_input0 = (\<lambda>n. (cbufs_after_input_output n)((1, 0) := []))\<close>
-  note cbufs_after_label_read_input0_def[simp]
+
   define os_after_label_read_input0 where
     \<open>os_after_label_read_input0 = (\<lambda>n. (os_after_input_output n)(1 := op_state_base (os_label_after_read_input0 n)))\<close>
-  note os_after_label_read_input0_def[simp]
+
   have dataplane_after_label_read_input0:
     \<open>dataplane_tracker_inv
       (os_after_label_read_input0 n) (cbufs_after_label_read_input0 n) sg_first_propa\<close>
@@ -8814,13 +8893,16 @@ next
     proof -
       have \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_input_output n) =
         graph_summar_nt (summ sg) (nxt sg) (os_after_input_output n)\<close>
-        by simp
+        by (simp add: sg_first_propa_def sg_progress_def)
       also have \<open>... = graph_summar_nt (summ sg) (nxt sg) os\<close>
         by (rule graph_summar_nt_intsum_cong)
-          (simp add: os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs)
+          (simp add: os_after_input_output_def os_input_after_output_def
+            os_after_input_stream_def os_input_after_stream_def
+            os_first_propa_def os_progress_def
+            os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs)
 
       then show ?thesis
-        using G by simp
+        using G by (simp add: sg_first_propa_def sg_progress_def)
     qed
 
     show ?thesis
@@ -8831,27 +8913,30 @@ next
             and buf' = \<open>cbufs_after_label_read_input0 n\<close>
             and os' = \<open>os_after_label_read_input0 n\<close>])
            apply (rule dataplane_after_input_output)
-          apply (simp add: D)
+          apply (simp add: D sg_first_propa_def sg_progress_def)
          apply (rule G_after_input_output)
-        apply simp
+        apply (simp add: cbufs_after_input_output_def input0_msgs_def)
        apply (rule ext)
-       apply (simp split: prod.splits)
-      apply (simp add: fun_upd_def op_state_base_CONSUMES)
-
-
+       apply (simp add: cbufs_after_label_read_input0_def cbufs_after_input_output_def
+          input0_msgs_def split: prod.splits)
+      apply (simp add: os_after_label_read_input0_def os_label_after_read_input0_def
+          os_after_input_output_def os_input_after_output_def
+          os_after_input_stream_def os_first_propa_def os_progress_def
+          os_label_after_first_propa_def cbufs_after_input_output_def input0_msgs_def
+          fun_upd_def op_state_base_CONSUMES)
       done
   qed
 
 
   define label_input0_msgs where \<open>label_input0_msgs = (\<lambda>n. input (os 1) 0 @ input0_msgs n)\<close>
-  note label_input0_msgs_def[simp]
+
   define os_label_after_input0 where
     \<open>os_label_after_input0 = (\<lambda>n. fst (label_prop_input0_batched
       (os_label_after_read_input0 n) (label_input0_msgs n)))\<close>
-  note os_label_after_input0_def[simp]
+
   define os_after_label_input0 where
     \<open>os_after_label_input0 = (\<lambda>n. (os_after_label_read_input0 n)(1 := op_state_base (os_label_after_input0 n)))\<close>
-  note os_after_label_input0_def[simp]
+
   have dataplane_after_label_input0:
     \<open>dataplane_tracker_inv
       (os_after_label_input0 n) (cbufs_after_label_read_input0 n) sg_first_propa\<close>
@@ -8862,27 +8947,35 @@ next
     proof -
       have \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_label_read_input0 n) =
         graph_summar_nt (summ sg) (nxt sg) (os_after_label_read_input0 n)\<close>
-        by simp
+        by (simp add: sg_first_propa_def sg_progress_def)
       also have \<open>... = graph_summar_nt (summ sg) (nxt sg) os\<close>
         by (rule graph_summar_nt_intsum_cong)
-          (simp add: os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs)
+          (simp add: os_after_label_read_input0_def os_label_after_read_input0_def
+            os_after_input_output_def os_input_after_output_def
+            os_after_input_stream_def os_input_after_stream_def
+            os_first_propa_def os_progress_def os_label_after_first_propa_def
+            os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs
+            input_CONSUMES)
 
       then show ?thesis
-        using G by simp
+        using G by (simp add: sg_first_propa_def sg_progress_def)
     qed
     have input_label_read:
       \<open>input (os_label_after_read_input0 n) (0 :: 2) = label_input0_msgs n\<close>
       using os_inv(4)
-      by (simp add: input_CONSUMES operator_state.defs)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          label_input0_msgs_def input_CONSUMES operator_state.defs)
     have IOC_label_read:
       \<open>input_ocaps_inv (os_label_after_read_input0 n)\<close>
+      unfolding os_label_after_read_input0_def
       apply (rule input_ocaps_inv_CONSUMES)
       using label_prop_inv(6) os_inv(4)
-      by (simp add: input_ocaps_inv_def operator_state.defs)
+      by (simp add: os_label_after_first_propa_def input_ocaps_inv_def operator_state.defs)
     have zero_label_read:
       \<open>0 \<in> set (intsum (os_label_after_read_input0 n) (0 :: 2) (1 :: 2))\<close>
       using os_inv(7) os_inv(4)
-      by (simp add: raw_summary_def zero_myprod_def operator_state.defs)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          intsum_consumes_fold raw_summary_def zero_myprod_def operator_state.defs)
     have inv_batch:
       \<open>dataplane_tracker_inv
         ((os_after_input_output n)(1 := op_state_base
@@ -8892,17 +8985,19 @@ next
       apply (rule dataplane_tracker_inv_label_prop_input0_batched
           [where os = \<open>os_after_input_output n\<close> and nid = \<open>1 :: 3\<close>
             and ls = \<open>os_label_after_read_input0 n\<close>])
-           apply (simp add: D)
-          apply (rule dataplane_after_label_read_input0)
-         apply (rule G_after_label_read_input0)
-        apply (simp add: subgraph_inv(2))
+           apply (simp add: D sg_first_propa_def sg_progress_def)
+      using dataplane_after_label_read_input0[of n]
+          apply (simp add: os_after_label_read_input0_def)
+      using G_after_label_read_input0
+         apply (simp add: os_after_label_read_input0_def)
+        apply (simp add: sg_first_propa_def sg_progress_def subgraph_inv(2))
        apply (rule IOC_label_read)
       apply (rule zero_label_read)
       done
-    sorry
     show ?thesis
       using inv_batch input_label_read
-      by simp
+      by (simp add: os_after_label_input0_def os_label_after_input0_def
+          os_after_label_read_input0_def fun_upd_def)
   qed
 
 
@@ -8911,13 +9006,13 @@ next
   define loop_res where
     \<open>loop_res = (\<lambda>n. loop_updates
       (cbufs_after_label_read_input0 n) (os_label_after_input0 n) (os_after_label_input0 n))\<close>
-  note loop_res_def[simp]
+
   define cbufs_after_loop_updates where \<open>cbufs_after_loop_updates = (\<lambda>n. fst (loop_res n))\<close>
-  note cbufs_after_loop_updates_def[simp]
+
   define os_label_after_loop_updates where \<open>os_label_after_loop_updates = (\<lambda>n. fst (snd (loop_res n)))\<close>
-  note os_label_after_loop_updates_def[simp]
+
   define os_after_loop_updates where \<open>os_after_loop_updates = (\<lambda>n. snd (snd (loop_res n)))\<close>
-  note os_after_loop_updates_def[simp]
+
   have dataplane_after_loop_updates:
     \<open>dataplane_tracker_inv
       ((os_after_loop_updates n)(1 := op_state_base (os_label_after_loop_updates n)))
@@ -8927,32 +9022,42 @@ next
     have step:
       \<open>(cbufs_after_loop_updates n, os_label_after_loop_updates n, os_after_loop_updates n)
         = loop_updates (cbufs_after_label_read_input0 n) (os_label_after_input0 n) (os_after_label_input0 n)\<close>
-      by (metis prod.collapse)
+      by (simp add: cbufs_after_loop_updates_def os_label_after_loop_updates_def
+          os_after_loop_updates_def loop_res_def prod_eq_iff)
+
     have D_sg: \<open>dataflow_topology (summ sg_first_propa) (-+-)\<close>
-      using D by simp
+      using D by (simp add: sg_first_propa_def sg_progress_def)
     have Nxt_sg: \<open>nxt sg_first_propa = graph_to_nxt (summ sg_first_propa)\<close>
-      using subgraph_inv(2) by simp
+      using subgraph_inv(2) by (simp add: sg_first_propa_def sg_progress_def)
     have Summ_sg: \<open>summ sg_first_propa = antichain_from_list \<circ>\<circ> raw_summary\<close>
-      using subgraph_inv(1) by simp
+      using subgraph_inv(1) by (simp add: sg_first_propa_def sg_progress_def)
     have IOC2: \<open>input_ocaps_inv ((os_after_label_input0 n) 2)\<close>
-      using os_inv(8) by simp
+      using os_inv(8)
+      by (simp add: os_after_label_input0_def os_after_label_read_input0_def
+          os_after_input_output_def os_after_input_stream_def
+          os_first_propa_def os_progress_def)
     have Inv_step:
       \<open>dataplane_tracker_inv
         ((os_after_label_input0 n)(1 := op_state_base (os_label_after_input0 n)))
         (cbufs_after_label_read_input0 n) sg_first_propa\<close>
       using dataplane_after_label_input0[of n]
-      by simp
+      by (simp add: os_after_label_input0_def fun_upd_def)
     have G_after_label_read_input0:
       \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_label_read_input0 n)\<close>
     proof -
       have \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_label_read_input0 n) =
         graph_summar_nt (summ sg) (nxt sg) (os_after_label_read_input0 n)\<close>
-        by simp
+        by (simp add: sg_first_propa_def sg_progress_def)
       also have \<open>... = graph_summar_nt (summ sg) (nxt sg) os\<close>
         by (rule graph_summar_nt_intsum_cong)
-          (simp add: os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs)
+          (simp add: os_after_label_read_input0_def os_label_after_read_input0_def
+            os_after_input_output_def os_input_after_output_def
+            os_after_input_stream_def os_input_after_stream_def
+            os_first_propa_def os_progress_def os_label_after_first_propa_def
+            os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs
+            input_CONSUMES)
       then show ?thesis
-        using G by simp
+        using G by (simp add: sg_first_propa_def sg_progress_def)
     qed
     have GR: \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa)
         ((os_after_label_input0 n)(1 := op_state_base (os_label_after_input0 n)))\<close>
@@ -8961,19 +9066,24 @@ next
           ((os_after_label_input0 n)(1 := op_state_base (os_label_after_input0 n))) =
         graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_label_read_input0 n)\<close>
         by (rule graph_summar_nt_intsum_cong)
-          (simp add: op_state_base_def operator_state.defs)
+          (simp add: os_after_label_input0_def os_after_label_read_input0_def
+            os_label_after_input0_def intsum_fst_label_prop_input0_batched
+            op_state_base_def operator_state.defs fun_upd_def)
+
       show ?thesis
         using eq G_after_label_read_input0 by simp
     qed
     have input_label_read:
       \<open>input (os_label_after_read_input0 n) (0 :: 2) = label_input0_msgs n\<close>
       using os_inv(4)
-      by (simp add: input_CONSUMES operator_state.defs)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          label_input0_msgs_def input_CONSUMES operator_state.defs)
     have IOC_label_read:
       \<open>input_ocaps_inv (os_label_after_read_input0 n)\<close>
+      unfolding os_label_after_read_input0_def
       apply (rule input_ocaps_inv_CONSUMES)
       using label_prop_inv(6) os_inv(4)
-      by (simp add: input_ocaps_inv_def operator_state.defs)
+      by (simp add: os_label_after_first_propa_def input_ocaps_inv_def operator_state.defs)
     have lpe:
       \<open>os_label_after_input0 n = operator_state.extend (op_state_base (os_label_after_input0 n))
         \<lparr>en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr,
@@ -8981,12 +9091,25 @@ next
           graph = graph (os_label_after_input0 n),
           vertices = vertices (os_label_after_input0 n),
           label = label (os_label_after_input0 n)\<rparr>\<close>
-      by (simp add: op_state_base_def operator_state.defs os_inv(4) input_CONSUMES)
+      by (simp add: os_label_after_input0_def os_label_after_read_input0_def
+          os_label_after_first_propa_def op_state_base_def operator_state.defs os_inv(4)
+          input_CONSUMES en1_fst_label_prop_input0_batched de1_fst_label_prop_input0_batched
+          is_en1_fst_label_prop_input0_batched en2_fst_label_prop_input0_batched
+          de2_fst_label_prop_input0_batched is_en2_fst_label_prop_input0_batched)
+
+
+
     have Intsum:
       \<open>\<forall>m. intsum (((os_after_label_input0 n)(1 := op_state_base (os_label_after_input0 n))) m) =
         (\<lambda>p1 p2. raw_summary (Loc m (Trg p1)) (Loc m (Src p2)))\<close>
       using os_inv(7)
-      by (simp add: op_state_base_def operator_state.defs os_inv(1) obtain_progress_def os_inv(4))
+      by (simp add: os_after_label_input0_def os_label_after_input0_def
+          os_after_label_read_input0_def os_label_after_read_input0_def
+          os_after_input_output_def os_input_after_output_def
+          os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+          os_label_after_first_propa_def intsum_fst_label_prop_input0_batched intsum_consumes_fold
+          op_state_base_def operator_state.defs os_inv(1) obtain_progress_def os_inv(4))
+
     have IOC1: \<open>input_ocaps_inv (os_label_after_input0 n)\<close>
     proof -
       have aux:
@@ -9003,44 +9126,56 @@ next
         have input_eq: \<open>input ls (0 :: 2) = (d, t) # msgs\<close>
           using Cons.prems(1) msg_eq by simp
         define ls' where \<open>ls' = label_prop_input0_step_state ls d t\<close>
-        note ls'_def[simp]
+
         have step_inv: \<open>input_ocaps_inv ls'\<close>
+          unfolding ls'_def
           by (rule input_ocaps_inv_label_prop_input0_step_stateI[OF Cons.prems(2)])
         have input_step: \<open>msgs = input ls' (0 :: 2)\<close>
-          using input_eq by simp
+          using input_eq
+          by (simp add: ls'_def input_label_prop_input0_step_state)
         have rec: \<open>input_ocaps_inv (fst (label_prop_input0_batched ls' msgs))\<close>
           by (rule Cons.hyps[OF input_step step_inv])
         then show ?case
           using msg_eq
-          by (cases \<open>label_prop_input0_batched ls' msgs\<close>) simp
+          by (cases \<open>label_prop_input0_batched ls' msgs\<close>) (simp add: ls'_def)
+
       qed
       show ?thesis
+        unfolding os_label_after_input0_def
         by (rule aux[OF input_label_read[symmetric] IOC_label_read])
+
     qed
     have INV_read: \<open>label_prop_upd_inv (os_label_after_read_input0 n)\<close>
       using label_prop_inv(5)
-      by (simp add: input_CONSUMES)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def input_CONSUMES)
+
+
     have INV: \<open>label_prop_upd_inv (os_label_after_input0 n)\<close>
+      unfolding os_label_after_input0_def
       apply (rule label_prop_upd_inv_fst_label_prop_input0_batched_inputI[OF input_label_read INV_read])
-      apply (simp add: input_CONSUMES)
-      using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified] 
-      apply (simp add: os_inv(4) operator_state.defs wf_label_prop_updates_un)
-      done
-    sorry
+      using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+      by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+          all_vertices_def all_edges_def neighbors_def)
+
+
+
 
     have LABELS:
       \<open>\<forall>t. labels_inv (all_edges (os_label_after_input0 n) t) (min_label (os_label_after_input0 n) t)\<close>
+      unfolding os_label_after_input0_def
       apply (intro allI)
       apply (rule labels_inv_fst_label_prop_input0_batched_inputI[where msgs="label_input0_msgs n"])
          apply (rule input_label_read)
-      using label_prop_inv(1) apply simp
+      using label_prop_inv(1)
+        apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          input_CONSUMES all_vertices_def all_edges_def neighbors_def min_label_def)
        apply (rule INV_read)
-      apply simp
-      apply (simp add: input_CONSUMES)
-      using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified] 
-      apply (simp add: os_inv(4) operator_state.defs wf_label_prop_updates_un)
-      done
-    sorry
+      using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+      by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+          all_vertices_def all_edges_def neighbors_def)
+
     show ?thesis
       apply (rule loop_updates_preserves_dataplane_tracker_inv
           [where cbufs="cbufs_after_label_read_input0 n"
@@ -9063,8 +9198,7 @@ next
          apply (rule IOC2)
         apply (rule INV)
        apply (rule LABELS)
-      apply simp
-      apply (simp add: input_CONSUMES)
+      unfolding os_label_after_input0_def
       apply (rule wf_label_prop_updates_subset)
        apply (rule wf_label_prop_updates_fst_label_prop_input0_batched_output1_shiftI
           [where S=\<open>set (input os_label_prop (1 :: 2)) \<union>
@@ -9073,56 +9207,70 @@ next
               ((\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat)))) ` set (input (os (2 :: 3)) (1 :: 2)) \<union>
                 ((\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat)))) ` set (cbufs ((2 :: 3), (1 :: 2)))))))\<close>
             and rest=\<open>[]\<close>])
-             apply (simp add: os_inv(4) operator_state.defs input_CONSUMES)
-            apply (simp add: os_inv(4) operator_state.defs input_CONSUMES)
-           apply (simp add: os_inv(4) operator_state.defs input_CONSUMES)
+             apply (simp add: input_label_read)
+            apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES)
+           apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES)
+          apply (rule INV_read)
       subgoal
-        using label_prop_inv(5)  by simp
+        using label_prop_inv(1)
+        by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            input_CONSUMES all_vertices_def all_edges_def neighbors_def min_label_def)
       subgoal
-        using label_prop_inv(1)  by simp
+        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+            all_vertices_def all_edges_def neighbors_def)
       subgoal
-        apply simp
-        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified] 
-        by (simp add: input_CONSUMES os_inv(4) operator_state.defs wf_label_prop_updates_un)
+        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+            all_vertices_def all_edges_def neighbors_def)
       subgoal
-        apply simp
-        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified] 
-        by (simp add: input_CONSUMES os_inv(4) operator_state.defs wf_label_prop_updates_un)
-      subgoal
-        apply simp
-        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified] 
-        apply (auto del: disjCI simp add: input_CONSUMES os_inv(4) operator_state.defs wf_label_prop_updates_un)
-        done
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_after_label_input0_def os_after_label_read_input0_def
+            cbufs_after_label_read_input0_def cbufs_after_input_output_def
+            os_after_input_output_def os_input_after_output_def
+            os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+            os_inv(1,4) operator_state.defs input_CONSUMES input_fst_label_prop_input0_batched
+            fun_upd_def)
       done
+
   qed
   define os_after_loop_progress where
     \<open>os_after_loop_progress = (\<lambda>n. (os_after_loop_updates n)(1 := op_state_base (os_label_after_loop_updates n)))\<close>
-  note os_after_loop_progress_def[simp]
+
   define sg_after_ooo_input_progress where
     \<open>sg_after_ooo_input_progress = (\<lambda>n. sg_first_propa\<lparr>upfro := (\<lambda>_. True),
       pt_tr := change_multiplicities (summ sg_first_propa)
         (extract_progress (0 :: 3) (nxt sg_first_propa)
           (snd (obtain_progress (os_after_loop_progress n 0))))
         (pt_tr sg_first_propa)\<rparr>)\<close>
-  note sg_after_ooo_input_progress_def[simp]
+
   define os_after_ooo_input_progress where
     \<open>os_after_ooo_input_progress = (\<lambda>n. (os_after_loop_progress n)
       (0 := op_state_base (fst (obtain_progress (os_after_loop_progress n 0)))))\<close>
-  note os_after_ooo_input_progress_def[simp]
+
   have D_loop: \<open>dataflow_topology (summ sg_first_propa) (-+-)\<close>
-    using D by simp
+    using D by (simp add: sg_first_propa_def sg_progress_def)
   have G_after_label_read_input0:
     \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_label_read_input0 n)\<close>
     for n
   proof -
     have \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_label_read_input0 n) =
       graph_summar_nt (summ sg) (nxt sg) (os_after_label_read_input0 n)\<close>
-      by simp
+      by (simp add: sg_first_propa_def sg_progress_def)
     also have \<open>... = graph_summar_nt (summ sg) (nxt sg) os\<close>
       by (rule graph_summar_nt_intsum_cong)
-        (simp add: os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs)
+        (simp add: os_after_label_read_input0_def os_label_after_read_input0_def
+          os_after_input_output_def os_input_after_output_def
+          os_after_input_stream_def os_input_after_stream_def
+          os_first_propa_def os_progress_def os_label_after_first_propa_def
+          os_inv(1,4) obtain_progress_def op_state_base_def operator_state.defs
+          input_CONSUMES intsum_consumes_fold)
     then show ?thesis
-      using G by simp
+      using G by (simp add: sg_first_propa_def sg_progress_def)
   qed
   have G_after_label_input0:
     \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa)
@@ -9133,7 +9281,10 @@ next
         ((os_after_label_input0 n)(1 := op_state_base (os_label_after_input0 n))) =
       graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_label_read_input0 n)\<close>
       by (rule graph_summar_nt_intsum_cong)
-        (simp add: op_state_base_def operator_state.defs)
+        (simp add: os_after_label_input0_def os_label_after_input0_def
+          os_after_label_read_input0_def os_label_after_read_input0_def
+          intsum_fst_label_prop_input0_batched op_state_base_def operator_state.defs fun_upd_def)
+
     show ?thesis
       using eq G_after_label_read_input0 by simp
   qed
@@ -9142,18 +9293,25 @@ next
       (\<lambda>p1 p2. raw_summary (Loc m (Trg p1)) (Loc m (Src p2)))\<close>
     for n
     using os_inv(7)
-    by (simp add: op_state_base_def operator_state.defs os_inv(1) obtain_progress_def os_inv(4))
+    by (simp add: os_after_label_input0_def os_label_after_input0_def
+        os_after_label_read_input0_def os_label_after_read_input0_def
+        os_after_input_output_def os_input_after_output_def
+        os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+        os_label_after_first_propa_def intsum_fst_label_prop_input0_batched intsum_consumes_fold
+        op_state_base_def operator_state.defs os_inv(1) obtain_progress_def os_inv(4))
   have step_loop:
     \<open>(cbufs_after_loop_updates n, os_label_after_loop_updates n, os_after_loop_updates n)
       = loop_updates (cbufs_after_label_read_input0 n) (os_label_after_input0 n) (os_after_label_input0 n)\<close>
     for n
-    by (metis prod.collapse)
+    by (simp add: cbufs_after_loop_updates_def os_label_after_loop_updates_def
+        os_after_loop_updates_def loop_res_def prod_eq_iff)
   have Intsum_loop:
     \<open>\<forall>m. intsum ((os_after_loop_progress n) m) =
       (\<lambda>p1 p2. raw_summary (Loc m (Trg p1)) (Loc m (Src p2)))\<close>
     for n
     using loop_updates_intsum_corrected[OF step_loop] Intsum_after_label_input0
-    by simp
+    by (simp add: os_after_loop_progress_def)
+
   have G_loop:
     \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_loop_progress n)\<close>
     for n
@@ -9181,7 +9339,16 @@ next
           (extract_progress (0 :: 3) (nxt sg_first_propa)
             (snd (obtain_progress (os_after_loop_progress n 0))))
           (pt_tr sg_first_propa)\<rparr>)\<close>
-      by (rule dataplane_tracker_inv_progress[OF dataplane_after_loop_updates D_loop G_loop refl])
+      apply (rule dataplane_tracker_inv_progress
+          [where os="os_after_loop_progress n" and cbufs="cbufs_after_loop_updates n"
+            and sg="sg_first_propa" and nid="0 :: 3"])
+      using dataplane_after_loop_updates[of n]
+         apply (simp add: os_after_loop_progress_def)
+        apply (rule D_loop)
+       apply (rule G_loop)
+      apply (rule refl)
+      done
+
     have clean_upfro:
       \<open>dataplane_tracker_inv
         (os_after_ooo_input_progress n) (cbufs_after_loop_updates n)
@@ -9193,7 +9360,10 @@ next
           (extract_progress (0 :: 3) (nxt sg_first_propa)
             (snd (obtain_progress (os_after_loop_progress n 0))))
           (pt_tr sg_first_propa)\<rparr>)\<close>
-      by (rule dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>]; (simp add: op_state_base_def operator_state.defs obtain_progress_def flip: map_append filter_append fold_append))
+      by (rule dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>];
+          (simp add: sg_after_ooo_input_progress_def os_after_ooo_input_progress_def
+            os_after_loop_progress_def op_state_base_def operator_state.defs obtain_progress_def
+            flip: map_append filter_append fold_append))
     show ?thesis
       using clean_upfro inv_no_upfro by simp
   qed
@@ -9207,26 +9377,28 @@ next
         (os_after_ooo_input_progress n) =
        graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_loop_progress n)\<close>
       by (rule graph_summar_nt_intsum_cong)
-        (simp add: op_state_base_def operator_state.defs obtain_progress_def flip: map_append filter_append fold_append)
+        (simp add: os_after_ooo_input_progress_def os_after_loop_progress_def
+          op_state_base_def operator_state.defs obtain_progress_def flip: map_append filter_append fold_append)
     show ?thesis
-      using eq0 G_loop by simp
+      using eq0 G_loop by (simp add: sg_after_ooo_input_progress_def)
+
   qed
 
 
   define os_label_after_label_progress where
     \<open>os_label_after_label_progress = (\<lambda>n. fst (obtain_progress (os_label_after_loop_updates n)))\<close>
-  note os_label_after_label_progress_def[simp]
+
   define sg_after_label_progress where
     \<open>sg_after_label_progress = (\<lambda>n. (sg_after_ooo_input_progress n)\<lparr>upfro := (\<lambda>_. True),
       pt_tr := change_multiplicities (summ (sg_after_ooo_input_progress n))
         (extract_progress (1 :: 3) (nxt (sg_after_ooo_input_progress n))
           (snd (obtain_progress (os_label_after_loop_updates n))))
         (pt_tr (sg_after_ooo_input_progress n))\<rparr>)\<close>
-  note sg_after_label_progress_def[simp]
+
   define os_after_label_progress where
     \<open>os_after_label_progress = (\<lambda>n. (os_after_ooo_input_progress n)
       (1 := op_state_base (os_label_after_label_progress n)))\<close>
-  note os_after_label_progress_def[simp]
+
   have dataplane_after_label_progress:
     \<open>dataplane_tracker_inv
       (os_after_label_progress n) (cbufs_after_loop_updates n)
@@ -9234,15 +9406,17 @@ next
     for n
   proof -
     have D_ooo: \<open>dataflow_topology (summ (sg_after_ooo_input_progress n)) (-+-)\<close>
-      using D by simp
+      using D by (simp add: sg_after_ooo_input_progress_def sg_first_propa_def sg_progress_def)
     have progress_st:
       \<open>snd (obtain_progress (os_label_after_loop_updates n)) =
         snd (obtain_progress (os_after_ooo_input_progress n 1))\<close>
-      by (simp add: op_state_base_def operator_state.defs obtain_progress_def)
+      by (simp add: os_after_ooo_input_progress_def os_after_loop_progress_def
+          op_state_base_def operator_state.defs obtain_progress_def fun_upd_def)
     have base_progress:
       \<open>fst (obtain_progress (os_after_ooo_input_progress n 1)) =
         op_state_base (os_label_after_label_progress n)\<close>
-      by (simp add: op_state_base_def operator_state.defs obtain_progress_def)
+      by (simp add: os_label_after_label_progress_def os_after_ooo_input_progress_def
+          os_after_loop_progress_def op_state_base_def operator_state.defs obtain_progress_def fun_upd_def)
     have inv_progress:
       \<open>dataplane_tracker_inv
         ((os_after_ooo_input_progress n)(1 := fst (obtain_progress (os_after_ooo_input_progress n 1))))
@@ -9265,7 +9439,8 @@ next
 
     show ?thesis
       using inv_progress base_progress
-      by simp
+      by (simp add: os_after_label_progress_def sg_after_label_progress_def sg_after_ooo_input_progress_def)
+
   qed
 
   define sg_after_increment_progress where
@@ -9274,11 +9449,11 @@ next
         (extract_progress (2 :: 3) (nxt (sg_after_label_progress n))
           (snd (obtain_progress (os_after_label_progress n 2))))
         (pt_tr (sg_after_label_progress n))\<rparr>)\<close>
-  note sg_after_increment_progress_def[simp]
+
   define os_after_increment_progress where
     \<open>os_after_increment_progress = (\<lambda>n. (os_after_label_progress n)
       (2 := op_state_base (fst (obtain_progress (os_after_label_progress n 2)))))\<close>
-  note os_after_increment_progress_def[simp]
+
   have dataplane_after_increment_progress:
     \<open>dataplane_tracker_inv
       (os_after_increment_progress n) (cbufs_after_loop_updates n)
@@ -9286,7 +9461,8 @@ next
     for n
   proof -
     have D_label: \<open>dataflow_topology (summ (sg_after_label_progress n)) (-+-)\<close>
-      using D by simp
+      using D by (simp add: sg_after_label_progress_def sg_after_ooo_input_progress_def
+          sg_first_propa_def sg_progress_def)
     have G_label:
       \<open>graph_summar_nt (summ (sg_after_label_progress n)) (nxt (sg_after_label_progress n))
         (os_after_label_progress n)\<close>
@@ -9301,11 +9477,13 @@ next
         proof (cases \<open>nid = (1 :: 3)\<close>)
           case True
           then show ?thesis
-            by (simp add: op_state_base_def operator_state.defs obtain_progress_def)
+            by (simp add: os_after_label_progress_def os_label_after_label_progress_def
+                os_after_ooo_input_progress_def os_after_loop_progress_def
+                op_state_base_def operator_state.defs obtain_progress_def fun_upd_def)
         next
           case False
           then show ?thesis
-            by simp
+            by (simp add: os_after_label_progress_def fun_upd_def)
         qed
       qed
       have eq0:
@@ -9316,7 +9494,7 @@ next
         by (rule graph_summar_nt_intsum_cong) (rule intsum_eq)
 
       show ?thesis
-        using eq0 G_ooo by simp
+        using eq0 G_ooo by (simp add: sg_after_label_progress_def)
     qed
 
     have base_progress:
@@ -9333,11 +9511,12 @@ next
           (pt_tr (sg_after_label_progress n))\<rparr>)\<close>
       by (rule dataplane_tracker_inv_progress[OF dataplane_after_label_progress D_label G_label refl])
     have \<open>sg_after_label_progress n \<lparr>upfro := \<lambda>_. True\<rparr> = sg_after_label_progress n\<close>
-      unfolding sg_after_label_progress_def
-      by (simp del: sg_after_ooo_input_progress_def)
+      unfolding sg_after_label_progress_def sg_after_ooo_input_progress_def
+      by simp
     then show ?thesis
       using inv_progress base_progress
-      by (simp cong:  only:  os_after_increment_progress_def sg_after_increment_progress_def)
+      by (simp add: os_after_increment_progress_def sg_after_increment_progress_def)
+
   qed
 
   obtain caps' where dt_inv':
@@ -9422,7 +9601,7 @@ next
       (snd (obtain_progress (os_label_after_loop_updates n))) @
     extract_progress (2 :: 3) (nxt sg_first_propa)
       (snd (obtain_progress (os_after_loop_updates n 2))))\<close>
-  note second_progress_def[simp]
+
   obtain c'' where second_propa:
     \<open>propagate_all (summ sg_first_propa)
       (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) = Some (c'' n)\<close>
@@ -9461,7 +9640,11 @@ next
         apply -
         apply (drule meta_mp)
         subgoal
-          using dt_inv'(8)[unfolded propagation_inv_def] subgraph_inv(1) by simp
+          using dt_inv'(8)[unfolded propagation_inv_def] subgraph_inv(1)
+          by (simp add: sg_first_propa_def sg_progress_def)
+
+
+
         apply (drule meta_mp)
         subgoal
           using dt_inv'(8)[unfolded propagation_inv_def] subgraph_inv(1) by auto
@@ -9473,16 +9656,30 @@ next
         apply (drule meta_mp)
         subgoal
           apply (clarsimp simp flip: fold_append change_multiplicities_append_alt
-              simp add: split_beta Misc.set_map_filter op_state_base_def extract_progress_def image_iff
+              simp add: second_progress_def split_beta Misc.set_map_filter op_state_base_def
+              extract_progress_def image_iff
               split: prod.splits option.splits event.splits)
+
           subgoal for l t
             apply (elim disjE exE; (clarsimp simp add: obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)?)
-            subgoal
-              by (metis event.exhaust is_Data_def surj_pair)
-            subgoal
-              by (metis event.exhaust is_Data_def surj_pair)
             subgoal for p
-              using conjunct1[OF dt_inv'(7)[of n, unfolded change_deltas_inv_def, rule_format, of p t 0 1, simplified]] apply -
+              using conjunct1[OF dt_inv'(7)[of n, unfolded change_deltas_inv_def, rule_format,
+                    of p t 0 0, simplified]]
+              by (simp add: os_after_loop_progress_def)
+            subgoal for p
+              using dt_inv'(7)[of n, unfolded change_deltas_inv_def, rule_format,
+                  of p t 0 0, simplified]
+              by (simp add: os_after_loop_progress_def)
+
+
+
+            subgoal for p
+              using dt_inv'(7)[of n, unfolded change_deltas_inv_def, rule_format, of p t 0 0, simplified] apply -
+              by (clarsimp simp add: os_after_loop_progress_def op_state_base_def obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)
+
+
+            subgoal for p
+              using dt_inv'(7)[of n, unfolded change_deltas_inv_def, rule_format, of p t 0 1, simplified] apply -
               by (clarsimp simp add: op_state_base_def obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)
             subgoal for p
               using dt_inv'(7)[of n, unfolded change_deltas_inv_def, rule_format, of p t 0 1, simplified] apply -
@@ -9500,10 +9697,12 @@ next
               using dt_inv'(7)[of n, unfolded change_deltas_inv_def, rule_format, of p t 0 2, simplified] apply -
               by (clarsimp simp add: op_state_base_def obtain_progress_def Misc.set_map_filter image_iff del: disjCI split: option.splits event.splits)
             done
+
           done
         apply (drule meta_mp)
         subgoal
-          apply clarsimp
+          apply (clarsimp simp add: second_progress_def)
+
           subgoal for l t m
             apply (subst frontier_less_equal_iff2[symmetric])
             apply (rule frontier_less_equal_le_trans
@@ -9514,8 +9713,9 @@ next
                 using dt_inv'(9)[of n, unfolded extract_prog_changes_above_impl_inv_def
                     changes_above_impl_inv_def, simplified, rule_format,
                     where xs=Nil and nid=0, simplified]
-                apply (clarsimp simp add: op_state_base_def obtain_progress_def subgraph_inv(1,2) set_map_filter
+                apply (clarsimp simp add: os_after_loop_progress_def op_state_base_def obtain_progress_def subgraph_inv(1,2) set_map_filter
                     split_beta operator_state.defs os_inv(1) image_iff split: option.splits)
+
                 done
               subgoal
                 using dt_inv'(9)[of n, unfolded extract_prog_changes_above_impl_inv_def
@@ -9538,12 +9738,13 @@ next
         subgoal
           using raw_summary_no_self_loop by auto
         by (clarsimp simp flip: fold_append map_append
-            simp add: subgraph_inv(1,2) CONSUMES_CONSUMES)
+            simp add: sg_first_propa_def sg_progress_def subgraph_inv(1,2) CONSUMES_CONSUMES)
+
     qed
     show ?thesis
       using choice[OF ex_c] that by blast
   qed
-  
+
 
   show ?case (is \<open>wsim ((~) OO \<U> ?R OO (\<approx>)) _ _\<close>)
   proof -
@@ -9990,7 +10191,7 @@ next
                     apply simp
             subgoal
               using second_propa(1)[of n, simplified]
-              by (simp add: os_inv(1,4) op_state_base_def operator_state.defs obtain_progress_def  flip: fold_append change_multiplicities_append_alt )
+              by (simp add: input_data_def os_progress_def input_events_def input0_msgs_def label_input0_msgs_def os_first_propa_def os_input_after_stream_def os_input_after_output_def label_front_after_first_propa_def os_after_input_stream_def os_after_input_output_def os_label_after_first_propa_def os_label_after_read_input0_def os_label_after_input0_def cbufs_after_input_output_def os_after_label_read_input0_def os_after_label_input0_def cbufs_after_label_read_input0_def loop_res_def os_label_after_loop_updates_def sg_progress_def os_after_loop_updates_def os_after_loop_progress_def second_progress_def sg_first_propa_def os_inv(1,4) op_state_base_def operator_state.defs obtain_progress_def CONSUMES_CONSUMES flip: fold_append change_multiplicities_append_alt)
                   apply (rule refl)+
                apply (simp add: flip: fold_append change_multiplicities_append_alt)
 
@@ -10034,39 +10235,39 @@ next
                         subgoal for tt d
                           apply (cases d; simp)
                           subgoal for v1 v2
-                        apply (rule exI[of _ e])
-                        apply simp
-                          using stream_move(3)[rule_format, of v1 v2] apply -
-                          apply (drule meta_mp)
-                          subgoal
-                            by (meson cin_code)
-                          subgoal
-                            by simp
+                            apply (rule exI[of _ e])
+                            apply simp
+                            using stream_move(3)[rule_format, of v1 v2] apply -
+                            apply (drule meta_mp)
+                            subgoal
+                              by (meson cin_code)
+                            subgoal
+                              by simp
+                            done
                           done
                         done
                       done
-                    done
-                  subgoal
-                    apply (clarsimp del: disjCI simp add: outputs_at_target_raw_summary subgraph_inv inputs_at_target_def BULK_BENQ_def ts_def operator_state.defs os_inv(4) split: event.splits) 
-                    subgoal for e
-                      apply (cases e; simp)
-                      subgoal for l
-                        apply (cases l; cases t; simp)
-                        apply (metis myprod.sel(1) snd_eqD)
+                    subgoal
+                      apply (clarsimp del: disjCI simp add: outputs_at_target_raw_summary subgraph_inv inputs_at_target_def BULK_BENQ_def ts_def operator_state.defs os_inv(4) split: event.splits) 
+                      subgoal for e
+                        apply (cases e; simp)
+                        subgoal for l
+                          apply (cases l; cases t; simp)
+                          apply (metis myprod.sel(1) snd_eqD)
+                          done
+                        subgoal
+                          using os_inv(5)[unfolded ty1_check_def os_inv operator_state.defs, simplified]
+                            os_inv(6)[unfolded label_prob_ty2_check_def os_inv operator_state.defs, simplified]
+                          by (metis snd_eqD)
                         done
-                  subgoal
-                    using os_inv(5)[unfolded ty1_check_def os_inv operator_state.defs, simplified]
-                     os_inv(6)[unfolded label_prob_ty2_check_def os_inv operator_state.defs, simplified]
-                    by (metis snd_eqD)
+                      done
+                    subgoal
+                      by (force simp add: os_inv operator_state.defs)
+                    done
                   done
                 done
-              subgoal
-                by (force simp add: os_inv operator_state.defs)
               done
 
-
-end
-              sorry
                            apply (rule refl)+
                           apply simp
                          apply (rule refl)+

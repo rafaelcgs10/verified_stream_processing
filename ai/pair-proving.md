@@ -12,10 +12,11 @@ Note: At the start of any session, first confirm the MCP connection to Isabelle/
 ## Editing
 
 - The AI always saves the file after editing it.
-- The AI checks the region before writing the file to avoinding writing in the middle of another lemma or definition.
+- The AI checks the region before writing the file to avoiding writing in the middle of another lemma or definition.
 - The AI alawys checks the MCP connection on the start of a session. The token  MY_TOKEN (use this).
 - Don't start working without a MCP connection, just report the issue if there is no MCP connection.
 - **For Isabelle theory files (.thy), always edit via `mcp__isabelle__write_file`** (use `str_replace`, `insert`, or `line` command). This triggers re-processing of only the affected commands. Do NOT use the built-in `Edit`/`Write` tools on .thy files — they cause Isabelle to invalidate and re-process the entire file, which is very slow and burns time.
+- The AI does not do edits that cause full file reload, this can take very long. This is a very important rule to follow.
 - Non-.thy files (e.g. markdown, scripts) can be edited normally with `Edit`/`Write`.
 ## Exploration
 
