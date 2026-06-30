@@ -6376,6 +6376,7 @@ lemma label_propagation_correctness:
     \<open>\<forall>n. intsum (os n) = (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
     \<open>input_ocaps_inv (os 2)\<close>
     \<open>initia (os 2)\<close>
+    \<open>\<forall>(d, _) \<in> set (outpu (os 2) 1 @ input (os 2) 1 @ cbufs (2, 1)). is_en1 os_label_prop d\<close>
     and buffers_inv:
     \<open>chns = outputs_at_target (summ sg) os >> cbufs >> inputs_at_target os\<close>
     and dataplane_inv:
@@ -6404,12 +6405,12 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
     rule: weakBisimWeakUptoBisimCong)
   case SIM1
   note subgraph_inv = SIM1(1,2)
-    and os_inv = SIM1(3-11)
-    and buffers_inv = SIM1(12)
-    and dataplane_inv = SIM1(13)
-    and csets_inv = SIM1(14,15)
-    and input_stream_inv = SIM1(16)
-    and label_prop_inv = SIM1(17-)
+    and os_inv = SIM1(3-12)
+    and buffers_inv = SIM1(13)
+    and dataplane_inv = SIM1(14)
+    and csets_inv = SIM1(15,16)
+    and input_stream_inv = SIM1(17)
+    and label_prop_inv = SIM1(18-)
   have D: \<open>dataflow_topology (summ sg) (-+-)\<close> 
     unfolding subgraph_inv comp_def
     apply (subst dataflow_tree_to_graph_raw_summary[symmetric])
@@ -6480,7 +6481,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(1,4-6)
                     apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BENQ_def)
                     apply (drule spec[of _ 0])
-                    apply simp
+                     apply simp
+        using os_inv(4,10) apply (simp add: BENQ_def operator_state.defs(3))
                    apply (rule dataplane_tracker_inv_update_outputs[OF dataplane_inv _ _ _ _ G, where nid=0 and xs=\<open>[(d, t)]\<close> and ys=xs and p=0])
                       apply simp
                      apply (simp add: fun_upd_def)
@@ -6549,7 +6551,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     apply (rotate_tac 9)
                     apply (drule spec[of _ 0])
                     apply (simp add: Ball_def)
-                    apply (meson img_fst in_fst_imageE in_set_tlD)
+                     apply (meson img_fst in_fst_imageE in_set_tlD)
+        using os_inv(4,10) apply (simp add: BTL_def operator_state.defs(3))
                    apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (1, p))\<close>])
                    apply (simp add: BHD_def)
                   apply (simp add: csets_inv(1) buffers_inv os_inv(4,7) operator_state.defs(3) consumes_def)
@@ -6630,6 +6633,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using os_inv(7) apply simp
           using os_inv(8) apply simp
           using os_inv(9) apply simp
+          using os_inv(4,10) apply (simp add: operator_state.defs(3))
           using buffers_inv apply fast
           using dataplane_tracker_inv_drop_caps_all[OF D G subgraph_inv(2) dataplane_inv] apply blast
                     apply (simp add: csets_inv(1) buffers_inv os_inv(1,4) operator_state.defs(3))
@@ -6677,6 +6681,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
 
           using os_inv(8) apply simp
           using os_inv(9) apply simp
+          using os_inv(4,10) apply (simp add: operator_state.defs(3))
                       apply (simp add: buffers_inv BENQ_def BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def fun_eq_iff produce_def)
                      apply (rule dataplane_tracker_inv_produce_singleton[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
           using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
@@ -6722,6 +6727,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using os_inv(7) apply (simp add: drop_cap_def)
           using os_inv(8) apply simp
           using os_inv(9) apply simp
+          using os_inv(4,10) apply simp
                       apply (simp add: buffers_inv)
                      apply (rule dataplane_tracker_inv_drop_cap[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
           using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
@@ -6771,6 +6777,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using os_inv(7) apply (simp add: add_cap_def)
           using os_inv(8) apply simp
           using os_inv(9) apply simp
+          using os_inv(4,10) apply simp
                       apply (simp add: buffers_inv)
                      apply (rule dataplane_tracker_inv_add_cap[OF D dataplane_inv G, where t=t and nid=0 and p=0])
           using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) timely_input_stream_def)
@@ -6831,6 +6838,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(7) apply simp
         using os_inv(8) apply simp
         using os_inv(9) apply simp
+        using os_inv(6,10) apply (simp add: label_prob_ty2_check_def)
                 apply (rule dataplane_tracker_inv_update_outputs[OF dataplane_inv _ _ _ _ G, where nid=1 and p=1 and xs=\<open>[(d, t)]\<close>])
                    apply (simp add: os_inv(4) operator_state.defs(3))
                   apply (simp add: fun_upd_def)
@@ -6900,6 +6908,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(7) apply force
         using os_inv(8) apply (simp add: inputs_ocaps_inv_consumes)
         using os_inv(9) apply simp
+        using os_inv(10) apply (simp add: BHD_def BTL_def split_beta )
+        apply (metis Un_iff in_hd_or_tl_conv)
                 apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (2, 1))\<close>])
                 apply (simp add: BHD_def)
         using input_stream_inv apply simp
@@ -7223,6 +7233,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             by (auto simp add: os_inv(7)[rule_format, of 1] raw_summary_def operator_state.defs dest!: in_set_list_diffD del: in_set_list_diffI intro!: in_set_list_diffI)
           using os_inv(8) apply simp
           using os_inv(9) apply simp
+          using os_inv(10) apply simp
           subgoal premises aux
             apply (rule iffD1[OF dataplane_tracker_inv_clean, rotated 2, of _ _ sg "upfro sg"])
               apply (rule dataplane_tracker_inv_produces_drops[OF D, where nid=1 and os=os 
@@ -7589,6 +7600,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   using os_inv(7) by auto
                 using os_inv(8) apply simp
                 using os_inv(9) apply simp
+                using os_inv(10) apply simp
                 subgoal premises aux
                   apply (rule dataplane_tracker_inv_release_caps_update[OF D])
                     apply (rule dataplane_tracker_inv_add_caps_produces_drop_caps_update[OF D])
@@ -7880,6 +7892,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   using os_inv(7) by simp
                 using os_inv(8) apply simp
                 using os_inv(9) apply simp
+                using os_inv(10) apply simp
                 subgoal
                   apply (rule dataplane_tracker_inv_release_caps_update[OF D])
                     apply (rule dataplane_tracker_inv_add_caps_produces_drop_caps_update[OF D])
@@ -8052,6 +8065,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(7) apply force
         using os_inv(7,8) apply (clarsimp simp add: input_ocaps_inv_def drop_caps_def produces_def raw_summary_def filter_False)
         using os_inv(9) apply simp
+        using os_inv(10) apply force
         subgoal
           using dataplane_tracker_inv_produces_drops[OF D refl refl refl refl refl _ _ _ _ G subgraph_inv(2) dataplane_inv,
               where nid=2 and drops=\<open>(\<lambda>_. [])(1 := ocaps (os 2) 1)\<close> and produs=\<open>map (\<lambda>(_, t). (1, t + MyPair 0 1, 1)) (input (os 2) 1)\<close>
@@ -8135,6 +8149,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(7) apply simp
         using os_inv(8) apply simp
         using os_inv(9) apply simp
+        using os_inv(10) apply (simp add: BTL_def)
                 apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (1, 1))\<close>])
                 apply (simp add: BHD_def)
         using input_stream_inv apply simp
@@ -8236,6 +8251,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(7) apply simp
         using os_inv(8) apply simp
         using os_inv(9) apply simp
+        using os_inv(10) apply simp
                 apply (rule dataplane_tracker_inv_update_outputs_outside[OF dataplane_inv _ _ G])
                  apply (simp add: fun_upd_def)
                 apply (simp add: subgraph_inv(1) raw_summary_def)
@@ -8278,12 +8294,12 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
 next
   case SIM2
   note subgraph_inv = SIM2(1,2)
-    and os_inv = SIM2(3-11)
-    and buffers_inv = SIM2(12)
-    and dataplane_inv = SIM2(13)
-    and csets_inv = SIM2(14,15)
-    and input_stream_inv = SIM2(16)
-    and label_prop_inv = SIM2(17-)
+    and os_inv = SIM2(3-12)
+    and buffers_inv = SIM2(13)
+    and dataplane_inv = SIM2(14)
+    and csets_inv = SIM2(15,16)
+    and input_stream_inv = SIM2(17)
+    and label_prop_inv = SIM2(18-)
   have D: \<open>dataflow_topology (summ sg) (-+-)\<close> 
     unfolding subgraph_inv comp_def
     apply (subst dataflow_tree_to_graph_raw_summary[symmetric])
@@ -9562,6 +9578,7 @@ next
             by simp
           using os_inv(8) apply simp
           using os_inv(9) apply simp
+          using os_inv(10) apply simp
           subgoal
             apply (rule dataplane_tracker_inv_update_outputs_outside[OF dataplane_inv, where nid=1 and p=0 and xs=Nil])
             subgoal
