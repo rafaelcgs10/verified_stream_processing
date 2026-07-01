@@ -6466,7 +6466,9 @@ lemma label_propagation_correctness:
     \<open>timely_input_stream lxs (mset (ocaps (os 0) 0))\<close>
     and label_prop_inv:
     \<open>(\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
-    \<open>(\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
+    \<open>(\<forall> t. (\<exists> v1 v2. (Inl (v1, v2), MyPair t 0) \<in> set (chns (1, 0)) \<union> (\<lambda> e. case e of Data t d \<Rightarrow> (Inl d, t)) ` Set.filter is_Data (lset lxs) \<and>
+                    ((min_label os_label_prop t v1 \<noteq> min_label os_label_prop t v2))) \<or> (\<exists> v l i. (Inl (v, l), MyPair t i) \<in> set (chns (1, 1) @ chns (2, 1)) \<and> l < min_label os_label_prop t v) \<longleftrightarrow>
+     \<not> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
     \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
     \<open>\<forall>t \<in> event.time ` lset lxs \<union> snd ` set (chns (1, 0)) \<union> set (ocaps (os 1) 0). mysnd t = 0\<close>
     \<open>label_prop_upd_inv os_label_prop\<close>
