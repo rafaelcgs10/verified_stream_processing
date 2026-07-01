@@ -6037,6 +6037,98 @@ proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' S rule
   qed
 qed
 
+subsection \<open>Auxiliary label-invariant preservation for correctness proof\<close>
+
+lemma labels_inv_fst_label_prop_input0_batched_input_allI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes input_eq: \<open>input os 0 = msgs\<close>
+    and labels: \<open>\<forall>q. labels_inv (all_edges os q) (min_label os q)\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
+  shows \<open>\<forall>q. labels_inv (all_edges (fst (label_prop_input0_batched os msgs)) q)
+    (min_label (fst (label_prop_input0_batched os msgs)) q)\<close>
+proof
+  fix q
+  show \<open>labels_inv (all_edges (fst (label_prop_input0_batched os msgs)) q)
+    (min_label (fst (label_prop_input0_batched os msgs)) q)\<close>
+    by (rule labels_inv_fst_label_prop_input0_batched_inputI[OF input_eq _ inv wf_upd])
+      (use labels in simp)
+qed
+
+lemma labels_inv_loop_updates_allI:
+  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+  assumes step: \<open>(cbufs', os_label_prop', os') = loop_updates cbufs os_label_prop os\<close>
+    and INV: \<open>label_prop_upd_inv os_label_prop\<close>
+    and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+    and WF: \<open>wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+    and EN1: \<open>en1 os_label_prop = Inl\<close>
+    and DE1: \<open>de1 os_label_prop = projl\<close>
+  shows \<open>\<forall>t. labels_inv (all_edges os_label_prop' t) (min_label os_label_prop' t)\<close>
+  using step INV LABELS WF EN1 DE1
+proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
+    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop (set (input os_label_prop 1) \<union> set ?msgs)\<close>
+  have good: ?good
+    using "1.prems" by simp
+  obtain cbufs1 os_label_prop1 os1 where step1:
+    \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+    by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+  have INV1: \<open>label_prop_upd_inv os_label_prop1\<close>
+    by (rule label_prop_upd_inv_label_prop_input1_loop_updatesI[OF step1[symmetric] "1.prems"(2) "1.prems"(4)])
+  have LABELS1:
+    \<open>\<forall>t. labels_inv (all_edges os_label_prop1 t) (min_label os_label_prop1 t)\<close>
+    by (rule labels_inv_label_prop_input1_loop_updates_allI[OF step1[symmetric] "1.prems"(2) "1.prems"(4) "1.prems"(3)])
+  have EN1_1: \<open>en1 os_label_prop1 = Inl\<close>
+    using label_prop_input1_loop_updates_en1_label[OF step1[symmetric]] "1.prems"(5)
+    by simp
+  have DE1_1: \<open>de1 os_label_prop1 = projl\<close>
+    using label_prop_input1_loop_updates_de1_label[OF step1[symmetric]] "1.prems"(6)
+    by simp
+  have input1_empty: \<open>input os_label_prop1 (1 :: 2) = []\<close>
+    by (rule label_prop_input1_loop_updates_input_label_1[OF step1[symmetric]])
+  have WF1_msgs:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    by (rule label_prop_input1_loop_updates_msgs_invI
+        [OF step1[symmetric] "1.prems"(5) "1.prems"(6) "1.prems"(2) "1.prems"(3) "1.prems"(4)])
+  have WF1:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (input os_label_prop1 1) \<union>
+       set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    using WF1_msgs input1_empty by simp
+  show ?case
+  proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+    case True
+    have loop_eq: \<open>loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (subst loop_updates.simps) (use good step1 True in simp)
+    show ?thesis
+      using "1.prems"(1) loop_eq LABELS1 by simp
+  next
+    case False
+    have loop_eq: \<open>loop_updates cbufs os_label_prop os = loop_updates cbufs1 os_label_prop1 os1\<close>
+      by (subst loop_updates.simps) (use good step1 False in simp)
+    have step_rec: \<open>(cbufs', os_label_prop', os') = loop_updates cbufs1 os_label_prop1 os1\<close>
+      using "1.prems"(1) loop_eq by simp
+    show ?thesis
+      by (rule "1.hyps"[OF good step1[symmetric] refl refl False step_rec INV1 LABELS1 WF1 EN1_1 DE1_1])
+  qed
+qed
+
 
 (* TODO: Move. *)
 lemma label_prop_edge_batch_in_timestamps:
@@ -8898,6 +8990,8 @@ next
       using raw_summary_no_self_loop by auto
     by clarsimp
 
+(* ----------------------------- *)
+(* op 0 reports progress *)
   define os_progress where \<open>os_progress = os(0 := op_state_base (fst (obtain_progress os_input)))\<close>
 
   define sg_progress where \<open>sg_progress = sg\<lparr>upfro := (\<lambda>_. True),
@@ -9004,8 +9098,15 @@ next
       using clean_upfro inv_front_no_upfro by simp
   qed
 
+(* ----------------------------- *)
+(* op 1 reads the new frontier from propagation *)
   define os_label_after_first_propa where
     \<open>os_label_after_first_propa = os_label_prop\<lparr>front := label_front_after_first_propa, initia := True\<rparr>\<close>
+
+  have labels_after_first_propa:
+    \<open>\<forall>t. labels_inv (all_edges os_label_after_first_propa t) (min_label os_label_after_first_propa t)\<close>
+    using label_prop_inv(1)
+    by (simp add: os_label_after_first_propa_def all_edges_def all_vertices_def min_label_def)
 
   define input_events where \<open>input_events = (\<lambda>n. ltaken n lxs)\<close>
 
@@ -9049,6 +9150,8 @@ next
         using G by (simp add: sg_first_propa_def sg_progress_def)
     qed
 
+(* ----------------------------- *)
+(* op 0 produces n elements from the input stream *)  
     define xs where \<open>xs = ltaken n lxs\<close>
 
     define mint_times where \<open>mint_times = map event.time (filter is_Mint xs)\<close>
@@ -9265,10 +9368,10 @@ next
       done
   qed
 
+(* ----------------------------- *)
+(* op 0 flushes the outpu buffer *)
   define input0_msgs where \<open>input0_msgs = (\<lambda>n. cbufs (1, 0) @ outpu (os 0) 0 @ input_data n)\<close>
-
   define cbufs_after_input_output where \<open>cbufs_after_input_output = (\<lambda>n. cbufs((1, 0) := input0_msgs n))\<close>
-
   define os_input_after_output where
     \<open>os_input_after_output = (\<lambda>n. (os_input_after_stream n)\<lparr>outpu :=
       (outpu (os_input_after_stream n))(0 := [])\<rparr>)\<close>
@@ -9321,7 +9424,8 @@ next
       done
   qed
 
-
+(* ----------------------------- *)
+(* op 1 consumes all the data in the channel *)
   define os_label_after_read_input0 where
     \<open>os_label_after_read_input0 = (\<lambda>n. CONSUMES 0 (input0_msgs n) os_label_after_first_propa)\<close>
 
@@ -9375,7 +9479,14 @@ next
       done
   qed
 
+  have labels_after_label_read_input0:
+    \<open>\<forall>t. labels_inv (all_edges (os_label_after_read_input0 n) t) (min_label (os_label_after_read_input0 n) t)\<close>
+    for n
+    using labels_after_first_propa
+    by (simp add: os_label_after_read_input0_def input_CONSUMES all_vertices_def all_edges_def neighbors_def min_label_def)
 
+(* ----------------------------- *)
+(* op 1 processes all the new edges in the input 0 *)
   define label_input0_msgs where \<open>label_input0_msgs = (\<lambda>n. input (os 1) 0 @ input0_msgs n)\<close>
 
   define os_label_after_input0 where
@@ -9448,9 +9559,33 @@ next
           os_after_label_read_input0_def fun_upd_def)
   qed
 
+  have labels_after_label_input0:
+    \<open>\<forall>t. labels_inv (all_edges (os_label_after_input0 n) t) (min_label (os_label_after_input0 n) t)\<close>
+    for n
+  proof -
+    have input_label_read:
+      \<open>input (os_label_after_read_input0 n) (0 :: 2) = label_input0_msgs n\<close>
+      using os_inv(4)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          label_input0_msgs_def input_CONSUMES operator_state.defs)
+    have INV_read: \<open>label_prop_upd_inv (os_label_after_read_input0 n)\<close>
+      using label_prop_inv(5)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def input_CONSUMES)
+    have WF_read:
+      \<open>wf_label_prop_updates (os_label_after_read_input0 n)
+        (set (input (os_label_after_read_input0 n) (1 :: 2)))\<close>
+      using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+      by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+          all_vertices_def all_edges_def neighbors_def)
+    show ?thesis
+      unfolding os_label_after_input0_def
+      by (rule labels_inv_fst_label_prop_input0_batched_input_allI
+          [OF input_label_read labels_after_label_read_input0 INV_read WF_read])
+  qed
 
-
-
+(* ----------------------------- *)
+(* op 1 loops all the data, and processes everything until the labels converges *)
   define loop_res where
     \<open>loop_res = (\<lambda>n. loop_updates
       (cbufs_after_label_read_input0 n) (os_label_after_input0 n) (os_after_label_input0 n))\<close>
@@ -9686,6 +9821,92 @@ next
       done
 
   qed
+
+  have labels_after_loop_updates:
+    \<open>\<forall>t. labels_inv (all_edges (os_label_after_loop_updates n) t) (min_label (os_label_after_loop_updates n) t)\<close>
+    for n
+  proof -
+    have step:
+      \<open>(cbufs_after_loop_updates n, os_label_after_loop_updates n, os_after_loop_updates n) =
+        loop_updates (cbufs_after_label_read_input0 n) (os_label_after_input0 n) (os_after_label_input0 n)\<close>
+      by (simp add: cbufs_after_loop_updates_def os_label_after_loop_updates_def
+          os_after_loop_updates_def loop_res_def prod_eq_iff)
+    have input_label_read:
+      \<open>input (os_label_after_read_input0 n) (0 :: 2) = label_input0_msgs n\<close>
+      using os_inv(4)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          label_input0_msgs_def input_CONSUMES operator_state.defs)
+    have INV_read: \<open>label_prop_upd_inv (os_label_after_read_input0 n)\<close>
+      using label_prop_inv(5)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def input_CONSUMES)
+    have INV0: \<open>label_prop_upd_inv (os_label_after_input0 n)\<close>
+      unfolding os_label_after_input0_def
+      apply (rule label_prop_upd_inv_fst_label_prop_input0_batched_inputI[OF input_label_read INV_read])
+      using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+      by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+          all_vertices_def all_edges_def neighbors_def)
+    have WF0:
+      \<open>wf_label_prop_updates (os_label_after_input0 n)
+        (set (input (os_label_after_input0 n) (1 :: 2)) \<union>
+         set (cbufs_after_label_read_input0 n ((1 :: 3), (1 :: 2)) @
+              outpu (os_after_label_input0 n (2 :: 3)) (1 :: 2) @
+              map (\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat))))
+                (input (os_after_label_input0 n (2 :: 3)) (1 :: 2) @
+                 cbufs_after_label_read_input0 n ((2 :: 3), (1 :: 2)) @
+                 outpu (os_label_after_input0 n) (1 :: 2))))\<close>
+      unfolding os_label_after_input0_def
+      apply (rule wf_label_prop_updates_subset)
+       apply (rule wf_label_prop_updates_fst_label_prop_input0_batched_output1_shiftI
+          [where S=\<open>set (input os_label_prop (1 :: 2)) \<union>
+          (set (cbufs ((1 :: 3), (1 :: 2))) \<union>
+            (set (outpu (os (2 :: 3)) (1 :: 2)) \<union>
+              ((\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat)))) ` set (input (os (2 :: 3)) (1 :: 2)) \<union>
+                ((\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat)))) ` set (cbufs ((2 :: 3), (1 :: 2)))))))\<close>
+            and rest=\<open>[]\<close>])
+             apply (simp add: input_label_read)
+            apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES)
+           apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES)
+          apply (rule INV_read)
+      subgoal
+        using labels_after_label_read_input0[of n]
+        by simp
+      subgoal
+        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+            all_vertices_def all_edges_def neighbors_def)
+      subgoal
+        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def  subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+            all_vertices_def all_edges_def neighbors_def)
+      subgoal
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_after_label_input0_def os_after_label_read_input0_def
+            cbufs_after_label_read_input0_def cbufs_after_input_output_def
+            os_after_input_output_def os_input_after_output_def
+            os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+            os_inv(1,4) operator_state.defs input_CONSUMES input_fst_label_prop_input0_batched
+            fun_upd_def)
+      done
+    have EN0: \<open>en1 (os_label_after_input0 n) = Inl\<close>
+      by (simp add: os_label_after_input0_def os_label_after_read_input0_def
+          os_label_after_first_propa_def os_inv(4) input_CONSUMES
+          en1_fst_label_prop_input0_batched operator_state.defs)
+    have DE0: \<open>de1 (os_label_after_input0 n) = projl\<close>
+      by (simp add: os_label_after_input0_def os_label_after_read_input0_def
+          os_label_after_first_propa_def os_inv(4) input_CONSUMES
+          de1_fst_label_prop_input0_batched operator_state.defs)
+    show ?thesis
+      by (rule labels_inv_loop_updates_allI[OF step INV0 labels_after_label_input0 WF0 EN0 DE0])
+  qed
+
+
+(* ----------------------------- *)
+(* op 0 reports progress *)
   define os_after_loop_progress where
     \<open>os_after_loop_progress = (\<lambda>n. (os_after_loop_updates n)(1 := op_state_base (os_label_after_loop_updates n)))\<close>
 
@@ -9815,6 +10036,7 @@ next
     show ?thesis
       using clean_upfro inv_no_upfro by simp
   qed
+
   have G_ooo:
     \<open>graph_summar_nt (summ (sg_after_ooo_input_progress n)) (nxt (sg_after_ooo_input_progress n))
       (os_after_ooo_input_progress n)\<close>
@@ -9833,6 +10055,8 @@ next
   qed
 
 
+(* ----------------------------- *)
+(* op 1 reports progress *)
   define os_label_after_label_progress where
     \<open>os_label_after_label_progress = (\<lambda>n. fst (obtain_progress (os_label_after_loop_updates n)))\<close>
 
@@ -9891,6 +10115,16 @@ next
 
   qed
 
+  have labels_after_label_progress:
+    \<open>\<forall>t. labels_inv (all_edges (os_label_after_label_progress n) t) (min_label (os_label_after_label_progress n) t)\<close>
+    for n
+    using labels_after_loop_updates[of n]
+    by (simp add: os_label_after_label_progress_def obtain_progress_def
+        op_state_base_def operator_state.defs all_edges_def all_vertices_def min_label_def
+        flip: map_append filter_append fold_append)
+
+(* ----------------------------- *)
+(* op 2 reports progress *)
   define sg_after_increment_progress where
     \<open>sg_after_increment_progress = (\<lambda>n. (sg_after_label_progress n)\<lparr>upfro := (\<lambda>_. True),
       pt_tr := change_multiplicities (summ (sg_after_label_progress n))
@@ -9901,7 +10135,6 @@ next
   define os_after_increment_progress where
     \<open>os_after_increment_progress = (\<lambda>n. (os_after_label_progress n)
       (2 := op_state_base (fst (obtain_progress (os_after_label_progress n 2)))))\<close>
-
   have dataplane_after_increment_progress:
     \<open>dataplane_tracker_inv
       (os_after_increment_progress n) (cbufs_after_loop_updates n)
@@ -10050,6 +10283,8 @@ next
     extract_progress (2 :: 3) (nxt sg_first_propa)
       (snd (obtain_progress (os_after_loop_updates n 2))))\<close>
 
+(* ----------------------------- *)
+(* op 1 reads the new frontier from the propagation *)
   obtain c'' where second_propa:
     \<open>propagate_all (summ sg_first_propa)
       (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) = Some (c'' n)\<close>
@@ -10352,7 +10587,8 @@ next
              apply (rule wstep_trans(1))
               apply (rule transitive_closurep_trans'(2))
 
-
+(* ----------------------------- *)
+(* op 0 reports progress *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -10370,6 +10606,8 @@ next
                   apply simp
                  apply (rule refl)+
 
+(* ----------------------------- *)
+(* op 1 reads the new frontier from propagation *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -10393,6 +10631,8 @@ next
             using first_propa(1) apply assumption
                   apply (rule refl)+
 
+(* ----------------------------- *)
+(* op 0 produces n elements from the input stream *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule relpowp_imp_rtranclp[where n="n"]) 
                 apply (rule step_n_Taus_set_op)
@@ -10415,6 +10655,8 @@ next
               by (simp add: os_inv(1) obtain_progress_def operator_state.defs)
                    apply (rule refl)+
 
+(* ----------------------------- *)
+(* op 0 flushes the outpu buffer *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule relpowp_imp_rtranclp[where n="(length (outpu (os 0) 0)) + length (filter is_Data (ltaken n lxs))"]) 
                 apply (rule step_n_Taus_set_op)
@@ -10437,6 +10679,8 @@ next
                   apply fastforce
                  apply (rule refl)+
 
+(* ----------------------------- *)
+(* op 1 consumes all the data in the channel *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule relpowp_imp_rtranclp[where n="(length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n lxs)))"]) 
                 apply (rule step_n_Taus_set_op)
@@ -10473,6 +10717,8 @@ next
               by simp
                  apply (rule refl)+
 
+(* ----------------------------- *)
+(* op 1 processes all the new edges in the input 0 *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule relpowp_imp_rtranclp[where n="(length (input (os 1) 0)) + length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n lxs))"]) 
                 apply (rule step_n_Taus_set_op)
@@ -10492,6 +10738,8 @@ next
                      apply (simp add: os_inv(3,4) operator_state.defs)
                     apply (rule refl)+
 
+(* ----------------------------- *)
+(* op 1 loops all the data, and processes everything until the labels converges *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule step_Taus_set_op)
                  apply (rule step_Taus_dataflow_op_Taus_intro)
@@ -10559,6 +10807,8 @@ next
               by (simp add:  operator_state.defs os_inv(4))
                 apply (rule refl)+
 
+(* ----------------------------- *)
+(* op 0 reports progress *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -10575,7 +10825,8 @@ next
                  apply fastforce
                 apply (rule refl)+
 
-
+(* ----------------------------- *)
+(* op 1 reports progress *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -10598,6 +10849,8 @@ next
                  apply simp
                 apply (rule refl)+
 
+(* ----------------------------- *)
+(* op 2 reports progress *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -10620,6 +10873,8 @@ next
                 apply (rule refl)+
                apply (simp add: flip: fold_append change_multiplicities_append_alt)
 
+(* ----------------------------- *)
+(* op 1 reads the new frontier from the propagation *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -10645,6 +10900,8 @@ next
                   apply (rule refl)+
                apply (simp add: flip: fold_append change_multiplicities_append_alt)
 
+(* ----------------------------- *)
+(* op 1 producess all the wcc components from the labels *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
