@@ -11229,13 +11229,33 @@ next
                 subgoal
                   apply (intro conjI)
                   subgoal
+                    apply safe
+                    unfolding second_propa(2)[rule_format, of n "Loc 1 (Trg 1)"]
+                      second_propa(2)[rule_format, of n "Loc 1 (Trg 0)"]
+                    apply (simp add: exit_scope_plus_distrib)
+                    apply (subgoal_tac "ifrontier (summ sg_first_propa) (-+-) (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) (Loc 1 (Trg 0)) \<le> ifrontier (summ sg_first_propa) (-+-) (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) (Loc 1 (Trg 1))")
+                    subgoal
+
+                      term labels_stable
+                    find_theorems "frontier_less_equal (_ + _) _" 
+
+                    apply safe
+                    apply (drule frontier_less_equal_exit_scope)
+
+                    apply (drule frontier_less_equal_le_trans)
+                    defer
+                    using stream_move(2)[unfolded not_def, rule_format] 
+
                     thm stream_move(2)
                     thm second_propa(2)[rule_format, of n "Loc 1 (Trg 1)"]
-                    thm second_propa(2)[rule_format, of n "Loc 1 (Trg 0)"]
+                    second_propa(2)[rule_format, of n "Loc 1 (Trg 0)"]
                     thm fst_loop_updates
                     thm ocaps_0_fst_snd_loop_updates
                     thm dataplane_after_second_propa[of n, unfolded os_after_second_propa_def]
                     find_theorems c''
+                    find_theorems n
+
+                    find_theorems frontier_less_equal exit_scope
 
                     sorry
                   subgoal
