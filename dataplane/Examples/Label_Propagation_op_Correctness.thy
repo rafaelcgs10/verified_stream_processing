@@ -6425,6 +6425,117 @@ proof -
   thus ?thesis by (simp add: assms(1) w_assigned_label)
 qed
 
+definition edges_not_stable where
+  \<open>edges_not_stable os t E \<longleftrightarrow>
+  (\<exists>v1 v2. (en1 os (v1, v2), MyPair t 0) \<in> E \<and> min_label os t v1 \<noteq> min_label os t v2)\<close>
+
+lemma edges_not_stable_add_caps[simp]:
+  \<open>edges_not_stable (add_caps os caps) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def by simp
+
+lemma edges_not_stable_consumes[simp]:
+  \<open>edges_not_stable (consumes os p t d) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def by simp
+
+lemma edges_not_stable_drop_cap[simp]:
+  \<open>edges_not_stable (drop_cap os cap) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def drop_cap_def by simp
+
+lemma edges_not_stable_drop_caps[simp]:
+  \<open>edges_not_stable (drop_caps os caps) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def by simp
+
+lemma edges_not_stable_produces[simp]:
+  \<open>edges_not_stable (produces os batch) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def by simp
+
+lemma edges_not_stable_release_caps[simp]:
+  \<open>edges_not_stable (release_caps os caps) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def by simp
+
+lemma edges_not_stable_obtain_progress[simp]:
+  \<open>edges_not_stable (fst (obtain_progress os)) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def obtain_progress_def by simp
+
+lemma edges_not_stable_input_tl[simp]:
+  \<open>edges_not_stable (input_tl os p) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def by simp
+
+lemma edges_not_stable_delay_cap[simp]:
+  \<open>edges_not_stable (delay_cap os cap incr) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def delay_cap_def by simp
+
+lemma edges_not_stable_produce[simp]:
+  \<open>edges_not_stable (produce os cap batch) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def produce_def by simp
+
+lemma edges_not_stable_add_cap[simp]:
+  \<open>edges_not_stable (add_cap os p t) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def add_cap_def by simp
+
+lemma edges_not_stable_mint_cap[simp]:
+  \<open>edges_not_stable (mint_cap os p t) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def mint_cap_def by simp
+
+lemma edges_not_stable_consume[simp]:
+  \<open>edges_not_stable (consume os p t len) = edges_not_stable os\<close>
+  unfolding edges_not_stable_def consume_def by simp
+
+definition label_updates_not_stable where
+  \<open>label_updates_not_stable os t U \<longleftrightarrow> (\<exists>v l i. (en1 os (v, l), MyPair t i) \<in> U \<and> l < min_label os t v)\<close>
+
+lemma label_updates_not_stable_add_caps[simp]:
+  \<open>label_updates_not_stable (add_caps os cap) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def by simp
+
+lemma label_updates_not_stable_consumes[simp]:
+  \<open>label_updates_not_stable (consumes os p t d) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def by simp
+
+lemma label_updates_not_stable_drop_cap[simp]:
+  \<open>label_updates_not_stable (drop_cap os cap) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def drop_cap_def by simp
+
+lemma label_updates_not_stable_drop_caps[simp]:
+  \<open>label_updates_not_stable (drop_caps os caps) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def by simp
+
+lemma label_updates_not_stable_produces[simp]:
+  \<open>label_updates_not_stable (produces os batch) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def by simp
+
+lemma label_updates_not_stable_release_caps[simp]:
+  \<open>label_updates_not_stable (release_caps os caps) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def by simp
+
+lemma label_updates_not_stable_obtain_progress[simp]:
+  \<open>label_updates_not_stable (fst (obtain_progress os)) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def obtain_progress_def by simp
+
+lemma label_updates_not_stable_input_tl[simp]:
+  \<open>label_updates_not_stable (input_tl os p) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def by simp
+
+lemma label_updates_not_stable_delay_cap[simp]:
+  \<open>label_updates_not_stable (delay_cap os cap incr) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def delay_cap_def by simp
+
+lemma label_updates_not_stable_produce[simp]:
+  \<open>label_updates_not_stable (produce os cap batch) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def produce_def by simp
+
+lemma label_updates_not_stable_add_cap[simp]:
+  \<open>label_updates_not_stable (add_cap os p t) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def add_cap_def by simp
+
+lemma label_updates_not_stable_mint_cap[simp]:
+  \<open>label_updates_not_stable (mint_cap os p t) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def mint_cap_def by simp
+
+lemma label_updates_not_stable_consume[simp]:
+  \<open>label_updates_not_stable (consume os p t len) = label_updates_not_stable os\<close>
+  unfolding label_updates_not_stable_def consume_def by simp
+
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -6466,9 +6577,9 @@ lemma label_propagation_correctness:
     \<open>timely_input_stream lxs (mset (ocaps (os 0) 0))\<close>
     and label_prop_inv:
     \<open>(\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
-    \<open>(\<forall> t. (\<exists> v1 v2. (Inl (v1, v2), MyPair t 0) \<in> set (chns (1, 0)) \<union> (\<lambda> e. case e of Data t d \<Rightarrow> (Inl d, t)) ` Set.filter is_Data (lset lxs) \<and>
-                    ((min_label os_label_prop t v1 \<noteq> min_label os_label_prop t v2))) \<or> (\<exists> v l i. (Inl (v, l), MyPair t i) \<in> set (chns (1, 1) @ chns (2, 1)) \<and> l < min_label os_label_prop t v) \<longleftrightarrow>
-     \<not> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
+    \<open>\<forall>t. edges_not_stable os_label_prop t (lset (chns (1, 0) @@- lmap (\<lambda>(d, t). (Inl d, t)) (events_to_prods lxs)))
+    \<or> label_updates_not_stable os_label_prop t (set (chns (1, 1) @ chns (2, 1)))
+  \<longleftrightarrow> \<not> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
     \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
     \<open>\<forall>t \<in> event.time ` lset lxs \<union> snd ` set (chns (1, 0)) \<union> set (ocaps (os 1) 0). mysnd t = 0\<close>
     \<open>label_prop_upd_inv os_label_prop\<close>
@@ -6571,7 +6682,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                  apply (simp add: csets_inv(2))
                 apply (rule input_stream_inv)
         using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
-        using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3))
+        using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3) buffers_inv BULK_BENQ_def BENQ_def outputs_at_target_raw_summary subgraph_inv(1) Un_assoc)
              apply (simp add: label_prop_inv(3))
         using buffers_inv label_prop_inv(4) apply (simp add: BULK_BENQ_def subgraph_inv(1) outputs_at_target_raw_summary)
         using label_prop_inv(5) apply (simp add: os_inv(4,7) operator_state.defs(3))
@@ -6635,7 +6746,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                  apply (simp add: csets_inv(2))
                 apply (rule input_stream_inv)
         using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
-        using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3) consumes_def)
+        using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3) buffers_inv)
         subgoal
           using dataplane_inv unfolding dataplane_tracker_inv_def
           apply (simp add: label_prop_inv(3))
@@ -6716,7 +6827,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                    apply (simp add: csets_inv(2))
                   apply (simp add: ocaps_drop_caps_all(1))
           using label_prop_inv(1) os_inv(4) apply fast
-          using label_prop_inv(2) os_inv(4) apply simp
+          using label_prop_inv(2) os_inv(1,4) apply (simp add: operator_state.defs(3) buffers_inv)
           using label_prop_inv(3) apply simp
           using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv)
           using label_prop_inv(5) os_inv(4) apply fast

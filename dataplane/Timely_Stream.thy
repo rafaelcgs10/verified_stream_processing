@@ -554,4 +554,23 @@ lemma timely_input_stream_expires_le:
     by auto
   done
 
+definition events_to_prods where
+  \<open>events_to_prods = lmap (\<lambda>e. case e of Data t d \<Rightarrow> (d, t)) \<circ> lfilter is_Data\<close>
+
+lemma events_to_prods_LNil[simp]:
+  \<open>events_to_prods LNil = LNil\<close>
+  unfolding events_to_prods_def by simp
+
+lemma events_to_prods_LCons_Data[simp]:
+  \<open>events_to_prods (LCons (Data t d) lxs) = LCons (d, t) (events_to_prods lxs)\<close>
+  unfolding events_to_prods_def by simp
+
+lemma events_to_prods_LCons_Drop[simp]:
+  \<open>events_to_prods (LCons (Drop t) lxs) = events_to_prods lxs\<close>
+  unfolding events_to_prods_def by simp
+
+lemma events_to_prods_LCons_Mint[simp]:
+  \<open>events_to_prods (LCons (Mint t) lxs) = events_to_prods lxs\<close>
+  unfolding events_to_prods_def by simp
+
 end
