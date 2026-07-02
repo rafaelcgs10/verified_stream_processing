@@ -12093,6 +12093,8 @@ next
                     apply (simp add: exit_scope_plus_distrib)
                     apply (drule frontier_less_equal_pluss_le)
                     subgoal
+                      find_theorems t
+
                       apply (simp add: sg_first_propa_def sg_progress_def subgraph_inv(1))
                       apply (rule exit_scope_ifrontier_L1T0_le_L1T1_empty_loop)
                           subgoal
