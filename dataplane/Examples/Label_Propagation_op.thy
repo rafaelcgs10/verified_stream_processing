@@ -1490,14 +1490,15 @@ definition label_propagation_op_logic where
         batch = label_prop_label_batch os os'' t1 v l' t
       in
         {|release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1|}))
-  (let
+  (cUn (let
       below_times = filter
         (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) \<and> myfst t \<in> set (timestamps os))
         (ocaps os 0);
       batch = label_prop_output_batch os below_times
     in
       if batch = [] then {||}
-      else {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)|})\<close>
+      else {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)|})
+    (case ocaps os 1 of [] \<Rightarrow> {||} | _ \<Rightarrow> {| release_caps os 1 |}))\<close>
 
 term components_from_labels
 term "all_vertices os t "
@@ -4276,6 +4277,20 @@ lemma step_label_propagation_op_output[intro]:
     and \<open>batch = label_prop_output_batch os below_times\<close>
     and \<open>batch \<noteq> []\<close>
     and \<open>os_next = drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)\<close>
+    and \<open>initia os\<close>
+    and \<open>op = label_propagation_op os_next\<close>
+  shows \<open>step Tau (label_propagation_op os) op\<close>
+  using assms by auto
+
+lemma label_propagation_op_logic_release_caps1I[intro]:
+  assumes \<open>ocaps os 1 = cap # caps\<close>
+    and \<open>os_next = release_caps os 1\<close>
+  shows \<open>os_next |\<in>| label_propagation_op_logic os\<close>
+  using assms unfolding label_propagation_op_logic_def by auto
+
+lemma step_label_propagation_op_release_caps1[intro]:
+  assumes \<open>ocaps os 1 = cap # caps\<close>
+    and \<open>os_next = release_caps os 1\<close>
     and \<open>initia os\<close>
     and \<open>op = label_propagation_op os_next\<close>
   shows \<open>step Tau (label_propagation_op os) op\<close>
