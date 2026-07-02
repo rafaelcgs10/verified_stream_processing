@@ -360,6 +360,197 @@ proof -
   thus ?thesis using s graph.in_path_weight[OF G] by fastforce
 qed
 
+subsection \<open>Concrete path-weight table for raw_summary\<close>
+
+text \<open>These non-reflexive cases use the minimal accumulated path weight in raw_summary.\<close>
+
+lemma raw_summary_path_to_L1T0_source_cases[simp]:
+  assumes p: \<open>graph.path (antichain_from_list \<circ>\<circ> raw_summary) l
+    (Loc (1 :: 3) (Trg (0 :: 2))) xs\<close>
+  shows \<open>l = Loc (0 :: 3) (Trg (0 :: 2)) \<or>
+    l = Loc (0 :: 3) (Src (0 :: 2)) \<or>
+    l = Loc (1 :: 3) (Trg (0 :: 2))\<close>
+proof -
+  have G: \<open>Graph.graph (antichain_from_list \<circ>\<circ> raw_summary)\<close>
+    by standard (auto simp add: raw_summary_def antichain_from_list_singleton intro: add_mono)
+
+
+
+  show ?thesis using p
+  proof (induct xs arbitrary: l rule: rev_induct)
+    case Nil
+    then show ?case
+      using empty_path_inversion[OF _ G] unfolding comp_def by auto
+  next
+    case (snoc x xs)
+    obtain l1 s l2 where x: \<open>x = (l1, s, l2)\<close>
+      by (cases x)
+    have step: \<open>l2 = Loc (1 :: 3) (Trg (0 :: 2))\<close>
+      using snoc.prems x graph.path_AppendE[OF G] by blast
+    have edge: \<open>s \<in>\<^sub>A (antichain_from_list \<circ>\<circ> raw_summary) l1 l2\<close>
+      using snoc.prems x graph.path_AppendE[OF G] by blast
+    have l1: \<open>l1 = Loc (0 :: 3) (Src (0 :: 2))\<close>
+      using edge step
+      by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def split: if_splits)
+    have path_prefix: \<open>graph.path (antichain_from_list \<circ>\<circ> raw_summary) l l1 xs\<close>
+      using snoc.prems x graph.path_AppendE[OF G] by blast
+    show ?case
+    proof (cases xs rule: rev_cases)
+      case Nil
+      then show ?thesis
+        using path_prefix l1 empty_path_inversion[OF _ G] by auto
+    next
+      case (snoc ys y)
+      obtain l1' s' l2' where y: \<open>y = (l1', s', l2')\<close>
+        by (cases y)
+      have step': \<open>l2' = Loc (0 :: 3) (Src (0 :: 2))\<close>
+        using path_prefix l1 snoc y graph.path_AppendE[OF G] by blast
+      have edge': \<open>s' \<in>\<^sub>A (antichain_from_list \<circ>\<circ> raw_summary) l1' l2'\<close>
+        using path_prefix snoc y graph.path_AppendE[OF G] by blast
+      have l1': \<open>l1' = Loc (0 :: 3) (Trg (0 :: 2))\<close>
+        using edge' step'
+        by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def split: if_splits)
+
+      have path_prefix': \<open>graph.path (antichain_from_list \<circ>\<circ> raw_summary) l l1' ys\<close>
+        using path_prefix snoc y graph.path_AppendE[OF G] by blast
+      show ?thesis
+      proof (cases ys rule: rev_cases)
+        case Nil
+        then show ?thesis
+          using path_prefix' l1' empty_path_inversion[OF _ G] by auto
+      next
+        case (snoc zs' z1)
+        obtain l1'' s'' l2'' where z1: \<open>z1 = (l1'', s'', l2'')\<close>
+          by (cases z1)
+        have step'': \<open>l2'' = Loc (0 :: 3) (Trg (0 :: 2))\<close>
+          using path_prefix' l1' snoc z1 graph.path_AppendE[OF G] by blast
+        have edge'': \<open>s'' \<in>\<^sub>A (antichain_from_list \<circ>\<circ> raw_summary) l1'' l2''\<close>
+          using path_prefix' snoc z1 graph.path_AppendE[OF G] by blast
+        show ?thesis
+          using edge'' step''
+          by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def split: if_splits)
+      qed
+
+    qed
+  qed
+qed
+
+lemma raw_summary_path_weight_to_L1T0_empty[simp]:
+  assumes \<open>l \<noteq> Loc (0 :: 3) (Trg (0 :: 2))\<close>
+    \<open>l \<noteq> Loc (0 :: 3) (Src (0 :: 2))\<close>
+    \<open>l \<noteq> Loc (1 :: 3) (Trg (0 :: 2))\<close>
+  shows \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary) l
+    (Loc (1 :: 3) (Trg (0 :: 2))) = {}\<^sub>A\<close>
+proof -
+  have G: \<open>Graph.graph (antichain_from_list \<circ>\<circ> raw_summary)\<close>
+    by standard (auto simp add: raw_summary_def antichain_from_list_singleton intro: add_mono)
+  show ?thesis
+    apply (subst ac_eq_iff)
+    apply safe
+    subgoal for x
+      apply (drule graph.path_weight_conv_path[OF G])
+      apply clarsimp
+      using assms raw_summary_path_to_L1T0_source_cases by blast
+    subgoal by simp
+    done
+
+qed
+
+lemma path_weight_raw_summary_L0T0_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (0 :: 3) (Trg (0 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = antichain {0}\<close>
+proof -
+  have G: \<open>Graph.graph (antichain_from_list \<circ>\<circ> raw_summary)\<close>
+    by standard (auto simp add: raw_summary_def antichain_from_list_singleton intro: add_mono)
+  have first: \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (0 :: 3) (Trg (0 :: 2))) (Loc (0 :: 3) (Src (0 :: 2))) = antichain {0}\<close>
+    apply (rule path_weight_antichain0[OF G])
+    by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def)
+  have zero_in: \<open>0 \<in>\<^sub>A graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (0 :: 3) (Trg (0 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2)))\<close>
+  proof -
+    have \<open>0 \<in>\<^sub>A graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+        (Loc (0 :: 3) (Trg (0 :: 2))) (Loc (0 :: 3) (Src (0 :: 2)))\<close>
+      using first by simp
+    moreover have \<open>0 \<in>\<^sub>A graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+        (Loc (0 :: 3) (Src (0 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2)))\<close>
+      apply (rule path_weight_direct_0path[OF G])
+      by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def)
+    ultimately obtain u where u: \<open>u \<in>\<^sub>A graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+        (Loc (0 :: 3) (Trg (0 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2)))\<close> \<open>u \<le> 0 + 0\<close>
+      using graph.path_weight_elem_trans[OF G] by blast
+    then show ?thesis by auto
+  qed
+  show ?thesis
+    apply (subst ac_eq_iff)
+    apply safe
+    subgoal for x
+      using G zero_in
+      by (metis finite.emptyI finite_insert graph.path_weight_conv_path in_antichain_minimal_antichain minimal_antichain_singleton not_gr_zero singletonI)
+    subgoal for x
+      using zero_in
+      by (metis finite.emptyI finite_insert in_antichain_minimal_antichain minimal_antichain_singleton singleton_iff)
+    done
+qed
+
+lemma path_weight_raw_summary_L0T1_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (0 :: 3) (Trg (1 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = {}\<^sub>A\<close>
+  by simp
+
+lemma path_weight_raw_summary_L0S0_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (0 :: 3) (Src (0 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = antichain {0}\<close>
+proof -
+  have G: \<open>Graph.graph (antichain_from_list \<circ>\<circ> raw_summary)\<close>
+    by standard (auto simp add: raw_summary_def antichain_from_list_singleton intro: add_mono)
+
+  show ?thesis
+    apply (rule path_weight_antichain0[OF G])
+    by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def)
+qed
+
+lemma path_weight_raw_summary_L0S1_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (0 :: 3) (Src (1 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = {}\<^sub>A\<close>
+  by simp
+
+lemma path_weight_raw_summary_L1T1_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (1 :: 3) (Trg (1 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = {}\<^sub>A\<close>
+  by simp
+
+lemma path_weight_raw_summary_L1S0_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (1 :: 3) (Src (0 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = {}\<^sub>A\<close>
+  by simp
+
+lemma path_weight_raw_summary_L1S1_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (1 :: 3) (Src (1 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = {}\<^sub>A\<close>
+  by simp
+
+lemma path_weight_raw_summary_L2T0_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (2 :: 3) (Trg (0 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = {}\<^sub>A\<close>
+  by simp
+
+lemma path_weight_raw_summary_L2T1_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (2 :: 3) (Trg (1 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = {}\<^sub>A\<close>
+  by simp
+
+lemma path_weight_raw_summary_L2S0_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (2 :: 3) (Src (0 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = {}\<^sub>A\<close>
+  by simp
+
+lemma path_weight_raw_summary_L2S1_L1T0[simp]:
+  \<open>graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+      (Loc (2 :: 3) (Src (1 :: 2))) (Loc (1 :: 3) (Trg (0 :: 2))) = {}\<^sub>A\<close>
+  by simp
+
+
 lemma outputs_at_target_raw_summary:
   \<open>outputs_at_target (antichain_from_list \<circ>\<circ> raw_summary) os = (\<lambda>l.
   if l = (1, 0) then outpu (os 0) 0
