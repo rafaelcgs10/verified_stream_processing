@@ -4296,7 +4296,37 @@ lemma step_label_propagation_op_release_caps1[intro]:
   shows \<open>step Tau (label_propagation_op os) op\<close>
   using assms by auto
 
-find_theorems step Tau label_propagation_op 
 
+lemma step_label_propagation_op_alwasy_release_caps1[intro]:
+  assumes \<open>input os 0 = []\<close>
+    and \<open>input os 1 = []\<close>
+    and \<open>os_next = drop_caps os (map (\<lambda> t. Cap t 1) (ocaps os 1))\<close>
+    and \<open>initia os\<close>
+    and \<open>op = label_propagation_op os_next\<close>
+  shows \<open>(step Tau)\<^sup>*\<^sup>* (label_propagation_op os) op\<close>
+proof (cases "ocaps os 1")
+  case Nil
+  then have "os_next = os"
+    using assms(3) unfolding drop_caps_def by simp
+  then show ?thesis
+    using assms by simp
+next
+  case (Cons cap caps)
+  have inputs_empty: "input os p = []" for p :: 2
+    using assms(1,2) by (cases p rule: num2_cases) simp_all
+  have empty_deps:
+    "concat (map (\<lambda>(p', s). map (((+) s) \<circ> snd) (input os p')) xs) = []" for xs
+    using inputs_empty by (induct xs) (auto split: prod.splits)
+  have concat_empty: "concat (map (\<lambda>_. []) xs) = []" for xs
+    by (induct xs) simp_all
+  have release_eq: "release_caps os 1 = drop_caps os (map (\<lambda>t. Cap t 1) (ocaps os 1))"
+    unfolding release_caps_def trace_simp Let_def
+    by (simp add: empty_deps inputs_empty concat_empty case_prod_beta comp_def)
+  have step1: "step Tau (label_propagation_op os) (label_propagation_op os_next)"
+    using assms(3,4) Cons release_eq
+    by (intro step_label_propagation_op_release_caps1[OF Cons]) simp_all
+  then show ?thesis
+    using assms(5) by auto
+qed
 
 end

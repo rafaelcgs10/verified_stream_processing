@@ -42,37 +42,6 @@ lemma input_ocaps_inv_label_prop_label_record_updateI:
   using inv unfolding input_ocaps_inv_def label_prop_label_record_update_def by simp
 
 
-lemma step_label_propagation_op_alwasy_release_caps1[intro]:
-  assumes \<open>input os 0 = []\<close>
-    and \<open>input os 1 = []\<close>
-    and \<open>os_next = drop_caps os (map (\<lambda> t. Cap t 1) (ocaps os 1))\<close>
-    and \<open>initia os\<close>
-    and \<open>op = label_propagation_op os_next\<close>
-  shows \<open>(step Tau)\<^sup>*\<^sup>* (label_propagation_op os) op\<close>
-proof (cases "ocaps os 1")
-  case Nil
-  then have "os_next = os"
-    using assms(3) unfolding drop_caps_def by simp
-  then show ?thesis
-    using assms by simp
-next
-  case (Cons cap caps)
-  have inputs_empty: "input os p = []" for p :: 2
-    using assms(1,2) by (cases p rule: num2_cases) simp_all
-  have empty_deps:
-    "concat (map (\<lambda>(p', s). map (((+) s) \<circ> snd) (input os p')) xs) = []" for xs
-    using inputs_empty by (induct xs) (auto split: prod.splits)
-  have concat_empty: "concat (map (\<lambda>_. []) xs) = []" for xs
-    by (induct xs) simp_all
-  have release_eq: "release_caps os 1 = drop_caps os (map (\<lambda>t. Cap t 1) (ocaps os 1))"
-    unfolding release_caps_def trace_simp Let_def
-    by (simp add: empty_deps inputs_empty concat_empty case_prod_beta comp_def)
-  have step1: "step Tau (label_propagation_op os) (label_propagation_op os_next)"
-    using assms(3,4) Cons release_eq
-    by (intro step_label_propagation_op_release_caps1[OF Cons]) simp_all
-  then show ?thesis
-    using assms(5) by auto
-qed
 
 subsection \<open>Moving pending data through the loop\<close>
 
@@ -10559,9 +10528,13 @@ next
       by (rule labels_inv_loop_updates_allI[OF step INV0 labels_after_label_input0 WF0 EN0 DE0])
   qed
 
+(* ----------------------------- *)
+(* op 1 drop all capabilities that may be left *)
+(* NOTE: Add here the preservation of dataplane_tracker_inv from the state above  *)
 
 (* ----------------------------- *)
 (* op 0 reports progress *)
+(* NOTE: this case needs to be adapated to consider continuing from the steps that op 1 drop all capabilities, and not from loop updates *)
   define os_after_loop_progress where
     \<open>os_after_loop_progress = (\<lambda>n. (os_after_loop_updates n)(1 := op_state_base (os_label_after_loop_updates n)))\<close>
 
@@ -12013,6 +11986,30 @@ next
             subgoal
               by (simp add:  operator_state.defs os_inv(4))
                 apply (rule refl)+
+
+(* ----------------------------- *)
+(* op 1 drop all capabilities that may be left *)
+               apply (rule transitive_closurep_trans'(2))
+                apply (rule step_Taus_set_op)
+                 apply (rule step_Taus_dataflow_op_Taus_intro)
+                 apply (rule step_star_map_op)
+                 apply (rule step_comp_op_R_Tau_start)
+                 apply (rule step_taus_loop_)
+                 apply (rule step_star_map_op)
+                 apply (rule step_comp_op_L_Tau_start)
+            apply (rule step_star_map_op)
+                 apply (rule step_label_propagation_op_drop_caps)
+            subgoal 
+              (* prove as new have using the local definitions *)
+              sorry
+            subgoal
+              (* prove as new have using the local definitions *)
+              sorry
+                   apply (rule refl)+
+            subgoal
+              (* prove as separate lemma *)
+              sorry
+                   apply (rule refl)+
 
 (* ----------------------------- *)
 (* op 0 reports progress *)
