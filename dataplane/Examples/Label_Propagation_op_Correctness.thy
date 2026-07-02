@@ -12529,8 +12529,13 @@ next
                       apply (rule exit_scope_ifrontier_L1T0_le_L1T1_empty_loop)
                           subgoal
                             using D by (simp add: sg_first_propa_def sg_progress_def subgraph_inv(1))
-                         subgoal
-                           sorry
+                          subgoal
+                            using c_pts_after_second_progress_caps'[of n \<open>Loc (1 :: 3) (Src (1 :: 2))\<close>]
+                              dt_inv'(1)[of n]
+                            by (simp add: Src_caps_inv_def os_after_loop_progress_def
+                                os_after_drop_caps_def os_label_after_drop_caps_def
+                                op_state_base_def operator_state.defs ocaps_drop_caps_all)
+
 
                         subgoal
                           using c_pts_after_second_progress_caps'[of n \<open>Loc (2 :: 3) (Trg (1 :: 2))\<close>]
@@ -12552,18 +12557,12 @@ next
                             op_state_base_def operator_state.defs)
 
                       done
-
-
-
-
                     subgoal
 
                   apply (subgoal_tac "ifrontier (summ sg_first_propa) (-+-) (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) (Loc 1 (Trg 0)) =
                                           frontier (zmset_of (mset (ocaps (os 0) 0) + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs))))")
                       defer
                       subgoal premises auxx
-                        apply (subgoal_tac "graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary) (Loc (1 :: 3) (Trg (0 :: 2))) (Loc 1 (Trg 0)) = antichain {0}")
-                        subgoal
                           apply (simp add: sg_first_propa_def sg_progress_def)
                           unfolding Propagate.dataflow_topology.implied_frontier_alt_def[OF D] UNIV_3_2
                           apply (clarsimp simp add: split_beta  subgraph_inv(1))
@@ -12631,10 +12630,7 @@ next
 
                             apply simp
                              done
-                          done
-                        subgoal
-                          sorry
-                        done
+                           done
                       subgoal
                         apply simp
                         apply (drule input_frontier_exit_scopeD[of n t])
