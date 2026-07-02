@@ -5648,6 +5648,48 @@ lemma input_0_fst_label_prop_input0_batched_empty:
 
 
 
+lemma initia_fst_snd_loop_updates[simp]:
+  \<open>initia (fst (snd (loop_updates cbufs os_label_prop os))) = initia os_label_prop\<close>
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+
+  show ?case
+  proof (cases ?good)
+    case False
+    show ?thesis
+      by (subst loop_updates.simps) (simp only: False if_False fst_conv snd_conv)
+  next
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have initia1: \<open>initia os_label_prop1 = initia os_label_prop\<close>
+      using label_prop_input1_loop_updates_initia_label[OF step1[symmetric]]
+      by simp
+
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 True initia1 in simp)
+    next
+      case False
+      have rec:
+        \<open>initia (fst (snd (loop_updates cbufs1 os_label_prop1 os1))) = initia os_label_prop1\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 False rec initia1 in simp)
+    qed
+  qed
+qed
+
 
 lemma timestamps_fst_snd_loop_updates[simp]:
   \<open>timestamps (fst (snd (loop_updates cbufs os_label_prop os))) = timestamps os_label_prop\<close>
@@ -12347,8 +12389,7 @@ next
 
                    apply (rule refl)+
             subgoal
-              (* prove as separate lemma *)
-              sorry
+              by simp
                    apply (rule refl)+
 
 (* ----------------------------- *)
