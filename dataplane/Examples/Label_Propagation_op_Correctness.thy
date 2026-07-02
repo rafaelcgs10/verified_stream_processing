@@ -12612,6 +12612,9 @@ next
                           defer
                           subgoal
                             sorry
+
+
+
                           apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c') (Loc (1 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
                           defer
                           subgoal
