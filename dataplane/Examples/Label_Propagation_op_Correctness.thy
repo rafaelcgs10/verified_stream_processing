@@ -9056,7 +9056,63 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               done
             done
           done
-        subgoal sorry
+        subgoal
+          apply (clarsimp split: list.splits)
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.rtrancl_refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def[simplified])
+          apply (rule exI[of _ S])
+          apply (rule exI[of _ D])
+          apply (rule exI[of _ lxs])
+          apply (rule exI[of _ \<open>os(1 := release_caps (os 1) 1)\<close>])
+          apply (rule exI[of _ \<open>release_caps os_label_prop 1\<close>])
+          apply (rule exI[of _ cbufs])
+          apply (rule exI[of _ sg])
+          apply (intro conjI)
+                                      apply (simp add: dataflow_tree_to_operator_def os_inv(1))
+                                      apply (simp add: csets_inv buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def release_caps_def drop_caps_def cimage_cUn)
+                                     apply (rule subgraph_inv(1))
+                                    apply (rule subgraph_inv(2))
+          using os_inv(2) apply simp
+          using os_inv(3) apply simp
+          using os_inv(4) apply (simp add: release_caps_def drop_caps_def operator_state.defs)
+          using os_inv(1,5) apply (simp add: release_caps_def drop_caps_def)
+                               using os_inv(6) apply simp
+          using os_inv(7) apply (simp add: release_caps_def drop_caps_def)
+
+          using os_inv(8) apply (simp add: input_ocaps_inv_def release_caps_def drop_caps_def)
+          using os_inv(9) apply simp
+          using os_inv(10) apply force
+          subgoal
+            apply (rule dataplane_tracker_inv_release_caps_update[where nid=1 and os'=\<open>os 1\<close> and p=1, OF D])
+               using dataplane_inv apply simp
+              using G subgraph_inv(2) apply simp
+             apply (rule subgraph_inv(2))
+            done
+
+
+          using input_stream_inv apply simp
+          using label_prop_inv(1) apply simp
+          using label_prop_inv(2) apply (simp add: release_caps_def drop_caps_def)
+          using label_prop_inv(3) apply simp
+          using label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def release_caps_def drop_caps_def)
+          using label_prop_inv(5) apply simp
+          apply simp
+          apply (rule input_ocaps_inv_release_capsI)
+          using label_prop_inv(6) os_inv(4) apply (simp add: operator_state.defs)
+
+
+
+          using label_prop_inv(7) apply (simp add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def release_caps_def drop_caps_def)
+
+          done
+
+
+
         done
       subgoal for os_incr'
         apply (clarsimp simp add: increment_op_logic_def if_splits)
