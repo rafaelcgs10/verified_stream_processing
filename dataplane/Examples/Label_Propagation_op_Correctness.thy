@@ -6469,6 +6469,13 @@ next
     by (cases \<open>label_prop_input0_batched ?step msgs\<close>) simp
 qed
 
+
+(* FIXME: move me to AntichainOrder.thy *)
+lemma  frontier_less_equal_pluss_le:
+  \<open>frontier_less_equal (A + B) t \<Longrightarrow> A \<le> B \<Longrightarrow> frontier_less_equal A t\<close>
+  by (meson frontier_less_equal_iff2 frontier_less_equal_le_trans in_sum_antichainD)
+
+
 lemma wf_label_prop_updates_clean_image[simp]:
   \<open>wf_label_prop_updates os ((\<lambda>(d, t). (d, t -+- MyPair 0 g)) ` S) \<longleftrightarrow>
    wf_label_prop_updates os S\<close>
@@ -7259,11 +7266,6 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                         done
                                       subgoal premises aux
                                         apply (simp add: subgraph_inv)
-                                        apply (rule path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF]])
-                                        using D[unfolded subgraph_inv] apply assumption
-                                        apply (subst raw_summary_def)
-                                        apply simp
-                                        apply code_simp
                                         done
                                       apply assumption
                                       done
@@ -7469,11 +7471,6 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                       done
                                     subgoal premises aux
                                       apply (simp add: subgraph_inv)
-                                      apply (rule path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF]])
-                                      using D[unfolded subgraph_inv] apply assumption
-                                      apply (subst raw_summary_def)
-                                      apply simp
-                                      apply code_simp
                                       done
                                     apply assumption
                                     done
@@ -10686,6 +10683,105 @@ next
     using labels_after_second_propa[of n]
     by (simp add: os_label_after_output_def)
 
+  let ?input_caps_after_prefix =
+    "\<lambda>n. mset (ocaps (os 0) (0 :: 2)) +
+      event.time `# filter_mset is_Mint (mset (ltaken n lxs)) -
+      event.time `# filter_mset is_Drop (mset (ltaken n lxs))"
+  let ?input_frontier_after_prefix =
+    "\<lambda>n. frontier (zmset_of (?input_caps_after_prefix n))"
+
+  have input_caps_in_lset:
+    \<open>t \<in># mset (ocaps (os 0) (0 :: 2)) \<Longrightarrow> t \<in> event.time ` lset lxs\<close> for t
+  proof -
+    assume t_in: \<open>t \<in># mset (ocaps (os 0) (0 :: 2))\<close>
+    obtain n where vacant: \<open>vacant t (?input_caps_after_prefix n)\<close>
+      using input_stream_inv
+      unfolding timely_input_stream_def timely_progress_def
+      by auto
+    let ?C = \<open>mset (ocaps (os 0) (0 :: 2))\<close>
+    let ?M = \<open>event.time `# filter_mset is_Mint (mset (ltaken n lxs))\<close>
+    let ?D = \<open>event.time `# filter_mset is_Drop (mset (ltaken n lxs))\<close>
+    have vacant_t: \<open>count (?C + ?M - ?D) t = 0\<close>
+      using vacant unfolding vacant_def by simp
+    have live_before_drops: \<open>0 < count (?C + ?M) t\<close>
+      using t_in by simp
+    have drop_pos: \<open>0 < count ?D t\<close>
+      using vacant_t live_before_drops
+      by (cases \<open>count ?D t\<close>) auto
+    then obtain e where e_in:
+      \<open>e \<in># filter_mset is_Drop (mset (ltaken n lxs))\<close>
+      and e_time: \<open>event.time e = t\<close>
+      by auto
+    then have \<open>e \<in> set (ltaken n lxs)\<close>
+      by simp
+    then have \<open>e \<in> lset lxs\<close>
+      by (rule setltakenD)
+    then show ?thesis
+      using e_time by blast
+  qed
+
+  have input_cap_after_prefix_mysnd0:
+    \<open>x \<in># ?input_caps_after_prefix n \<Longrightarrow> mysnd x = 0\<close> for n x
+  proof -
+    assume x_in: \<open>x \<in># ?input_caps_after_prefix n\<close>
+    have x_live:
+      \<open>x \<in># mset (ocaps (os 0) (0 :: 2)) \<or>
+        x \<in># event.time `# filter_mset is_Mint (mset (ltaken n lxs))\<close>
+      using in_diffD[OF x_in] by auto
+    then have \<open>x \<in> event.time ` lset lxs\<close>
+    proof
+      assume \<open>x \<in># mset (ocaps (os 0) (0 :: 2))\<close>
+      then show ?thesis
+        by (rule input_caps_in_lset)
+    next
+      assume \<open>x \<in># event.time `# filter_mset is_Mint (mset (ltaken n lxs))\<close>
+      then obtain e where \<open>e \<in># filter_mset is_Mint (mset (ltaken n lxs))\<close>
+        and \<open>event.time e = x\<close>
+        by auto
+      then show ?thesis
+        using setltakenD[of e n lxs] by auto
+    qed
+    then show ?thesis
+      using label_prop_inv(4) by auto
+  qed
+
+  have input_frontier_mysnd0:
+    \<open>x \<in>\<^sub>A ?input_frontier_after_prefix n \<Longrightarrow> mysnd x = 0\<close> for n x
+  proof -
+    assume x_in: \<open>x \<in>\<^sub>A ?input_frontier_after_prefix n\<close>
+    have \<open>x \<in># ?input_caps_after_prefix n\<close>
+      using x_in
+      apply (subst count_greater_zero_iff[symmetric])
+      apply (simp add: in_frontier_iff)
+      done
+    then show ?thesis
+      by (rule input_cap_after_prefix_mysnd0)
+  qed
+
+  have input_frontier_exit_scopeD:
+    \<open>frontier_less_equal (exit_scope myfst (?input_frontier_after_prefix n)) (myfst t) \<Longrightarrow>
+      mysnd t = 0 \<Longrightarrow>
+      frontier_less_equal (?input_frontier_after_prefix n) t\<close> for n t
+  proof -
+    assume projected:
+      \<open>frontier_less_equal (exit_scope myfst (?input_frontier_after_prefix n)) (myfst t)\<close>
+    assume t_zero: \<open>mysnd t = 0\<close>
+    obtain y where y_in: \<open>y \<in>\<^sub>A exit_scope myfst (?input_frontier_after_prefix n)\<close>
+      and y_le: \<open>y \<le> myfst t\<close>
+      using projected unfolding frontier_less_equal_iff2 by blast
+    from y_in obtain x where x_in: \<open>x \<in>\<^sub>A ?input_frontier_after_prefix n\<close>
+      and x_fst: \<open>myfst x = y\<close>
+      by (rule exit_scope_memberE)
+    have x_zero: \<open>mysnd x = 0\<close>
+      by (rule input_frontier_mysnd0[OF x_in])
+    have \<open>x \<le> t\<close>
+      using y_le x_fst x_zero t_zero
+      by (cases x; cases t; simp)
+    then show ?thesis
+      using x_in unfolding frontier_less_equal_iff2 by blast
+  qed
+
+
 
 
 
@@ -11229,35 +11325,120 @@ next
                 subgoal
                   apply (intro conjI)
                   subgoal
-                    apply safe
                     unfolding second_propa(2)[rule_format, of n "Loc 1 (Trg 1)"]
                       second_propa(2)[rule_format, of n "Loc 1 (Trg 0)"]
+                    apply safe
                     apply (simp add: exit_scope_plus_distrib)
-                    apply (subgoal_tac "ifrontier (summ sg_first_propa) (-+-) (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) (Loc 1 (Trg 0)) \<le> ifrontier (summ sg_first_propa) (-+-) (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) (Loc 1 (Trg 1))")
+                    apply (drule frontier_less_equal_pluss_le)
+                    subgoal
+                      sorry
                     subgoal
 
-                      term labels_stable
-                    find_theorems "frontier_less_equal (_ + _) _" 
+                  apply (subgoal_tac "ifrontier (summ sg_first_propa) (-+-) (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) (Loc 1 (Trg 0)) =
+                                          frontier (zmset_of (mset (ocaps (os 0) 0) + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs))))")
+                      defer
+                      subgoal premises auxx
+                        apply (subgoal_tac "graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary) (Loc (1 :: 3) (Trg (0 :: 2))) (Loc 1 (Trg 0)) = antichain {0}")
+                        subgoal
+                          apply (simp add: sg_first_propa_def sg_progress_def)
+                          unfolding Propagate.dataflow_topology.implied_frontier_alt_def[OF D] UNIV_3_2
+                          apply (clarsimp simp add: split_beta  subgraph_inv(1))
+                          subgoal premises self_path
+                            apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c') (Loc (0 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
+                             defer
+                             subgoal
+                               sorry
+                            apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c') (Loc (1 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
+                             defer
+                             subgoal
+                               apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c')
+                                 (Loc (1 :: 3) (Trg (0 :: 2))) = caps' n (Loc 1 (Trg 0))")
+                                defer
+                                subgoal
+                                  using dt_inv'(3)[of n]
+                                  by (simp add: c_pts_inv_def second_progress_def extract_prog_def
+                                    sg_first_propa_def sg_progress_def os_after_loop_progress_def
+                                    subgraph_inv(1,2) op_state_base_def operator_state.defs obtain_progress_def
+                                    flip: fold_append change_multiplicities_append_alt)
+                               apply (subgoal_tac "caps' n (Loc (1 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
+                                defer
+                                subgoal
+                                  using dt_inv'(2)[of n]
+                                  by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
+                                    sg_first_propa_def sg_progress_def
+                                    cbufs_after_loop_updates_def loop_res_def cbufs_after_label_read_input0_def
+                                    cbufs_after_input_output_def os_after_loop_updates_def os_after_label_input0_def
+                                    os_after_label_read_input0_def os_after_input_output_def os_input_after_output_def
+                                    os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+                                    input0_msgs_def BULK_BENQ_def os_inv(1,4) op_state_base_def
+                                    operator_state.defs obtain_progress_def)
 
-                    apply safe
-                    apply (drule frontier_less_equal_exit_scope)
+                               apply simp
+                               done
 
-                    apply (drule frontier_less_equal_le_trans)
-                    defer
-                    using stream_move(2)[unfolded not_def, rule_format] 
 
-                    thm stream_move(2)
-                    thm second_propa(2)[rule_format, of n "Loc 1 (Trg 1)"]
-                    second_propa(2)[rule_format, of n "Loc 1 (Trg 0)"]
-                    thm fst_loop_updates
-                    thm ocaps_0_fst_snd_loop_updates
-                    thm dataplane_after_second_propa[of n, unfolded os_after_second_propa_def]
-                    find_theorems c''
-                    find_theorems n
 
-                    find_theorems frontier_less_equal exit_scope
 
-                    sorry
+                            apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c') (Loc (0 :: 3) (Src (0 :: 2))) =
+                              zmset_of (mset (ocaps (os 0) 0) + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs)))")
+                             defer
+                             subgoal
+                               apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c')
+                                 (Loc (0 :: 3) (Src (0 :: 2))) = caps' n (Loc 0 (Src 0))")
+                                defer
+                                subgoal
+                                  using dt_inv'(3)[of n]
+                                  by (simp add: c_pts_inv_def second_progress_def extract_prog_def
+                                    sg_first_propa_def sg_progress_def os_after_loop_progress_def
+                                    subgraph_inv(1,2) op_state_base_def operator_state.defs obtain_progress_def
+                                    flip: fold_append change_multiplicities_append_alt)
+                               apply (subgoal_tac "caps' n (Loc (0 :: 3) (Src (0 :: 2))) =
+                                 zmset_of (mset (ocaps (os 0) 0) + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs)))")
+                                defer
+                                subgoal
+                                  using dt_inv'(1)[of n]
+                                    mset_ocaps_updates[of "ltaken n lxs" "ldropn n lxs" "ocaps (fst (obtain_progress os_input)) (0 :: 2)"]
+                                    input_stream_inv os_inv(1)
+                                  apply (simp add: Src_caps_inv_def input_events_def
+                                    os_after_loop_updates_def loop_res_def os_after_label_input0_def
+                                    os_after_label_read_input0_def os_after_input_output_def os_input_after_output_def
+                                    os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+                                    os_inv(4) op_state_base_def operator_state.defs obtain_progress_def)
+                                  apply (drule arg_cong[where f=zmset_of])
+                                  apply (simp add: to_zmset_correct)
+                                  done
+
+
+                               apply simp
+                               done
+
+                            apply simp
+                             done
+                          done
+                        subgoal
+                          sorry
+                        done
+                      subgoal
+                        apply simp
+                        apply (drule input_frontier_exit_scopeD[of n t])
+                        subgoal
+                          using prems(2) label_prop_inv(4)
+                          apply (clarsimp del: disjCI simp add: cimage_iff image_iff split_beta split: event.splits)
+                          apply (elim disjE)
+                          subgoal
+                            apply (clarsimp simp add: cin.rep_eq ts_def cset_of_llist.rep_eq split: event.splits)
+                            subgoal for a b
+                              by force
+                            done
+                          subgoal
+                            by (force simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
+                          subgoal
+                            by auto
+                          done
+                        using stream_move(2)
+                        by blast
+                      done
+                    done               
                   subgoal
                     using prems(2) apply -
                     apply (clarsimp del: disjCI simp add: image_iff cimage_iff split_beta split: event.splits)
