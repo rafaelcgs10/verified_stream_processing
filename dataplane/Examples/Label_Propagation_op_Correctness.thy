@@ -12757,19 +12757,52 @@ next
                   done
                 done
               done
+            apply (rule refl)+
+            apply simp
+            apply (rule refl)+
+            apply simp
+            apply (rule refl)+
+            apply simp
+            apply (rule refl)+
+            apply simp
+                apply (rule refl)+
+            apply (simp add: obtain_progress_def flip: fold_append change_multiplicities_append_alt)
 
-            apply (rule refl)+
+               apply (rule relpowp_imp_rtranclp[
+                  where n="length (outpu (os 1) 0)"]) 
+               apply (rule step_set_op_steps_Out_intro[where xs="outpu (os 1) 0"  and p="(1, 0)"])
+                 apply (rule steps_Tau_dataflow_op_steps_Out_intro[where xs="outpu (os 1) 0" and nid = 1 and p = 0])
+(* 
+            apply simp
+            apply (rule steps_map_op[where xs="map _ (outpu (os 1) 0)", rotated 2])
+            apply (rule steps_comp_op_R_Out[where xs="map _ (outpu (os 1) 0)" and p="Inr (1, 0)"])
+            apply (rule steps_Out_loop_op_intro[where xs="map _ (outpu (os 1) 0)" and p="Inr (1, 0)"])
+            apply (rule steps_map_op[where xs="map _ (outpu (os 1) 0)" , rotated 2])
+            apply (rule steps_comp_op_L_Out[where xs="map _ (outpu (os 1) 0)"])
+            apply (rule steps_map_op[where xs="map _ (outpu (os 1) 0)", rotated 2])
+            apply (rule steps_label_propagation_op_Write_Some[where ys=Nil])
             apply simp
             apply (rule refl)+
-            apply simp
+            apply (simp add: os_inv(4) operator_state.defs)
             apply (rule refl)+
-            apply simp
+            apply force
+            apply fastforce
             apply (rule refl)+
-            apply simp
+            apply fastforce
             apply (rule refl)+
+            apply fastforce
+            apply fastforce
+            apply (rule refl)+
+            apply fastforce
+            apply (rule refl)+
+            apply fastforce
+            apply (rule refl)+
+            apply (rule step_set_op_intro_Out)
+
+
 
             apply (simp add: obtain_progress_def flip: fold_append change_multiplicities_append_alt)
-            sorry
+ *)            sorry
           done
         done
       done
