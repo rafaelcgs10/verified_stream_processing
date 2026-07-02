@@ -4297,7 +4297,7 @@ lemma step_label_propagation_op_release_caps1[intro]:
   using assms by auto
 
 
-lemma step_label_propagation_op_alwasy_release_caps1[intro]:
+lemma step_label_propagation_op_drop_caps[intro]:
   assumes \<open>input os 0 = []\<close>
     and \<open>input os 1 = []\<close>
     and \<open>os_next = drop_caps os (map (\<lambda> t. Cap t 1) (ocaps os 1))\<close>
