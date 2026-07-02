@@ -2104,6 +2104,115 @@ proof -
 qed
 
 
+lemma ocaps_release_caps_empty_inputs:
+  assumes empty: \<open>\<And>p' s. s \<in> set (intsum os p' p) \<Longrightarrow> input os p' = []\<close>
+  shows \<open>ocaps (release_caps os p) p = []\<close>
+proof -
+  have justifications_empty:
+    \<open>concat (map (\<lambda>(p', s). map (((+) s) \<circ> snd) (input os p'))
+      (concat (map (\<lambda>p'. map (\<lambda>s. (p', s)) (intsum os p' p)) enum_class.enum))) = []\<close>
+    using empty
+    by (auto simp: concat_eq_Nil_conv)
+  have cap_times:
+    \<open>map time (filter (\<lambda>cap. out cap = p) (map (\<lambda>t. Cap t p) xs)) = xs\<close> for xs
+    by (induct xs) simp_all
+  show ?thesis
+    unfolding release_caps_def drop_caps_def Let_def
+    by (simp add: justifications_empty cap_times)
+qed
+
+lemma ocaps_1_label_prop_input1_step_state_empty:
+  assumes input0_empty: \<open>input os (0 :: 2) = []\<close>
+    and input1_single: \<open>input os (1 :: 2) = [(d, t)]\<close>
+  shows \<open>ocaps (label_prop_input1_step_state os d t) (1 :: 2) = []\<close>
+  unfolding label_prop_input1_step_state_def Let_def
+  apply (rule ocaps_release_caps_empty_inputs)
+  subgoal for p' s
+    using input0_empty input1_single
+    by (cases p' rule: num2_cases) (simp_all add: input_tl_def)
+  done
+
+lemma ocaps_1_fst_label_prop_input1_batched_empty:
+  assumes input0_empty: \<open>input os (0 :: 2) = []\<close>
+    and msgs_eq: \<open>msgs = input os (1 :: 2)\<close>
+    and nonempty_or_empty: \<open>msgs \<noteq> [] \<or> ocaps os (1 :: 2) = []\<close>
+  shows \<open>ocaps (fst (label_prop_input1_batched os msgs)) (1 :: 2) = []\<close>
+  using assms
+proof (induct msgs arbitrary: os)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons msg msgs)
+  obtain d t where msg_eq: \<open>msg = (d, t)\<close>
+    by (cases msg) simp
+  define os' where \<open>os' = label_prop_input1_step_state os d t\<close>
+  have input1_os: \<open>input os (1 :: 2) = (d, t) # msgs\<close>
+    using Cons.prems(2) msg_eq by simp
+  have input0_os': \<open>input os' (0 :: 2) = []\<close>
+    using Cons.prems(1) by (simp add: os'_def)
+  have msgs_os': \<open>msgs = input os' (1 :: 2)\<close>
+    using input1_os by (simp add: os'_def)
+  have nonempty_or_empty': \<open>msgs \<noteq> [] \<or> ocaps os' (1 :: 2) = []\<close>
+  proof (cases \<open>msgs = []\<close>)
+    case True
+    then have \<open>ocaps os' (1 :: 2) = []\<close>
+      using ocaps_1_label_prop_input1_step_state_empty[OF Cons.prems(1), of d t]
+        input1_os
+      by (simp add: os'_def)
+    then show ?thesis by simp
+  next
+    case False
+    then show ?thesis by simp
+  qed
+  have rec: \<open>ocaps (fst (label_prop_input1_batched os' msgs)) (1 :: 2) = []\<close>
+    by (rule Cons.hyps[OF input0_os' msgs_os' nonempty_or_empty'])
+  show ?case
+    using msg_eq rec
+    by (cases \<open>label_prop_input1_batched os' msgs\<close>) (simp add: os'_def)
+qed
+
+lemma ocaps_1_fst_snd_label_prop_input1_loop_updates_empty:
+  assumes input0_empty: \<open>input os_label_prop (0 :: 2) = []\<close>
+    and no_stale:
+      \<open>input os_label_prop (1 :: 2) @
+        cbufs (1, 1) @ outpu (os 2) 1 @
+        map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1) = [] \<Longrightarrow>
+        ocaps os_label_prop (1 :: 2) = []\<close>
+  shows \<open>ocaps (fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))) (1 :: 2) = []\<close>
+proof -
+  let ?incoming = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
+    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+  let ?consumed = \<open>CONSUMES 1 ?incoming
+    (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
+  have input0_consumed: \<open>input ?consumed (0 :: 2) = []\<close>
+    using input0_empty by (simp add: input_CONSUMES)
+  have nonempty_or_empty: \<open>input ?consumed (1 :: 2) \<noteq> [] \<or> ocaps ?consumed (1 :: 2) = []\<close>
+  proof (cases \<open>input ?consumed (1 :: 2) = []\<close>)
+    case False
+    then show ?thesis by simp
+  next
+    case True
+    have stale: \<open>ocaps os_label_prop (1 :: 2) = []\<close>
+      using True no_stale by (simp add: input_CONSUMES fold_consumes)
+    show ?thesis
+      using True stale by (simp add: input_CONSUMES fold_consumes)
+  qed
+  have batch:
+    \<open>ocaps (fst (label_prop_input1_batched ?consumed (input ?consumed (1 :: 2)))) (1 :: 2) = []\<close>
+    by (rule ocaps_1_fst_label_prop_input1_batched_empty
+        [OF input0_consumed refl nonempty_or_empty])
+  show ?thesis
+    using batch
+    unfolding label_prop_input1_loop_updates_def Let_def
+    by simp
+qed
+
+
+
+
+
 
 lemma ocaps_0_label_prop_input1_step_state[simp]:
   \<open>ocaps (label_prop_input1_step_state os d t) (0 :: 2) = ocaps os 0\<close>
@@ -2131,6 +2240,29 @@ lemma ocaps_0_fst_snd_label_prop_input1_loop_updates[simp]:
   using H
   unfolding label_prop_input1_loop_updates_def Let_def
   by (clarsimp simp add: fold_consumes)
+
+lemma ocaps_1_snd_snd_label_prop_input1_loop_updates_empty:
+  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
+  assumes H: \<open>intsum (os (2 :: 3)) (1 :: 2) (1 :: 2) = [MyPair 0 (Suc 0)]\<close>
+  shows \<open>ocaps ((snd (snd (label_prop_input1_loop_updates cbufs os_label_prop os))) 2) (1 :: 2) = []\<close>
+proof -
+  have cap_times:
+    \<open>map time (filter (\<lambda>cap. out cap = (1 :: 2)) (map (\<lambda>t. Cap t (1 :: 2)) xs)) = xs\<close> for xs
+    by (induct xs) simp_all
+  have concat_shift:
+    \<open>concat (map (\<lambda>(d, t). [t -+- MyPair 0 (Suc 0)]) xs) =
+      map (\<lambda>(d, t). t -+- MyPair 0 (Suc 0)) xs\<close>
+    for xs :: \<open>('d \<times> (nat, nat) myprod) list\<close>
+    by (induct xs) auto
+  show ?thesis
+    using H
+    unfolding label_prop_input1_loop_updates_def Let_def
+    by (simp add: drop_caps_def produces_def fold_consumes cap_times concat_shift
+        flip: list_diff_append map_append filter_append)
+qed
+
 
 
 
@@ -5073,6 +5205,331 @@ proof (induct cbufs os_label_prop os rule: loop_updates.induct)
   qed
 qed
 
+lemma ocaps_1_fst_snd_loop_updates_empty:
+  assumes INV: \<open>label_prop_upd_inv os_label_prop\<close>
+    and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+    and WF: \<open>wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+    and EN1: \<open>en1 os_label_prop = Inl\<close>
+    and DE1: \<open>de1 os_label_prop = projl\<close>
+    and input0_empty: \<open>input os_label_prop (0 :: 2) = []\<close>
+    and no_stale: \<open>input os_label_prop (1 :: 2) @
+        cbufs (1, 1) @ outpu (os 2) 1 @
+        map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1) = [] \<Longrightarrow>
+        ocaps os_label_prop (1 :: 2) = []\<close>
+  shows \<open>ocaps (fst (snd (loop_updates cbufs os_label_prop os))) (1 :: 2) = []\<close>
+  using INV LABELS WF EN1 DE1 input0_empty no_stale
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
+    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop (set (input os_label_prop 1) \<union> set ?msgs)\<close>
+  have good: ?good
+    using "1.prems" by simp
+  obtain cbufs1 os_label_prop1 os1 where step1:
+    \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+    by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+  have one_step_ocaps:
+    \<open>ocaps (fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))) (1 :: 2) = []\<close>
+    by (rule ocaps_1_fst_snd_label_prop_input1_loop_updates_empty[OF "1.prems"(6) "1.prems"(7)])
+  have ocaps1_empty: \<open>ocaps os_label_prop1 (1 :: 2) = []\<close>
+    using one_step_ocaps step1 by simp
+  have INV1: \<open>label_prop_upd_inv os_label_prop1\<close>
+    by (rule label_prop_upd_inv_label_prop_input1_loop_updatesI[OF step1[symmetric] "1.prems"(1) "1.prems"(3)])
+  have LABELS1:
+    \<open>\<forall>t. labels_inv (all_edges os_label_prop1 t) (min_label os_label_prop1 t)\<close>
+    by (rule labels_inv_label_prop_input1_loop_updates_allI[OF step1[symmetric] "1.prems"(1) "1.prems"(3) "1.prems"(2)])
+  have EN1_1: \<open>en1 os_label_prop1 = Inl\<close>
+    using label_prop_input1_loop_updates_en1_label[OF step1[symmetric]] "1.prems"(4)
+    by simp
+  have DE1_1: \<open>de1 os_label_prop1 = projl\<close>
+    using label_prop_input1_loop_updates_de1_label[OF step1[symmetric]] "1.prems"(5)
+    by simp
+  have input0_1: \<open>input os_label_prop1 (0 :: 2) = []\<close>
+    using label_prop_input1_loop_updates_input_label_0[OF step1[symmetric]] "1.prems"(6)
+    by simp
+  have input1_empty: \<open>input os_label_prop1 (1 :: 2) = []\<close>
+    by (rule label_prop_input1_loop_updates_input_label_1[OF step1[symmetric]])
+  have WF1_msgs:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    by (rule label_prop_input1_loop_updates_msgs_invI
+        [OF step1[symmetric] "1.prems"(4) "1.prems"(5) "1.prems"(1) "1.prems"(2) "1.prems"(3)])
+  have WF1:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (input os_label_prop1 1) \<union>
+       set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    using WF1_msgs input1_empty by simp
+  have no_stale1:
+    \<open>input os_label_prop1 (1 :: 2) @
+        cbufs1 (1, 1) @ outpu (os1 2) 1 @
+        map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+          (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1) = [] \<Longrightarrow>
+        ocaps os_label_prop1 (1 :: 2) = []\<close>
+    using ocaps1_empty by simp
+  show ?case
+  proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+    case True
+    show ?thesis
+      by (subst loop_updates.simps) (use good step1 True ocaps1_empty in simp)
+  next
+    case False
+    have rec:
+      \<open>ocaps (fst (snd (loop_updates cbufs1 os_label_prop1 os1))) (1 :: 2) = []\<close>
+      by (rule "1.hyps"[OF good step1[symmetric] refl refl False
+            INV1 LABELS1 WF1 EN1_1 DE1_1 input0_1 no_stale1])
+    show ?thesis
+      by (subst loop_updates.simps) (use good step1 False rec in simp)
+  qed
+qed
+
+lemma ocaps_1_snd_snd_loop_updates_empty:
+  fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+  assumes INTSUM: \<open>\<forall>m. intsum ((os(1 := op_state_base os_label_prop)) m) =
+      (\<lambda>p1 p2. raw_summary (Loc m (Trg p1)) (Loc m (Src p2)))\<close>
+    and INV: \<open>label_prop_upd_inv os_label_prop\<close>
+    and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+    and WF: \<open>wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+    and EN1: \<open>en1 os_label_prop = Inl\<close>
+    and DE1: \<open>de1 os_label_prop = projl\<close>
+  shows \<open>ocaps ((snd (snd (loop_updates cbufs os_label_prop os))) 2) (1 :: 2) = []\<close>
+  using INTSUM INV LABELS WF EN1 DE1
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
+    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop (set (input os_label_prop 1) \<union> set ?msgs)\<close>
+  have good: ?good
+    using "1.prems" by simp
+  obtain cbufs1 os_label_prop1 os1 where step1:
+    \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+    by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+  have intsum_os2_11:
+    \<open>intsum (os (2 :: 3)) (1 :: 2) (1 :: 2) = [MyPair 0 (Suc 0)]\<close>
+    using "1.prems"(1)[rule_format, of \<open>2 :: 3\<close>]
+    by (simp add: raw_summary_def op_state_base_def)
+  have one_step_ocaps:
+    \<open>ocaps ((snd (snd (label_prop_input1_loop_updates cbufs os_label_prop os))) 2) (1 :: 2) = []\<close>
+    by (rule ocaps_1_snd_snd_label_prop_input1_loop_updates_empty
+        [where os=os and os_label_prop=os_label_prop and cbufs=cbufs, OF intsum_os2_11])
+  have ocaps1_empty: \<open>ocaps (os1 2) (1 :: 2) = []\<close>
+    using one_step_ocaps step1 by simp
+
+  have INTSUM1:
+    \<open>\<forall>m. intsum ((os1(1 := op_state_base os_label_prop1)) m) =
+      (\<lambda>p1 p2. raw_summary (Loc m (Trg p1)) (Loc m (Src p2)))\<close>
+    using label_prop_input1_loop_updates_intsum_corrected[OF step1[symmetric]] "1.prems"(1)
+    by simp
+  have INV1: \<open>label_prop_upd_inv os_label_prop1\<close>
+    by (rule label_prop_upd_inv_label_prop_input1_loop_updatesI[OF step1[symmetric] "1.prems"(2) "1.prems"(4)])
+  have LABELS1:
+    \<open>\<forall>t. labels_inv (all_edges os_label_prop1 t) (min_label os_label_prop1 t)\<close>
+    by (rule labels_inv_label_prop_input1_loop_updates_allI[OF step1[symmetric] "1.prems"(2) "1.prems"(4) "1.prems"(3)])
+  have EN1_1: \<open>en1 os_label_prop1 = Inl\<close>
+    using label_prop_input1_loop_updates_en1_label[OF step1[symmetric]] "1.prems"(5)
+    by simp
+  have DE1_1: \<open>de1 os_label_prop1 = projl\<close>
+    using label_prop_input1_loop_updates_de1_label[OF step1[symmetric]] "1.prems"(6)
+    by simp
+  have input1_empty: \<open>input os_label_prop1 (1 :: 2) = []\<close>
+    by (rule label_prop_input1_loop_updates_input_label_1[OF step1[symmetric]])
+  have WF1_msgs:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    by (rule label_prop_input1_loop_updates_msgs_invI
+        [OF step1[symmetric] "1.prems"(5) "1.prems"(6) "1.prems"(2) "1.prems"(3) "1.prems"(4)])
+  have WF1:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (input os_label_prop1 1) \<union>
+       set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    using WF1_msgs input1_empty by simp
+  show ?case
+  proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+    case True
+    show ?thesis
+      by (subst loop_updates.simps) (use good step1 True ocaps1_empty in simp)
+  next
+    case False
+    have rec:
+      \<open>ocaps ((snd (snd (loop_updates cbufs1 os_label_prop1 os1))) 2) (1 :: 2) = []\<close>
+      by (rule "1.hyps"[OF good step1[symmetric] refl refl False
+            INTSUM1 INV1 LABELS1 WF1 EN1_1 DE1_1])
+    show ?thesis
+      by (subst loop_updates.simps) (use good step1 False rec in simp)
+  qed
+qed
+
+lemma outpu_1_fst_snd_loop_updates_empty:
+  fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+  assumes INV: \<open>label_prop_upd_inv os_label_prop\<close>
+    and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+    and WF: \<open>wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+    and EN1: \<open>en1 os_label_prop = Inl\<close>
+    and DE1: \<open>de1 os_label_prop = projl\<close>
+  shows \<open>outpu (fst (snd (loop_updates cbufs os_label_prop os))) (1 :: 2) = []\<close>
+  using INV LABELS WF EN1 DE1
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
+    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop (set (input os_label_prop 1) \<union> set ?msgs)\<close>
+  have good: ?good
+    using "1.prems" by simp
+  obtain cbufs1 os_label_prop1 os1 where step1:
+    \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+    by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+  have INV1: \<open>label_prop_upd_inv os_label_prop1\<close>
+    by (rule label_prop_upd_inv_label_prop_input1_loop_updatesI[OF step1[symmetric] "1.prems"(1) "1.prems"(3)])
+  have LABELS1:
+    \<open>\<forall>t. labels_inv (all_edges os_label_prop1 t) (min_label os_label_prop1 t)\<close>
+    by (rule labels_inv_label_prop_input1_loop_updates_allI[OF step1[symmetric] "1.prems"(1) "1.prems"(3) "1.prems"(2)])
+  have EN1_1: \<open>en1 os_label_prop1 = Inl\<close>
+    using label_prop_input1_loop_updates_en1_label[OF step1[symmetric]] "1.prems"(4)
+    by simp
+  have DE1_1: \<open>de1 os_label_prop1 = projl\<close>
+    using label_prop_input1_loop_updates_de1_label[OF step1[symmetric]] "1.prems"(5)
+    by simp
+  have input1_empty: \<open>input os_label_prop1 (1 :: 2) = []\<close>
+    by (rule label_prop_input1_loop_updates_input_label_1[OF step1[symmetric]])
+  have WF1_msgs:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    by (rule label_prop_input1_loop_updates_msgs_invI
+        [OF step1[symmetric] "1.prems"(4) "1.prems"(5) "1.prems"(1) "1.prems"(2) "1.prems"(3)])
+  have WF1:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (input os_label_prop1 1) \<union>
+       set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    using WF1_msgs input1_empty by simp
+  show ?case
+  proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+    case True
+    show ?thesis
+      by (subst loop_updates.simps) (use good step1 True in simp)
+  next
+    case False
+    have rec:
+      \<open>outpu (fst (snd (loop_updates cbufs1 os_label_prop1 os1))) (1 :: 2) = []\<close>
+      by (rule "1.hyps"[OF good step1[symmetric] refl refl False
+            INV1 LABELS1 WF1 EN1_1 DE1_1])
+    show ?thesis
+      by (subst loop_updates.simps) (use good step1 False rec in simp)
+  qed
+qed
+
+lemma outpu_1_snd_snd_loop_updates_empty:
+  fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+  assumes INV: \<open>label_prop_upd_inv os_label_prop\<close>
+    and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+    and WF: \<open>wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+    and EN1: \<open>en1 os_label_prop = Inl\<close>
+    and DE1: \<open>de1 os_label_prop = projl\<close>
+  shows \<open>outpu ((snd (snd (loop_updates cbufs os_label_prop os))) 2) (1 :: 2) = []\<close>
+  using INV LABELS WF EN1 DE1
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
+    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop (set (input os_label_prop 1) \<union> set ?msgs)\<close>
+  have good: ?good
+    using "1.prems" by simp
+  obtain cbufs1 os_label_prop1 os1 where step1:
+    \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+    by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+  have outpu2_empty: \<open>outpu (os1 2) (1 :: 2) = []\<close>
+    by (rule label_prop_input1_loop_updates_outpu_os2_1[OF step1[symmetric]])
+  have INV1: \<open>label_prop_upd_inv os_label_prop1\<close>
+    by (rule label_prop_upd_inv_label_prop_input1_loop_updatesI[OF step1[symmetric] "1.prems"(1) "1.prems"(3)])
+  have LABELS1:
+    \<open>\<forall>t. labels_inv (all_edges os_label_prop1 t) (min_label os_label_prop1 t)\<close>
+    by (rule labels_inv_label_prop_input1_loop_updates_allI[OF step1[symmetric] "1.prems"(1) "1.prems"(3) "1.prems"(2)])
+  have EN1_1: \<open>en1 os_label_prop1 = Inl\<close>
+    using label_prop_input1_loop_updates_en1_label[OF step1[symmetric]] "1.prems"(4)
+    by simp
+  have DE1_1: \<open>de1 os_label_prop1 = projl\<close>
+    using label_prop_input1_loop_updates_de1_label[OF step1[symmetric]] "1.prems"(5)
+    by simp
+  have input1_empty: \<open>input os_label_prop1 (1 :: 2) = []\<close>
+    by (rule label_prop_input1_loop_updates_input_label_1[OF step1[symmetric]])
+  have WF1_msgs:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    by (rule label_prop_input1_loop_updates_msgs_invI
+        [OF step1[symmetric] "1.prems"(4) "1.prems"(5) "1.prems"(1) "1.prems"(2) "1.prems"(3)])
+  have WF1:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (input os_label_prop1 1) \<union>
+       set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    using WF1_msgs input1_empty by simp
+  show ?case
+  proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+    case True
+    show ?thesis
+      by (subst loop_updates.simps) (use good step1 True outpu2_empty in simp)
+  next
+    case False
+    have rec:
+      \<open>outpu ((snd (snd (loop_updates cbufs1 os_label_prop1 os1))) 2) (1 :: 2) = []\<close>
+      by (rule "1.hyps"[OF good step1[symmetric] refl refl False
+            INV1 LABELS1 WF1 EN1_1 DE1_1])
+    show ?thesis
+      by (subst loop_updates.simps) (use good step1 False rec in simp)
+  qed
+qed
+
+
+
+
 lemma timestamps_fst_snd_loop_updates[simp]:
   \<open>timestamps (fst (snd (loop_updates cbufs os_label_prop os))) = timestamps os_label_prop\<close>
 proof (induct cbufs os_label_prop os rule: loop_updates.induct)
@@ -6474,6 +6931,118 @@ qed
 lemma  frontier_less_equal_pluss_le:
   \<open>frontier_less_equal (A + B) t \<Longrightarrow> A \<le> B \<Longrightarrow> frontier_less_equal A t\<close>
   by (meson frontier_less_equal_iff2 frontier_less_equal_le_trans in_sum_antichainD)
+
+lemma exit_scope_ifrontier_L1T0_le_L1T1_empty_loop:
+  fixes c :: \<open>((3, 2) location, (nat, nat) myprod) configuration\<close>
+  assumes D: \<open>dataflow_topology
+    (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list))
+    (((-+-) :: (nat, nat) myprod \<Rightarrow> (nat, nat) myprod \<Rightarrow> (nat, nat) myprod))\<close>
+
+    and empty_L1S1:
+    \<open>c_pts c (Loc (1 :: 3) (Src (1 :: 2))) = {#}\<^sub>z\<close>
+    and empty_L2T1:
+    \<open>c_pts c (Loc (2 :: 3) (Trg (1 :: 2))) = {#}\<^sub>z\<close>
+    and empty_L2S1:
+    \<open>c_pts c (Loc (2 :: 3) (Src (1 :: 2))) = {#}\<^sub>z\<close>
+    and empty_L1T1:
+    \<open>c_pts c (Loc (1 :: 3) (Trg (1 :: 2))) = {#}\<^sub>z\<close>
+  shows \<open>exit_scope myfst (ifrontier
+      (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list))
+      (-+-) c (Loc 1 (Trg 0)))
+    \<le> exit_scope myfst (ifrontier
+      (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list))
+      (-+-) c (Loc 1 (Trg 1)))\<close>
+
+proof -
+  let ?su = \<open>antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list)\<close>
+
+  let ?L0T0 = \<open>Loc (0 :: 3) (Trg (0 :: 2))\<close>
+  let ?L0S0 = \<open>Loc (0 :: 3) (Src (0 :: 2))\<close>
+  let ?L1T0 = \<open>Loc (1 :: 3) (Trg (0 :: 2))\<close>
+  let ?L1S1 = \<open>Loc (1 :: 3) (Src (1 :: 2))\<close>
+  let ?L2T1 = \<open>Loc (2 :: 3) (Trg (1 :: 2))\<close>
+  let ?L2S1 = \<open>Loc (2 :: 3) (Src (1 :: 2))\<close>
+  let ?L1T1 = \<open>Loc (1 :: 3) (Trg (1 :: 2))\<close>
+
+  have rhs_member_to_lhs_fle:
+    \<open>frontier_less_equal (exit_scope myfst (ifrontier ?su (-+-) c ?L1T0)) y\<close>
+    if y_in: \<open>y \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T1)\<close> for y :: nat
+  proof -
+    obtain a :: \<open>(nat, nat) myprod\<close> where
+      a_in: \<open>a \<in>\<^sub>A ifrontier ?su (-+-) c ?L1T1\<close> and y_eq: \<open>myfst a = y\<close>
+      using y_in by (rule exit_scope_memberE)
+    have rhs_fle: \<open>frontier_less_equal (ifrontier ?su (-+-) c ?L1T1) a\<close>
+      using a_in unfolding frontier_less_equal_iff2 by blast
+    have decomp:
+      \<open>\<exists>l s t. s \<in>\<^sub>A graph.path_weight ?su l ?L1T1 \<and>
+        frontier_less_equal (frontier (c_pts c l)) t \<and> a = t -+- s\<close>
+      apply (rule frontier_less_equal_ifrontierE[where su = ?su and c = c and l' = ?L1T1 and t = a])
+       apply (rule rhs_fle)
+      apply (rule D)
+      done
+    obtain l :: \<open>(3, 2) location\<close> and s :: \<open>(nat, nat) myprod\<close> and t :: \<open>(nat, nat) myprod\<close> where
+      s_in: \<open>s \<in>\<^sub>A graph.path_weight ?su l ?L1T1\<close>
+      and source_fle: \<open>frontier_less_equal (frontier (c_pts c l)) t\<close>
+      and a_eq: \<open>a = t -+- s\<close>
+      using decomp by blast
+
+
+
+    have loc_cases:
+      \<open>l = ?L0T0 \<or> l = ?L0S0 \<or> l = ?L1T0 \<or>
+       l = ?L1S1 \<or> l = ?L2T1 \<or> l = ?L2S1 \<or> l = ?L1T1\<close>
+      using loc_3_2_cases[of l] s_in by auto
+    consider (base) \<open>l = ?L0T0 \<or> l = ?L0S0 \<or> l = ?L1T0\<close> |
+      (empty) \<open>l = ?L1S1 \<or> l = ?L2T1 \<or> l = ?L2S1 \<or> l = ?L1T1\<close>
+      using loc_cases by blast
+    then show ?thesis
+    proof cases
+      case base
+      have zero_in: \<open>(0 :: (nat, nat) myprod) \<in>\<^sub>A graph.path_weight ?su l ?L1T0\<close>
+        using base by auto
+      have lhs_fle0: \<open>frontier_less_equal (ifrontier ?su (-+-) c ?L1T0) (t -+- 0)\<close>
+        using frontier_less_equal_ifrontierI[where su = ?su and c = c and l = l
+            and l' = ?L1T0 and t = t and t' = \<open>0 :: (nat, nat) myprod\<close>]
+          D zero_in source_fle
+        by blast
+      have lhs_fle: \<open>frontier_less_equal (ifrontier ?su (-+-) c ?L1T0) t\<close>
+        using lhs_fle0 by simp
+      obtain b :: \<open>(nat, nat) myprod\<close> where
+        b_in: \<open>b \<in>\<^sub>A ifrontier ?su (-+-) c ?L1T0\<close> and b_le: \<open>b \<le> t\<close>
+        using lhs_fle unfolding frontier_less_equal_iff2 by blast
+      have s_eq: \<open>s = MyPair 0 1\<close>
+        using base s_in by (auto simp add: member_antichain.rep_eq)
+      have myfst_b_le_y: \<open>myfst b \<le> y\<close>
+        using myfst_mono[OF b_le] a_eq y_eq s_eq by simp
+      have \<open>frontier_less_equal (exit_scope myfst (ifrontier ?su (-+-) c ?L1T0)) (myfst b)\<close>
+        using b_in by (rule frontier_less_equal_exit_scopeI)
+      then show ?thesis
+        using myfst_b_le_y by (rule frontier_less_equal_trans)
+    next
+      case empty
+      then have False
+        using source_fle empty_L1S1 empty_L2T1 empty_L2S1 empty_L1T1 by auto
+      then show ?thesis by simp
+    qed
+  qed
+  show ?thesis
+    unfolding less_eq_antichain_def
+  proof safe
+    fix y :: nat
+    assume y_in: \<open>y \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T1)\<close>
+    obtain x :: nat where x_in: \<open>x \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T0)\<close>
+      and x_le: \<open>x \<le> y\<close>
+      using rhs_member_to_lhs_fle[OF y_in] unfolding frontier_less_equal_iff2 by blast
+    show \<open>\<exists>x. x \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T0) \<and> x \<le> y\<close>
+      using x_in x_le by blast
+  qed
+qed
+
+
+
+
+
+
 
 
 lemma wf_label_prop_updates_clean_image[simp]:
@@ -9971,6 +10540,188 @@ next
     for n
     by (simp add: cbufs_after_loop_updates_def os_label_after_loop_updates_def
         os_after_loop_updates_def loop_res_def prod_eq_iff)
+  have ocaps_1_os2_after_loop_updates_empty:
+    \<open>ocaps ((os_after_loop_updates n) 2) (1 :: 2) = []\<close>
+    for n
+  proof -
+    have input_label_read:
+      \<open>input (os_label_after_read_input0 n) (0 :: 2) = label_input0_msgs n\<close>
+      using os_inv(4)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          label_input0_msgs_def input_CONSUMES operator_state.defs)
+    have INV_read: \<open>label_prop_upd_inv (os_label_after_read_input0 n)\<close>
+      using label_prop_inv(5)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def input_CONSUMES)
+    have INV0: \<open>label_prop_upd_inv (os_label_after_input0 n)\<close>
+      unfolding os_label_after_input0_def
+      apply (rule label_prop_upd_inv_fst_label_prop_input0_batched_inputI[OF input_label_read INV_read])
+      using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+      by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+          all_vertices_def all_edges_def neighbors_def)
+    have WF0:
+      \<open>wf_label_prop_updates (os_label_after_input0 n)
+        (set (input (os_label_after_input0 n) (1 :: 2)) \<union>
+         set (cbufs_after_label_read_input0 n ((1 :: 3), (1 :: 2)) @
+              outpu (os_after_label_input0 n (2 :: 3)) (1 :: 2) @
+              map (\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat))))
+                (input (os_after_label_input0 n (2 :: 3)) (1 :: 2) @
+                 cbufs_after_label_read_input0 n ((2 :: 3), (1 :: 2)) @
+                 outpu (os_label_after_input0 n) (1 :: 2))))\<close>
+      unfolding os_label_after_input0_def
+      apply (rule wf_label_prop_updates_subset)
+       apply (rule wf_label_prop_updates_fst_label_prop_input0_batched_output1_shiftI
+          [where S=\<open>set (input os_label_prop (1 :: 2)) \<union>
+          (set (cbufs ((1 :: 3), (1 :: 2))) \<union>
+            (set (outpu (os (2 :: 3)) (1 :: 2)) \<union>
+              ((\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat)))) ` set (input (os (2 :: 3)) (1 :: 2)) \<union>
+                ((\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat)))) ` set (cbufs ((2 :: 3), (1 :: 2)))))))\<close>
+            and rest=\<open>[]\<close>])
+             apply (simp add: input_label_read)
+            apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES)
+           apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES)
+          apply (rule INV_read)
+      subgoal
+        using labels_after_label_read_input0[of n]
+        by simp
+      subgoal
+        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+            all_vertices_def all_edges_def neighbors_def)
+      subgoal
+        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+            all_vertices_def all_edges_def neighbors_def)
+      subgoal
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_after_label_input0_def os_after_label_read_input0_def
+            cbufs_after_label_read_input0_def cbufs_after_input_output_def
+            os_after_input_output_def os_input_after_output_def
+            os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+            os_inv(1,4) operator_state.defs input_CONSUMES input_fst_label_prop_input0_batched
+            fun_upd_def)
+      done
+    have EN0: \<open>en1 (os_label_after_input0 n) = Inl\<close>
+      by (simp add: os_label_after_input0_def os_label_after_read_input0_def
+          os_label_after_first_propa_def os_inv(4) input_CONSUMES
+          en1_fst_label_prop_input0_batched operator_state.defs)
+    have DE0: \<open>de1 (os_label_after_input0 n) = projl\<close>
+      by (simp add: os_label_after_input0_def os_label_after_read_input0_def
+          os_label_after_first_propa_def os_inv(4) input_CONSUMES
+          de1_fst_label_prop_input0_batched operator_state.defs)
+    have loop_empty:
+      \<open>ocaps ((snd (snd (loop_updates (cbufs_after_label_read_input0 n)
+        (os_label_after_input0 n) (os_after_label_input0 n)))) 2) (1 :: 2) = []\<close>
+      by (rule ocaps_1_snd_snd_loop_updates_empty
+          [where cbufs=\<open>cbufs_after_label_read_input0 n\<close>
+            and os_label_prop=\<open>os_label_after_input0 n\<close>
+            and os=\<open>os_after_label_input0 n\<close>,
+            OF Intsum_after_label_input0[of n] INV0 labels_after_label_input0[of n] WF0 EN0 DE0])
+    then show ?thesis
+      by (simp add: os_after_loop_updates_def loop_res_def)
+  qed
+
+  have outpu_1_after_loop_updates_empty:
+    \<open>outpu (os_label_after_loop_updates n) (1 :: 2) = []\<close>
+    \<open>outpu ((os_after_loop_updates n) 2) (1 :: 2) = []\<close>
+    for n
+  proof -
+    have input_label_read:
+      \<open>input (os_label_after_read_input0 n) (0 :: 2) = label_input0_msgs n\<close>
+      using os_inv(4)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          label_input0_msgs_def input_CONSUMES operator_state.defs)
+    have INV_read: \<open>label_prop_upd_inv (os_label_after_read_input0 n)\<close>
+      using label_prop_inv(5)
+      by (simp add: os_label_after_read_input0_def os_label_after_first_propa_def input_CONSUMES)
+    have INV0: \<open>label_prop_upd_inv (os_label_after_input0 n)\<close>
+      unfolding os_label_after_input0_def
+      apply (rule label_prop_upd_inv_fst_label_prop_input0_batched_inputI[OF input_label_read INV_read])
+      using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+      by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+          all_vertices_def all_edges_def neighbors_def)
+    have WF0:
+      \<open>wf_label_prop_updates (os_label_after_input0 n)
+        (set (input (os_label_after_input0 n) (1 :: 2)) \<union>
+         set (cbufs_after_label_read_input0 n ((1 :: 3), (1 :: 2)) @
+              outpu (os_after_label_input0 n (2 :: 3)) (1 :: 2) @
+              map (\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat))))
+                (input (os_after_label_input0 n (2 :: 3)) (1 :: 2) @
+                 cbufs_after_label_read_input0 n ((2 :: 3), (1 :: 2)) @
+                 outpu (os_label_after_input0 n) (1 :: 2))))\<close>
+      unfolding os_label_after_input0_def
+      apply (rule wf_label_prop_updates_subset)
+       apply (rule wf_label_prop_updates_fst_label_prop_input0_batched_output1_shiftI
+          [where S=\<open>set (input os_label_prop (1 :: 2)) \<union>
+          (set (cbufs ((1 :: 3), (1 :: 2))) \<union>
+            (set (outpu (os (2 :: 3)) (1 :: 2)) \<union>
+              ((\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat)))) ` set (input (os (2 :: 3)) (1 :: 2)) \<union>
+                ((\<lambda>(d, t). (d, t -+- MyPair (0 :: nat) (Suc (0 :: nat)))) ` set (cbufs ((2 :: 3), (1 :: 2)))))))\<close>
+            and rest=\<open>[]\<close>])
+             apply (simp add: input_label_read)
+            apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES)
+           apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+          os_inv(4) operator_state.defs input_CONSUMES)
+          apply (rule INV_read)
+      subgoal
+        using labels_after_label_read_input0[of n]
+        by simp
+      subgoal
+        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+            all_vertices_def all_edges_def neighbors_def)
+      subgoal
+        using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+            all_vertices_def all_edges_def neighbors_def)
+      subgoal
+        by (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+            os_after_label_input0_def os_after_label_read_input0_def
+            cbufs_after_label_read_input0_def cbufs_after_input_output_def
+            os_after_input_output_def os_input_after_output_def
+            os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+            os_inv(1,4) operator_state.defs input_CONSUMES input_fst_label_prop_input0_batched
+            fun_upd_def)
+      done
+    have EN0: \<open>en1 (os_label_after_input0 n) = Inl\<close>
+      by (simp add: os_label_after_input0_def os_label_after_read_input0_def
+          os_label_after_first_propa_def os_inv(4) input_CONSUMES
+          en1_fst_label_prop_input0_batched operator_state.defs)
+    have DE0: \<open>de1 (os_label_after_input0 n) = projl\<close>
+      by (simp add: os_label_after_input0_def os_label_after_read_input0_def
+          os_label_after_first_propa_def os_inv(4) input_CONSUMES
+          de1_fst_label_prop_input0_batched operator_state.defs)
+    have label_out:
+      \<open>outpu (fst (snd (loop_updates (cbufs_after_label_read_input0 n)
+        (os_label_after_input0 n) (os_after_label_input0 n)))) (1 :: 2) = []\<close>
+      by (rule outpu_1_fst_snd_loop_updates_empty
+          [where cbufs=\<open>cbufs_after_label_read_input0 n\<close>
+            and os_label_prop=\<open>os_label_after_input0 n\<close>
+            and os=\<open>os_after_label_input0 n\<close>,
+            OF INV0 labels_after_label_input0[of n] WF0 EN0 DE0])
+    have os2_out:
+      \<open>outpu ((snd (snd (loop_updates (cbufs_after_label_read_input0 n)
+        (os_label_after_input0 n) (os_after_label_input0 n)))) 2) (1 :: 2) = []\<close>
+      by (rule outpu_1_snd_snd_loop_updates_empty
+          [where cbufs=\<open>cbufs_after_label_read_input0 n\<close>
+            and os_label_prop=\<open>os_label_after_input0 n\<close>
+            and os=\<open>os_after_label_input0 n\<close>,
+            OF INV0 labels_after_label_input0[of n] WF0 EN0 DE0])
+    show \<open>outpu (os_label_after_loop_updates n) (1 :: 2) = []\<close>
+      using label_out by (simp add: os_label_after_loop_updates_def loop_res_def)
+    show \<open>outpu ((os_after_loop_updates n) 2) (1 :: 2) = []\<close>
+      using os2_out by (simp add: os_after_loop_updates_def loop_res_def)
+  qed
+
+
   have Intsum_loop:
     \<open>\<forall>m. intsum ((os_after_loop_progress n) m) =
       (\<lambda>p1 p2. raw_summary (Loc m (Trg p1)) (Loc m (Src p2)))\<close>
@@ -10279,6 +11030,17 @@ next
       (snd (obtain_progress (os_label_after_loop_updates n))) @
     extract_progress (2 :: 3) (nxt sg_first_propa)
       (snd (obtain_progress (os_after_loop_updates n 2))))\<close>
+
+  have c_pts_after_second_progress_caps':
+    \<open>c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary)
+      (second_progress n) c') l = caps' n l\<close>
+    for n l
+    using dt_inv'(3)[of n]
+    by (simp add: c_pts_inv_def second_progress_def extract_prog_def
+        sg_first_propa_def sg_progress_def os_after_loop_progress_def
+        subgraph_inv(1,2) op_state_base_def operator_state.defs obtain_progress_def
+        flip: fold_append change_multiplicities_append_alt)
+
 
 (* ----------------------------- *)
 (* op 1 reads the new frontier from the propagation *)
@@ -11331,7 +12093,34 @@ next
                     apply (simp add: exit_scope_plus_distrib)
                     apply (drule frontier_less_equal_pluss_le)
                     subgoal
-                      sorry
+                      apply (simp add: sg_first_propa_def sg_progress_def subgraph_inv(1))
+                      apply (rule exit_scope_ifrontier_L1T0_le_L1T1_empty_loop)
+                          subgoal
+                            using D by (simp add: sg_first_propa_def sg_progress_def subgraph_inv(1))
+                         subgoal
+                           sorry
+
+                        subgoal
+                          using c_pts_after_second_progress_caps'[of n \<open>Loc (2 :: 3) (Trg (1 :: 2))\<close>]
+                            dt_inv'(2)[of n] outpu_1_after_loop_updates_empty(1)[of n]
+                          by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
+                              sg_first_propa_def sg_progress_def cbufs_after_loop_updates_def loop_res_def
+                              op_state_base_def operator_state.defs)
+                       subgoal
+                         using c_pts_after_second_progress_caps'[of n \<open>Loc (2 :: 3) (Src (1 :: 2))\<close>]
+                           dt_inv'(1)[of n] ocaps_1_os2_after_loop_updates_empty[of n]
+                         by (simp add: Src_caps_inv_def)
+                      subgoal
+                        using c_pts_after_second_progress_caps'[of n \<open>Loc (1 :: 3) (Trg (1 :: 2))\<close>]
+                          dt_inv'(2)[of n] outpu_1_after_loop_updates_empty(2)[of n]
+                        by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
+                            sg_first_propa_def sg_progress_def cbufs_after_loop_updates_def loop_res_def
+                            op_state_base_def operator_state.defs)
+                      done
+
+
+
+
                     subgoal
 
                   apply (subgoal_tac "ifrontier (summ sg_first_propa) (-+-) (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) (Loc 1 (Trg 0)) =
