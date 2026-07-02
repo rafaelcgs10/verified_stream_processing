@@ -3408,6 +3408,34 @@ lemma timestamps_label_prop_input0_step_state[simp]:
   unfolding label_prop_input0_step_state_def
   by (simp add: Let_def)
 
+lemma list_diff_append_mset_cancel:
+  assumes \<open>mset zs = mset ys\<close>
+  shows \<open>list_diff (xs @ zs) ys = xs\<close>
+  using assms
+proof (induct ys arbitrary: zs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons y ys)
+  then have y_in: \<open>y \<in> set zs\<close>
+    using mset_eq_setD by fastforce
+  have mset_zs: \<open>mset (remove_last y zs) = mset ys\<close>
+    using Cons.prems by simp
+  show ?case
+    using Cons.hyps[OF mset_zs] y_in
+    by (simp add: remove_last_append_in_set)
+qed
+
+lemma list_diff_append_cancel_right:
+  \<open>list_diff (xs @ ys) ys = xs\<close>
+  by (rule list_diff_append_mset_cancel) simp
+
+lemma ocaps_0_label_prop_input0_step_state[simp]:
+  \<open>ocaps (label_prop_input0_step_state os d t) 0 = ocaps os 0\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def release_caps_def drop_caps_def add_caps_def trace_simp
+      list_diff_append_cancel_right)
+
 lemma intsum_label_prop_input0_step_state[simp]:
   \<open>intsum (label_prop_input0_step_state os d t) = intsum os\<close>
   unfolding label_prop_input0_step_state_def
@@ -3513,6 +3541,10 @@ lemma ocaps_fst_label_prop_input0_batched:
   \<open>ocaps (fst (label_prop_input0_batched os msgs)) =
     ocaps (fold (\<lambda>(d, t) os. label_prop_input0_step_state os d t) msgs os)\<close>
   by (induct msgs arbitrary: os) (auto simp: case_prod_beta split: prod.splits)
+
+lemma ocaps_0_fst_label_prop_input0_batched[simp]:
+  \<open>ocaps (fst (label_prop_input0_batched os msgs)) 0 = ocaps os 0\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
 lemma initia_fst_label_prop_input0_batched[simp]:
   \<open>initia (fst (label_prop_input0_batched os msgs)) = initia os\<close>
 proof (induct msgs arbitrary: os)
