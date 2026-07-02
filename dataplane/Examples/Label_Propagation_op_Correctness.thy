@@ -12000,6 +12000,7 @@ next
             apply (rule step_star_map_op)
                  apply (rule step_label_propagation_op_drop_caps)
             subgoal 
+              find_theorems input loop_updates
               (* prove as new have using the local definitions *)
               sorry
             subgoal
