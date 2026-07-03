@@ -12408,6 +12408,168 @@ next
       using x_in unfolding frontier_less_equal_iff2 by blast
   qed
 
+  have no_second_propa_output_frontier:
+    \<open>\<not> frontier_less_equal
+        (exit_scope myfst
+          (frontier (c_imp (c'' n) (Loc 1 (Trg 0))) +
+           frontier (c_imp (c'' n) (Loc 1 (Trg 1)))))
+        (myfst t)\<close>
+    if input_frontier_fresh:
+      \<open>\<not> frontier_less_equal (?input_frontier_after_prefix n) t\<close>
+    and t_live:
+      \<open>t |\<in>| ts lxs \<or>
+        cBex (cset_from_list (((outputs_at_target (summ sg) os >> cbufs) >> inputs_at_target os) (1, 0))) (\<lambda>x. t = snd x) \<or>
+        cBex (cfilter (\<lambda>t. \<exists>x\<in>set (ocaps (os 1) 0). t = myfst x) (cset_from_list (timestamps os_label_prop))) (\<lambda>x. t = MyPair x 0)\<close>
+    for n t
+
+
+    unfolding second_propa(2)[rule_format, of n "Loc 1 (Trg 1)"]
+      second_propa(2)[rule_format, of n "Loc 1 (Trg 0)"]
+
+    apply safe
+    apply (simp add: exit_scope_plus_distrib)
+    apply (drule frontier_less_equal_pluss_le)
+    subgoal
+      apply (simp add: sg_first_propa_def sg_progress_def subgraph_inv(1))
+      apply (rule exit_scope_ifrontier_L1T0_le_L1T1_empty_loop)
+      subgoal
+        using D by (simp add: sg_first_propa_def sg_progress_def subgraph_inv(1))
+      subgoal
+        using c_pts_after_second_progress_caps'[of n \<open>Loc (1 :: 3) (Src (1 :: 2))\<close>]
+          dt_inv'(1)[of n]
+        by (simp add: Src_caps_inv_def os_after_loop_progress_def
+            os_after_drop_caps_def os_label_after_drop_caps_def
+            op_state_base_def operator_state.defs ocaps_drop_caps_all)
+      subgoal
+        using c_pts_after_second_progress_caps'[of n \<open>Loc (2 :: 3) (Trg (1 :: 2))\<close>]
+          dt_inv'(2)[of n] outpu_1_after_loop_updates_empty(1)[of n]
+        by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
+            sg_first_propa_def sg_progress_def cbufs_after_loop_updates_def loop_res_def
+            os_after_loop_progress_def os_after_drop_caps_def os_label_after_drop_caps_def
+            drop_caps_def op_state_base_def operator_state.defs)
+      subgoal
+        using c_pts_after_second_progress_caps'[of n \<open>Loc (2 :: 3) (Src (1 :: 2))\<close>]
+          dt_inv'(1)[of n] ocaps_1_os2_after_loop_updates_empty[of n]
+        by (simp add: Src_caps_inv_def os_after_loop_progress_def os_after_drop_caps_def)
+      subgoal
+        using c_pts_after_second_progress_caps'[of n \<open>Loc (1 :: 3) (Trg (1 :: 2))\<close>]
+          dt_inv'(2)[of n] outpu_1_after_loop_updates_empty(2)[of n]
+        by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
+            sg_first_propa_def sg_progress_def cbufs_after_loop_updates_def loop_res_def
+            os_after_loop_progress_def os_after_drop_caps_def
+            op_state_base_def operator_state.defs)
+      done
+    subgoal
+      apply (subgoal_tac "ifrontier (summ sg_first_propa) (-+-) (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) (Loc 1 (Trg 0)) =
+                          frontier (zmset_of (mset (ocaps (os 0) 0) + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs))))")
+       defer
+      subgoal premises auxx
+        apply (simp add: sg_first_propa_def sg_progress_def)
+        unfolding Propagate.dataflow_topology.implied_frontier_alt_def[OF D] UNIV_3_2
+        apply (clarsimp simp add: split_beta subgraph_inv(1))
+        subgoal premises self_path
+          apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c') (Loc (0 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
+           defer
+          subgoal
+            apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c')
+                 (Loc (0 :: 3) (Trg (0 :: 2))) = caps' n (Loc 0 (Trg 0))")
+             defer
+            subgoal
+              using c_pts_after_second_progress_caps'[of n \<open>Loc (0 :: 3) (Trg (0 :: 2))\<close>]
+              by simp
+            apply (subgoal_tac "caps' n (Loc (0 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
+             defer
+            subgoal
+              using dt_inv'(2)[of n] buffers_inv(2)
+              by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
+                  sg_first_propa_def sg_progress_def
+                  cbufs_after_loop_updates_def loop_res_def cbufs_after_label_read_input0_def
+                  cbufs_after_input_output_def os_after_loop_progress_def os_after_drop_caps_def
+                  os_after_loop_updates_def os_after_label_input0_def
+                  os_after_label_read_input0_def os_after_input_output_def os_input_after_output_def
+                  os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+                  input0_msgs_def BULK_BENQ_def os_inv(1,4) op_state_base_def
+                  operator_state.defs obtain_progress_def)
+            apply simp
+            done
+          apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c') (Loc (1 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
+           defer
+          subgoal
+            apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c')
+                 (Loc (1 :: 3) (Trg (0 :: 2))) = caps' n (Loc 1 (Trg 0))")
+             defer
+            subgoal
+              using c_pts_after_second_progress_caps'[of n \<open>Loc (1 :: 3) (Trg (0 :: 2))\<close>]
+              by simp
+            apply (subgoal_tac "caps' n (Loc (1 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
+             defer
+            subgoal
+              using dt_inv'(2)[of n]
+              by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
+                  sg_first_propa_def sg_progress_def
+                  cbufs_after_loop_updates_def loop_res_def cbufs_after_label_read_input0_def
+                  cbufs_after_input_output_def os_after_loop_progress_def os_after_drop_caps_def
+                  os_after_loop_updates_def os_after_label_input0_def
+                  os_after_label_read_input0_def os_after_input_output_def os_input_after_output_def
+                  os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+                  input0_msgs_def BULK_BENQ_def os_inv(1,4) op_state_base_def
+                  operator_state.defs obtain_progress_def)
+            apply simp
+            done
+          apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c') (Loc (0 :: 3) (Src (0 :: 2))) =
+              zmset_of (mset (ocaps (os 0) 0) + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs)))")
+           defer
+          subgoal
+            apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c')
+                 (Loc (0 :: 3) (Src (0 :: 2))) = caps' n (Loc 0 (Src 0))")
+             defer
+            subgoal
+              using c_pts_after_second_progress_caps'[of n \<open>Loc (0 :: 3) (Src (0 :: 2))\<close>]
+              by simp
+            apply (subgoal_tac "caps' n (Loc (0 :: 3) (Src (0 :: 2))) =
+                 zmset_of (mset (ocaps (os 0) 0) + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs)))")
+             defer
+            subgoal
+              using dt_inv'(1)[of n]
+                mset_ocaps_updates[of "ltaken n lxs" "ldropn n lxs" "ocaps (fst (obtain_progress os_input)) (0 :: 2)"]
+                input_stream_inv os_inv(1)
+              apply (simp add: Src_caps_inv_def input_events_def
+                  os_after_loop_progress_def os_after_drop_caps_def
+                  os_after_loop_updates_def loop_res_def os_after_label_input0_def
+                  os_after_label_read_input0_def os_after_input_output_def os_input_after_output_def
+                  os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
+                  os_inv(4) op_state_base_def operator_state.defs obtain_progress_def)
+              apply (drule arg_cong[where f=zmset_of])
+              apply (simp add: to_zmset_correct)
+              done
+            apply simp
+            done
+          apply simp
+          done
+        done
+      subgoal
+        apply simp
+        apply (drule input_frontier_exit_scopeD[of n t])
+        subgoal
+          using t_live label_prop_inv(4)
+          apply (clarsimp del: disjCI simp add: cimage_iff image_iff split_beta split: event.splits)
+          apply (elim disjE)
+          subgoal
+            apply (clarsimp simp add: cin.rep_eq ts_def cset_of_llist.rep_eq split: event.splits)
+            subgoal for a b
+              by force
+            done
+          subgoal
+            by (force simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
+          subgoal
+            by auto
+          done
+        using input_frontier_fresh
+        by blast
+      done
+    done
+
+
 
   define final_output where
     \<open>final_output = (\<lambda> n. label_prop_output_batch
@@ -13039,160 +13201,11 @@ next
                 subgoal
                   apply (intro conjI)
                   subgoal
-                    unfolding second_propa(2)[rule_format, of n "Loc 1 (Trg 1)"]
-                      second_propa(2)[rule_format, of n "Loc 1 (Trg 0)"]
-                    apply safe
-                    apply (simp add: exit_scope_plus_distrib)
-                    apply (drule frontier_less_equal_pluss_le)
-                    subgoal
-                      find_theorems t
-
-                      apply (simp add: sg_first_propa_def sg_progress_def subgraph_inv(1))
-                      apply (rule exit_scope_ifrontier_L1T0_le_L1T1_empty_loop)
-                      subgoal
-                        using D by (simp add: sg_first_propa_def sg_progress_def subgraph_inv(1))
-                      subgoal
-                        using c_pts_after_second_progress_caps'[of n \<open>Loc (1 :: 3) (Src (1 :: 2))\<close>]
-                          dt_inv'(1)[of n]
-                        by (simp add: Src_caps_inv_def os_after_loop_progress_def
-                            os_after_drop_caps_def os_label_after_drop_caps_def
-                            op_state_base_def operator_state.defs ocaps_drop_caps_all)
+                    apply (rule no_second_propa_output_frontier[OF stream_move(2)])
+                    using prems(2)
+                    by (clarsimp del: disjCI simp add: cimage_iff image_iff split_beta split: event.splits)
 
 
-                      subgoal
-                        using c_pts_after_second_progress_caps'[of n \<open>Loc (2 :: 3) (Trg (1 :: 2))\<close>]
-                          dt_inv'(2)[of n] outpu_1_after_loop_updates_empty(1)[of n]
-                        by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
-                            sg_first_propa_def sg_progress_def cbufs_after_loop_updates_def loop_res_def
-                            os_after_loop_progress_def os_after_drop_caps_def os_label_after_drop_caps_def
-                            drop_caps_def op_state_base_def operator_state.defs)
-                      subgoal
-                        using c_pts_after_second_progress_caps'[of n \<open>Loc (2 :: 3) (Src (1 :: 2))\<close>]
-                          dt_inv'(1)[of n] ocaps_1_os2_after_loop_updates_empty[of n]
-                        by (simp add: Src_caps_inv_def os_after_loop_progress_def os_after_drop_caps_def)
-                      subgoal
-                        using c_pts_after_second_progress_caps'[of n \<open>Loc (1 :: 3) (Trg (1 :: 2))\<close>]
-                          dt_inv'(2)[of n] outpu_1_after_loop_updates_empty(2)[of n]
-                        by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
-                            sg_first_propa_def sg_progress_def cbufs_after_loop_updates_def loop_res_def
-                            os_after_loop_progress_def os_after_drop_caps_def
-                            op_state_base_def operator_state.defs)
-
-                      done
-                    subgoal
-
-                      apply (subgoal_tac "ifrontier (summ sg_first_propa) (-+-) (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) (Loc 1 (Trg 0)) =
-                                          frontier (zmset_of (mset (ocaps (os 0) 0) + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs))))")
-                       defer
-                      subgoal premises auxx
-                        apply (simp add: sg_first_propa_def sg_progress_def)
-                        unfolding Propagate.dataflow_topology.implied_frontier_alt_def[OF D] UNIV_3_2
-                        apply (clarsimp simp add: split_beta  subgraph_inv(1))
-                        subgoal premises self_path
-                          apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c') (Loc (0 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
-                           defer
-                          subgoal
-
-                            apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c')
-                                 (Loc (0 :: 3) (Trg (0 :: 2))) = caps' n (Loc 0 (Trg 0))")
-                             defer
-                            subgoal
-                              using c_pts_after_second_progress_caps'[of n \<open>Loc (0 :: 3) (Trg (0 :: 2))\<close>]
-                              by simp
-                            apply (subgoal_tac "caps' n (Loc (0 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
-                             defer
-                            subgoal
-                              using dt_inv'(2)[of n] buffers_inv(2)
-                              by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
-                                  sg_first_propa_def sg_progress_def
-                                  cbufs_after_loop_updates_def loop_res_def cbufs_after_label_read_input0_def
-                                  cbufs_after_input_output_def os_after_loop_progress_def os_after_drop_caps_def
-                                  os_after_loop_updates_def os_after_label_input0_def
-                                  os_after_label_read_input0_def os_after_input_output_def os_input_after_output_def
-                                  os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
-                                  input0_msgs_def BULK_BENQ_def os_inv(1,4) op_state_base_def
-                                  operator_state.defs obtain_progress_def)
-                            apply simp
-                            done
-                          apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c') (Loc (1 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
-                           defer
-                          subgoal
-                            apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c')
-                                 (Loc (1 :: 3) (Trg (0 :: 2))) = caps' n (Loc 1 (Trg 0))")
-                             defer
-                            subgoal
-                              using c_pts_after_second_progress_caps'[of n \<open>Loc (1 :: 3) (Trg (0 :: 2))\<close>]
-                              by simp
-                            apply (subgoal_tac "caps' n (Loc (1 :: 3) (Trg (0 :: 2))) = {#}\<^sub>z")
-                             defer
-                            subgoal
-                              using dt_inv'(2)[of n]
-                              by (simp add: Trg_caps_inv_def outputs_at_target_raw_summary subgraph_inv(1)
-                                  sg_first_propa_def sg_progress_def
-                                  cbufs_after_loop_updates_def loop_res_def cbufs_after_label_read_input0_def
-                                  cbufs_after_input_output_def os_after_loop_progress_def os_after_drop_caps_def
-                                  os_after_loop_updates_def os_after_label_input0_def
-                                  os_after_label_read_input0_def os_after_input_output_def os_input_after_output_def
-                                  os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
-                                  input0_msgs_def BULK_BENQ_def os_inv(1,4) op_state_base_def
-                                  operator_state.defs obtain_progress_def)
-                            apply simp
-                            done
-                          apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c') (Loc (0 :: 3) (Src (0 :: 2))) =
-                              zmset_of (mset (ocaps (os 0) 0) + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs)))")
-                           defer
-                          subgoal
-                            apply (subgoal_tac "c_pts (change_multiplicities (antichain_from_list \<circ>\<circ> raw_summary) (second_progress n) c')
-                                 (Loc (0 :: 3) (Src (0 :: 2))) = caps' n (Loc 0 (Src 0))")
-                             defer
-                            subgoal
-                              using c_pts_after_second_progress_caps'[of n \<open>Loc (0 :: 3) (Src (0 :: 2))\<close>]
-                              by simp
-
-                            apply (subgoal_tac "caps' n (Loc (0 :: 3) (Src (0 :: 2))) =
-                                 zmset_of (mset (ocaps (os 0) 0) + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs)))")
-                             defer
-                            subgoal
-                              using dt_inv'(1)[of n]
-                                mset_ocaps_updates[of "ltaken n lxs" "ldropn n lxs" "ocaps (fst (obtain_progress os_input)) (0 :: 2)"]
-                                input_stream_inv os_inv(1)
-                              apply (simp add: Src_caps_inv_def input_events_def
-                                  os_after_loop_progress_def os_after_drop_caps_def
-                                  os_after_loop_updates_def loop_res_def os_after_label_input0_def
-                                  os_after_label_read_input0_def os_after_input_output_def os_input_after_output_def
-                                  os_after_input_stream_def os_input_after_stream_def os_first_propa_def os_progress_def
-                                  os_inv(4) op_state_base_def operator_state.defs obtain_progress_def)
-
-                              apply (drule arg_cong[where f=zmset_of])
-                              apply (simp add: to_zmset_correct)
-                              done
-                            apply simp
-                            done
-
-                          apply simp
-                          done
-                        done
-                      subgoal
-                        apply simp
-                        apply (drule input_frontier_exit_scopeD[of n t])
-                        subgoal
-                          using prems(2) label_prop_inv(4)
-                          apply (clarsimp del: disjCI simp add: cimage_iff image_iff split_beta split: event.splits)
-                          apply (elim disjE)
-                          subgoal
-                            apply (clarsimp simp add: cin.rep_eq ts_def cset_of_llist.rep_eq split: event.splits)
-                            subgoal for a b
-                              by force
-                            done
-                          subgoal
-                            by (force simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
-                          subgoal
-                            by auto
-                          done
-                        using stream_move(2)
-                        by blast
-                      done
-                    done               
                   subgoal
                     using prems(2) apply -
                     apply (clarsimp del: disjCI simp add: image_iff cimage_iff split_beta split: event.splits)
@@ -13305,7 +13318,9 @@ next
               apply (rule exI[of _ t])
               apply (intro conjI)
               subgoal sorry
-              subgoal sorry
+              subgoal
+                by (rule no_second_propa_output_frontier[OF stream_move(2)])
+
               subgoal sorry
               subgoal
                 apply (simp add: operator_state.defs os_inv(4))
