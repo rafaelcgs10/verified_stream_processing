@@ -12857,8 +12857,6 @@ next
                               apply (drule arg_cong[where f=zmset_of])
                               apply (simp add: to_zmset_correct)
                               done
-
-
                             apply simp
                             done
 
@@ -12985,11 +12983,22 @@ next
              apply (rule step_set_op_intro_Out)
                 apply (rule refl)+
             subgoal
-              sorry
+              unfolding final_output_def
+              using prems(2) apply -
+              apply (clarsimp del: disjCI simp add: cimage_iff)
+              apply hypsubst_thin
+              apply (rule disjI2)
+              apply (rule disjI1)
+              apply (intro cBexI[of _ "(WCC, Cap t 0)"])
+               apply simp_all
+              subgoal
+                sorry
+              subgoal
+                sorry
+              done
             subgoal
               using prems by auto
              apply (rule refl)+
-
             subgoal
               sorry
             done
