@@ -1456,7 +1456,7 @@ definition label_prop_label_batch where
 definition label_prop_output_batch where
   \<open>label_prop_output_batch old_os below_times =
     map
-      (\<lambda>t. let cap = Cap (MyPair t 0) 0 in
+      (\<lambda>t. let cap = Cap (MyPair t (0 :: nat)) (0 :: 2) in
         (en2 old_os (components_from_labels (all_edges old_os t) (min_label old_os t)), cap))
       (remdups (map myfst below_times))\<close>
 

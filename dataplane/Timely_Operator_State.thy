@@ -602,6 +602,36 @@ lemma initia_drop_caps[simp]:
   unfolding drop_caps_def
   by auto
 
+lemma drop_caps_intsum_update[simp]:
+  \<open>drop_caps (os\<lparr>intsum := I\<rparr>) caps = (drop_caps os caps)\<lparr>intsum := I\<rparr>\<close>
+  unfolding drop_caps_def by simp
+
+lemma drop_caps_consu_update[simp]:
+  \<open>drop_caps (os\<lparr>consu := C\<rparr>) caps = (drop_caps os caps)\<lparr>consu := C\<rparr>\<close>
+  unfolding drop_caps_def by simp
+
+lemma drop_caps_produ_update[simp]:
+  \<open>drop_caps (os\<lparr>produ := P\<rparr>) caps = (drop_caps os caps)\<lparr>produ := P\<rparr>\<close>
+  unfolding drop_caps_def by simp
+
+lemma drop_caps_input_update[simp]:
+  \<open>drop_caps (os\<lparr>input := I\<rparr>) caps = (drop_caps os caps)\<lparr>input := I\<rparr>\<close>
+  unfolding drop_caps_def by simp
+
+lemma drop_caps_outpu_update[simp]:
+  \<open>drop_caps (os\<lparr>outpu := outs\<rparr>) caps = (drop_caps os caps)\<lparr>outpu := outs\<rparr>\<close>
+  unfolding drop_caps_def by simp
+
+
+
+lemma drop_caps_front_update[simp]:
+  \<open>drop_caps (os\<lparr>front := F\<rparr>) caps = (drop_caps os caps)\<lparr>front := F\<rparr>\<close>
+  unfolding drop_caps_def by simp
+
+lemma drop_caps_initia_update[simp]:
+  \<open>drop_caps (os\<lparr>initia := B\<rparr>) caps = (drop_caps os caps)\<lparr>initia := B\<rparr>\<close>
+  unfolding drop_caps_def by simp
+
 lemma ocaps_drop_caps_all:
   \<open>ocaps (drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))) p = []\<close>
   \<open>p' \<noteq> p \<Longrightarrow> ocaps (drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))) p' = ocaps os p'\<close>
