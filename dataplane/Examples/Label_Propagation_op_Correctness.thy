@@ -9914,15 +9914,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
            apply simp
            apply (rule input_ocaps_inv_release_capsI)
           using label_prop_inv(6) os_inv(4) apply (simp add: operator_state.defs)
-
-
-
           using label_prop_inv(7) apply (simp add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def release_caps_def drop_caps_def)
-
           done
-
-
-
         done
       subgoal for os_incr'
         apply (clarsimp simp add: increment_op_logic_def if_splits)
