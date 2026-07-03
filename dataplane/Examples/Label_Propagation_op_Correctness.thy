@@ -5752,6 +5752,230 @@ lemma outpu_0_fst_label_prop_input0_batched[simp]:
   \<open>outpu (fst (label_prop_input0_batched os msgs)) (0 :: 2) = outpu os 0\<close>
   by simp
 
+lemma all_edges_eq_graph_entries:
+  assumes inv: \<open>label_prop_upd_inv os\<close>
+  shows \<open>all_edges os q = {e. \<exists>t\<in>set (timestamps os). t \<le> q \<and> snd e \<in> set (graph os t (fst e))}\<close>
+proof (intro set_eqI iffI)
+  fix e
+  assume e_in: \<open>e \<in> all_edges os q\<close>
+  obtain v w where e: \<open>e = (v, w)\<close>
+    by (cases e)
+  then obtain t where \<open>t \<in> set (timestamps os)\<close> \<open>t \<le> q\<close> \<open>w \<in> set (graph os t v)\<close>
+    using e_in unfolding all_edges_def set_neighbors by auto
+  then show \<open>e \<in> {e. \<exists>t\<in>set (timestamps os). t \<le> q \<and> snd e \<in> set (graph os t (fst e))}\<close>
+    using e by auto
+next
+  fix e
+  assume e_in: \<open>e \<in> {e. \<exists>t\<in>set (timestamps os). t \<le> q \<and> snd e \<in> set (graph os t (fst e))}\<close>
+  then obtain t where t: \<open>t \<in> set (timestamps os)\<close> \<open>t \<le> q\<close>
+    and graph_edge: \<open>snd e \<in> set (graph os t (fst e))\<close>
+    by auto
+  have vertices: \<open>fst e \<in> set (vertices os t)\<close> \<open>snd e \<in> set (vertices os t)\<close>
+    using label_prop_upd_inv_graph_edgeD[OF inv graph_edge] by auto
+  have all_vertices: \<open>fst e \<in> all_vertices os q\<close> \<open>snd e \<in> all_vertices os q\<close>
+    using t vertices unfolding all_vertices_def by auto
+  have neighbor: \<open>snd e \<in> set (neighbors os q (fst e))\<close>
+    using t graph_edge unfolding set_neighbors by auto
+  show \<open>e \<in> all_edges os q\<close>
+    using all_vertices neighbor unfolding all_edges_def by (cases e) auto
+qed
+
+lemma all_edges_label_prop_input0_step_state_eq:
+  assumes INV: \<open>label_prop_upd_inv os\<close>
+  shows \<open>all_edges (label_prop_input0_step_state os d t) q =
+    all_edges os q \<union>
+      (if myfst t \<le> q then
+        {(fst (de1 os d), snd (de1 os d)), (snd (de1 os d), fst (de1 os d))}
+       else {})\<close>
+proof -
+  let ?v1 = \<open>fst (de1 os d)\<close>
+  let ?v2 = \<open>snd (de1 os d)\<close>
+  let ?t1 = \<open>myfst t\<close>
+  let ?l1 = \<open>min_label os ?t1 ?v1\<close>
+  let ?l2 = \<open>min_label os ?t1 ?v2\<close>
+  let ?v = \<open>if ?l1 > ?l2 then ?v1 else ?v2\<close>
+  let ?l = \<open>if ?l1 > ?l2 then ?l2 else ?l1\<close>
+  let ?G = \<open>(graph os)(?t1 := (graph os ?t1)
+    (?v1 := ?v2 # graph os ?t1 ?v1, ?v2 := ?v1 # graph os ?t1 ?v2))\<close>
+  let ?V = \<open>(vertices os)(?t1 := [?v1, ?v2] @ vertices os ?t1)\<close>
+  let ?os' = \<open>label_prop_edge_record_update (input_tl os 0) ?t1 ?v1 ?v2 ?v ?l\<close>
+  have step_edges: \<open>all_edges (label_prop_input0_step_state os d t) q = all_edges ?os' q\<close>
+    by simp
+  have os'_fields:
+    \<open>timestamps ?os' = ?t1 # timestamps os\<close>
+    \<open>graph ?os' = ?G\<close>
+    \<open>vertices ?os' = ?V\<close>
+    by (simp_all add: label_prop_edge_record_update_def input_tl_def)
+  have old_edges:
+    \<open>all_edges os q = {e. \<exists>t\<in>set (timestamps os). t \<le> q \<and> snd e \<in> set (graph os t (fst e))}\<close>
+    by (rule all_edges_eq_graph_entries[OF INV])
+  have new_graph_edgeD:
+    \<open>\<And>t' e. snd e \<in> set (?G t' (fst e)) \<Longrightarrow> fst e \<in> set (?V t') \<and> snd e \<in> set (?V t')\<close>
+  proof -
+    fix t' e
+    assume graph_edge: \<open>snd e \<in> set (?G t' (fst e))\<close>
+    obtain x y where e: \<open>e = (x, y)\<close>
+      by (cases e)
+    show \<open>fst e \<in> set (?V t') \<and> snd e \<in> set (?V t')\<close>
+      using graph_edge label_prop_upd_inv_graph_edgeD[OF INV]
+      unfolding e by (auto split: if_splits)
+  qed
+  have new_edges:
+    \<open>all_edges ?os' q = {e. \<exists>t\<in>set (?t1 # timestamps os). t \<le> q \<and> snd e \<in> set (?G t (fst e))}\<close>
+  proof (intro set_eqI iffI)
+    fix e
+    assume e_in: \<open>e \<in> all_edges ?os' q\<close>
+    then obtain t' where t': \<open>t' \<in> set (?t1 # timestamps os)\<close> \<open>t' \<le> q\<close>
+      and graph_edge: \<open>snd e \<in> set (?G t' (fst e))\<close>
+      using os'_fields unfolding all_edges_def set_neighbors by (cases e) auto
+    show \<open>e \<in> {e. \<exists>t\<in>set (?t1 # timestamps os). t \<le> q \<and> snd e \<in> set (?G t (fst e))}\<close>
+      using t' graph_edge by blast
+  next
+    fix e
+    assume e_in: \<open>e \<in> {e. \<exists>t\<in>set (?t1 # timestamps os). t \<le> q \<and> snd e \<in> set (?G t (fst e))}\<close>
+    then obtain t' where t': \<open>t' \<in> set (?t1 # timestamps os)\<close> \<open>t' \<le> q\<close>
+      and graph_edge: \<open>snd e \<in> set (?G t' (fst e))\<close>
+      by blast
+    have vertices: \<open>fst e \<in> set (?V t')\<close> \<open>snd e \<in> set (?V t')\<close>
+      using new_graph_edgeD[OF graph_edge] by auto
+    have t'_new: \<open>t' \<in> {u \<in> set (timestamps ?os'). u \<le> q}\<close>
+      using t' os'_fields(1) by auto
+    have vertices_new: \<open>fst e \<in> set (vertices ?os' t')\<close> \<open>snd e \<in> set (vertices ?os' t')\<close>
+      using vertices os'_fields(3) by auto
+    have all_vertices: \<open>fst e \<in> all_vertices ?os' q\<close> \<open>snd e \<in> all_vertices ?os' q\<close>
+      using t'_new vertices_new unfolding all_vertices_def by blast+
+    have graph_new: \<open>snd e \<in> set (graph ?os' t' (fst e))\<close>
+      using graph_edge os'_fields(2) by auto
+    have neighbor: \<open>snd e \<in> set (neighbors ?os' q (fst e))\<close>
+      using t'_new graph_new unfolding set_neighbors by blast
+    show \<open>e \<in> all_edges ?os' q\<close>
+      using all_vertices neighbor unfolding all_edges_def by (cases e) auto
+  qed
+  have graph_entries:
+    \<open>{e. \<exists>t\<in>set (?t1 # timestamps os). t \<le> q \<and> snd e \<in> set (?G t (fst e))} =
+      {e. \<exists>t\<in>set (timestamps os). t \<le> q \<and> snd e \<in> set (graph os t (fst e))} \<union>
+      (if ?t1 \<le> q then {(?v1, ?v2), (?v2, ?v1)} else {})\<close>
+  proof (intro set_eqI iffI)
+    fix e
+    assume e_in: \<open>e \<in> {e. \<exists>t\<in>set (?t1 # timestamps os). t \<le> q \<and> snd e \<in> set (?G t (fst e))}\<close>
+    then obtain t' where t': \<open>t' \<in> set (?t1 # timestamps os)\<close> \<open>t' \<le> q\<close>
+      and graph_edge: \<open>snd e \<in> set (?G t' (fst e))\<close>
+      by blast
+    show \<open>e \<in> {e. \<exists>t\<in>set (timestamps os). t \<le> q \<and> snd e \<in> set (graph os t (fst e))} \<union>
+      (if ?t1 \<le> q then {(?v1, ?v2), (?v2, ?v1)} else {})\<close>
+    proof (cases \<open>t' = ?t1\<close>)
+      case False
+      then have \<open>t' \<in> set (timestamps os)\<close>
+        using t' by auto
+      moreover have \<open>snd e \<in> set (graph os t' (fst e))\<close>
+        using graph_edge False by auto
+      ultimately show ?thesis
+        using t' by auto
+    next
+      case t1_eq: True
+      show ?thesis
+      proof (cases \<open>?t1 \<in> set (timestamps os)\<close>)
+        case in_ts: True
+        have old_or_new:
+          \<open>snd e \<in> set (graph os ?t1 (fst e)) \<or>
+            (fst e = ?v1 \<and> snd e = ?v2) \<or> (fst e = ?v2 \<and> snd e = ?v1)\<close>
+          using graph_edge t1_eq by (cases e) (auto split: if_splits)
+        then show ?thesis
+          using t' t1_eq in_ts by (cases e) auto
+      next
+        case not_ts: False
+        have empty: \<open>graph os ?t1 (fst e) = []\<close>
+          using label_prop_upd_inv_graph_empty_if_not_timestamp[OF INV not_ts, of \<open>fst e\<close>] .
+        have new_edge:
+          \<open>(fst e = ?v1 \<and> snd e = ?v2) \<or> (fst e = ?v2 \<and> snd e = ?v1)\<close>
+          using graph_edge t1_eq empty by (cases e) (auto split: if_splits)
+        then show ?thesis
+          using t' t1_eq by (cases e) auto
+      qed
+    qed
+  next
+    fix e
+    assume e_in: \<open>e \<in> {e. \<exists>t\<in>set (timestamps os). t \<le> q \<and> snd e \<in> set (graph os t (fst e))} \<union>
+      (if ?t1 \<le> q then {(?v1, ?v2), (?v2, ?v1)} else {})\<close>
+    from e_in consider
+      (old) t' where \<open>t' \<in> set (timestamps os)\<close> \<open>t' \<le> q\<close> \<open>snd e \<in> set (graph os t' (fst e))\<close>
+    | (new) \<open>?t1 \<le> q\<close> \<open>e = (?v1, ?v2) \<or> e = (?v2, ?v1)\<close>
+      by (cases \<open>?t1 \<le> q\<close>) auto
+    then show \<open>e \<in> {e. \<exists>t\<in>set (?t1 # timestamps os). t \<le> q \<and> snd e \<in> set (?G t (fst e))}\<close>
+    proof cases
+      case old
+      then have \<open>snd e \<in> set (?G t' (fst e))\<close>
+        by (cases e) auto
+      then show ?thesis
+        using old by auto
+    next
+      case new
+      then show ?thesis
+        by auto
+    qed
+  qed
+  show ?thesis
+    using step_edges old_edges new_edges graph_entries by simp
+qed
+
+lemma all_edges_fst_label_prop_input0_batched_prefix_eq:
+  assumes input_eq: \<open>input os 0 = msgs @ rest\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
+  shows \<open>all_edges (fst (label_prop_input0_batched os msgs)) q =
+    all_edges os q \<union>
+      (\<Union>(d, t)\<in>set msgs. if myfst t \<le> q then
+        {(fst (de1 os d), snd (de1 os d)), (snd (de1 os d), fst (de1 os d))}
+       else {})\<close>
+  using input_eq inv wf_upd
+proof (induct msgs arbitrary: os)
+  case Nil
+  then show ?case
+    by simp
+next
+  case (Cons msg msgs)
+  obtain d t where msg_eq: \<open>msg = (d, t)\<close>
+    by (cases msg)
+  let ?step = \<open>label_prop_input0_step_state os d t\<close>
+  have input0: \<open>input os 0 = (d, t) # (msgs @ rest)\<close>
+    using Cons.prems(1) msg_eq by simp
+  have input_step: \<open>input ?step 0 = msgs @ rest\<close>
+    using input0 by simp
+  have inv_step: \<open>label_prop_upd_inv ?step\<close>
+    by (rule label_prop_upd_inv_label_prop_input0_step_stateI[OF Cons.prems(2) input0 Cons.prems(3)])
+  have wf_step: \<open>wf_label_prop_updates ?step (set (input ?step 1))\<close>
+    by (rule wf_label_prop_updates_label_prop_input0_step_stateI[OF Cons.prems(2) Cons.prems(3)])
+  have ih:
+    \<open>all_edges (fst (label_prop_input0_batched ?step msgs)) q =
+      all_edges ?step q \<union>
+        (\<Union>(d, t)\<in>set msgs. if myfst t \<le> q then
+          {(fst (de1 ?step d), snd (de1 ?step d)), (snd (de1 ?step d), fst (de1 ?step d))}
+         else {})\<close>
+    by (rule Cons.hyps[OF input_step inv_step wf_step])
+  have step_edges:
+    \<open>all_edges ?step q = all_edges os q \<union>
+      (if myfst t \<le> q then
+        {(fst (de1 os d), snd (de1 os d)), (snd (de1 os d), fst (de1 os d))}
+       else {})\<close>
+    by (rule all_edges_label_prop_input0_step_state_eq[OF Cons.prems(2)])
+  show ?case
+    using ih step_edges msg_eq
+    by (cases \<open>label_prop_input0_batched ?step msgs\<close>)
+      (auto simp add: Un_assoc Un_left_commute Un_commute)
+qed
+
+lemma all_edges_fst_label_prop_input0_batched_input_eq:
+  assumes input_eq: \<open>input os 0 = msgs\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
+  shows \<open>all_edges (fst (label_prop_input0_batched os msgs)) q =
+    all_edges os q \<union>
+      (\<Union>(d, t)\<in>set msgs. if myfst t \<le> q then
+        {(fst (de1 os d), snd (de1 os d)), (snd (de1 os d), fst (de1 os d))}
+       else {})\<close>
+  by (rule all_edges_fst_label_prop_input0_batched_prefix_eq[where rest=Nil])
+    (use assms in simp_all)
+
 
 
 lemma initia_fst_snd_loop_updates[simp]:
@@ -5792,6 +6016,91 @@ proof (induct cbufs os_label_prop os rule: loop_updates.induct)
         by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
       show ?thesis
         by (subst loop_updates.simps) (use \<open>?good\<close> step1 False rec initia1 in simp)
+    qed
+  qed
+qed
+
+lemma en2_fst_snd_loop_updates[simp]:
+  \<open>en2 (fst (snd (loop_updates cbufs os_label_prop os))) = en2 os_label_prop\<close>
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+
+  show ?case
+  proof (cases ?good)
+    case False
+    show ?thesis
+      by (subst loop_updates.simps) (simp only: False if_False fst_conv snd_conv)
+  next
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have en2_1: \<open>en2 os_label_prop1 = en2 os_label_prop\<close>
+      using label_prop_input1_loop_updates_en2_label[OF step1[symmetric]]
+      by simp
+
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 True en2_1 in simp)
+    next
+      case False
+      have rec:
+        \<open>en2 (fst (snd (loop_updates cbufs1 os_label_prop1 os1))) = en2 os_label_prop1\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 False rec en2_1 in simp)
+    qed
+  qed
+qed
+
+lemma all_edges_fst_snd_loop_updates[simp]:
+  \<open>all_edges (fst (snd (loop_updates cbufs os_label_prop os))) = all_edges os_label_prop\<close>
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+
+  show ?case
+  proof (cases ?good)
+    case False
+    show ?thesis
+      by (subst loop_updates.simps) (simp only: False if_False fst_conv snd_conv)
+  next
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have edges1: \<open>all_edges os_label_prop1 = all_edges os_label_prop\<close>
+      using step1[symmetric]
+      unfolding label_prop_input1_loop_updates_def Let_def
+      by simp
+
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 True edges1 in simp)
+    next
+      case False
+      have rec:
+        \<open>all_edges (fst (snd (loop_updates cbufs1 os_label_prop1 os1))) = all_edges os_label_prop1\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 False rec edges1 in simp)
     qed
   qed
 qed
@@ -12947,12 +13256,34 @@ next
               apply hypsubst_thin
               apply (rule disjI2)
               apply (rule disjI1)
-              apply (intro cBexI[of _ "(WCC, Cap t 0)"])
+              apply (intro cBexI[of _ "(Inr (ccs (set (icoll (map (\<lambda>(x, t'). Data t' (projl x)) (((outputs_at_target (summ sg) os >> cbufs) >> inputs_at_target os) (1, 0)) @@- lxs) t) \<union> all_edges os_label_prop (myfst t))), Cap t 0)"])
                apply simp_all
+              unfolding label_prop_output_batch_def
+              apply (clarsimp del: disjCI simp add: image_iff)
+              apply (rule exI[of _ t])
+              apply (intro conjI)
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
               subgoal
-                sorry
-              subgoal
-                sorry
+                apply (simp add: operator_state.defs os_inv(4))
+                apply (subst Un_commute)
+                apply (subst all_edges_fst_label_prop_input0_batched_input_eq)
+                subgoal
+                  by (simp add: input_CONSUMES)
+                subgoal
+                  using label_prop_inv(5) apply -
+                  apply (simp add:  operator_state.defs os_inv(4))
+                  sorry
+                subgoal
+                  using label_prop_inv(7) apply -
+                  apply (simp add: operator_state.defs os_inv(4) input_CONSUMES)
+                  sorry
+                subgoal
+                  apply (simp add: split_beta input_CONSUMES)
+                  sorry
+                done
+              subgoal sorry
               done
             subgoal
               using prems by auto
