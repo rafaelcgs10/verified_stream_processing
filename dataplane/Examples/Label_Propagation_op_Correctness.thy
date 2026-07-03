@@ -5976,6 +5976,241 @@ lemma all_edges_fst_label_prop_input0_batched_input_eq:
   by (rule all_edges_fst_label_prop_input0_batched_prefix_eq[where rest=Nil])
     (use assms in simp_all)
 
+lemma set_icoll_llist_of:
+  \<open>set (icoll (llist_of xs) t) = {d. \<exists>t'. Data t' d \<in> set xs \<and> t' \<le> t}\<close>
+  apply (induction xs)
+   apply (simp add: icoll_def)
+  apply (auto simp: icoll_def split: event.splits)
+  done
+
+lemma set_icoll_llist_of_map_Data_pair:
+  \<open>set (icoll (llist_of (map (\<lambda>(x, t'). Data t' (f x)) xs)) t) =
+    (\<lambda>x. f (fst x)) ` {x \<in> set xs. snd x \<le> t}\<close>
+  apply (auto simp: set_icoll_llist_of split_beta)
+  done
+
+lemma set_icoll_lshift:
+  \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) lxs) \<Longrightarrow>
+    set (icoll (xs @@- lxs) t) = set (icoll (llist_of xs) t) \<union> set (icoll lxs t)\<close>
+  apply (simp add: icoll_lshift)
+  done
+
+lemma icoll_empty_if_no_data_le:
+  assumes \<open>\<And>t' d. t' \<le> t \<Longrightarrow> Data t' d \<notin> lset lxs\<close>
+  shows \<open>icoll lxs t = []\<close>
+  unfolding icoll_def
+  apply (subst lfilter_False)
+   apply (use assms in \<open>auto split: event.splits\<close>)
+  done
+
+lemma set_icoll_ltaken_if_no_ldropn_data_le:
+  assumes finite: \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) (ldropn n lxs))\<close>
+    and no_data: \<open>\<And>t' d. t' \<le> t \<Longrightarrow> Data t' d \<notin> lset (ldropn n lxs)\<close>
+  shows \<open>set (icoll lxs t) = {d. \<exists>t'. Data t' d \<in> set (ltaken n lxs) \<and> t' \<le> t}\<close>
+  apply (subst (1) ltaken_lshift_ldropn[symmetric, of lxs n])
+  apply (subst icoll_lshift)
+  using finite apply blast
+  apply (simp add: icoll_empty_if_no_data_le[OF no_data] set_icoll_llist_of)
+  done
+
+lemma timely_input_stream_ldropn_no_data_le_if_not_frontier_less_equal:
+  assumes stream: \<open>timely_input_stream lxs C\<close>
+    and n_le: \<open>enat n \<le> llength lxs\<close>
+    and not_frontier: \<open>\<not> frontier_less_equal
+      (frontier (zmset_of (C + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) -
+        event.time `# filter_mset is_Drop (mset (ltaken n lxs))))) t\<close>
+    and u_le: \<open>u \<le> t\<close>
+  shows \<open>Data u d \<notin> lset (ldropn n lxs)\<close>
+  apply (rule notI)
+  apply (rule vacant_monotone_not_in_lset[where e=\<open>Data u d\<close> and t=t and
+        C=\<open>C + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) -
+          event.time `# filter_mset is_Drop (mset (ltaken n lxs))\<close> and lxs=\<open>ldropn n lxs\<close>])
+     apply assumption
+    apply (simp add: u_le)
+   apply (rule not_frontier_less_equal_vacant[OF not_frontier])
+  using timely_input_stream_ldrop[OF n_le stream]
+  apply (simp add: timely_input_stream_def)
+  done
+
+lemma Field_Un_converse[simp]:
+  \<open>Field (A \<union> A\<inverse>) = Field A\<close>
+  apply auto
+  done
+
+lemma ccs_eq_if_undirected_Field:
+  assumes \<open>A \<union> A\<inverse> = B \<union> B\<inverse>\<close>
+    and \<open>Field A = Field B\<close>
+  shows \<open>ccs A = ccs B\<close>
+  using assms
+  unfolding Wcc.is_cc_def Wcc.is_subcc_def Wcc.reachable_def Wcc.edge_vertices_def
+  apply simp
+  done
+
+lemma ccs_eq_if_undirected:
+  assumes \<open>A \<union> A\<inverse> = B \<union> B\<inverse>\<close>
+  shows \<open>ccs A = ccs B\<close>
+  apply (rule ccs_eq_if_undirected_Field)
+   apply (rule assms)
+  using assms
+  apply (metis Field_Un_converse)
+  done
+
+lemma ccs_Un_symmetric_edge_image:
+  fixes A :: \<open>('a::order \<times> 'a) set\<close>
+  shows \<open>ccs (A \<union> f ` X) = ccs (A \<union> (\<Union>x\<in>X. {f x, (snd (f x), fst (f x))}))\<close>
+  apply (rule ccs_eq_if_undirected)
+  apply force
+  done
+
+lemma myprod_le_iff_myfst_le_if_mysnd_zero:
+  fixes s t :: \<open>('a::ord, 'b::{zero, order}) myprod\<close>
+  assumes \<open>mysnd s = 0\<close>
+    and \<open>mysnd t = 0\<close>
+  shows \<open>s \<le> t \<longleftrightarrow> myfst s \<le> myfst t\<close>
+  using assms
+  apply (cases s; cases t)
+  apply auto
+  done
+
+lemma myfst_le_if_myprod_le_mysnd_zero:
+  fixes s t :: \<open>('a::ord, 'b::{zero, order}) myprod\<close>
+  assumes \<open>s \<le> t\<close>
+    and \<open>mysnd s = 0\<close>
+    and \<open>mysnd t = 0\<close>
+  shows \<open>myfst s \<le> myfst t\<close>
+  using assms
+  apply (simp add: myprod_le_iff_myfst_le_if_mysnd_zero)
+  done
+
+lemma myprod_le_if_myfst_le_mysnd_zero:
+  fixes s t :: \<open>('a::ord, 'b::{zero, order}) myprod\<close>
+  assumes \<open>myfst s \<le> myfst t\<close>
+    and \<open>mysnd s = 0\<close>
+    and \<open>mysnd t = 0\<close>
+  shows \<open>s \<le> t\<close>
+  using assms
+  apply (simp add: myprod_le_iff_myfst_le_if_mysnd_zero)
+  done
+
+
+
+
+lemma label_prop_collected_edge_payloads_image_eq:
+  assumes chan_zero:
+    \<open>\<And>x. x \<in> set xs \<union> set ys \<union> set zs \<Longrightarrow> mysnd (snd x) = 0\<close>
+    and stream_zero:
+    \<open>\<And>t' d. Data t' d \<in> set evs \<Longrightarrow> mysnd t' = 0\<close>
+    and t_zero: \<open>mysnd t = 0\<close>
+  shows
+    \<open>({d. \<exists>t'. (Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set xs \<or>
+                 Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set ys \<or>
+                 Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set zs) \<and> t' \<le> t} \<union>
+       {d. \<exists>t'. Data t' d \<in> set evs \<and> t' \<le> t}) =
+      (\<lambda>x. projl (fst x)) `
+        ((set xs \<union> (set ys \<union> (set zs \<union>
+          (\<lambda>x. case x of Data t d \<Rightarrow> (Inl d, t)) ` {x \<in> set evs. is_Data x}))) \<inter>
+          {x. myfst (snd x) \<le> myfst t})\<close>
+  using chan_zero stream_zero t_zero
+  apply (auto split: event.splits)
+  subgoal for a b
+    apply (rule image_eqI[where x=\<open>(a, b)\<close>])
+     apply simp
+    apply (force intro: myfst_le_if_myprod_le_mysnd_zero)
+    done
+  subgoal for a b
+    apply (rule image_eqI[where x=\<open>(a, b)\<close>])
+     apply simp
+    apply (force intro: myfst_le_if_myprod_le_mysnd_zero)
+    done
+  subgoal for a b
+    apply (rule image_eqI[where x=\<open>(a, b)\<close>])
+     apply simp
+    apply (force intro: myfst_le_if_myprod_le_mysnd_zero)
+    done
+  subgoal for x t'
+    apply (rule image_eqI[where x=\<open>(Inl x, t')\<close>])
+     apply simp
+    apply (force intro: myfst_le_if_myprod_le_mysnd_zero)
+    done
+  subgoal for a b
+    apply (rule exI[of _ b])
+    apply (intro conjI)
+     apply (rule disjI1)
+     apply (rule image_eqI[where x=\<open>(a, b)\<close>])
+      apply simp
+     apply simp
+    apply (force intro: myprod_le_if_myfst_le_mysnd_zero)
+    done
+  subgoal for a b
+    apply (rule exI[of _ b])
+    apply (intro conjI)
+     apply (rule disjI2)
+     apply (rule disjI1)
+     apply (rule image_eqI[where x=\<open>(a, b)\<close>])
+      apply simp
+     apply simp
+    apply (force intro: myprod_le_if_myfst_le_mysnd_zero)
+    done
+  subgoal for a b
+    apply (rule exI[of _ b])
+    apply (intro conjI)
+     apply (rule disjI2)
+     apply (rule disjI2)
+     apply (rule image_eqI[where x=\<open>(a, b)\<close>])
+      apply simp
+     apply simp
+    apply (force intro: myprod_le_if_myfst_le_mysnd_zero)
+    done
+  subgoal for b x
+    apply (drule spec[of _ b])
+    apply (drule mp)
+     apply assumption
+    apply (erule notE)
+    apply (rule myprod_le_if_myfst_le_mysnd_zero)
+      apply assumption
+     apply blast
+    apply assumption
+    done
+
+  done
+
+lemma label_prop_collected_edge_payloads_ccs_eq:
+  fixes A :: \<open>('a::order \<times> 'a) set\<close>
+  assumes chan_zero:
+    \<open>\<And>x. x \<in> set xs \<union> set ys \<union> set zs \<Longrightarrow> mysnd (snd x) = 0\<close>
+    and stream_zero:
+    \<open>\<And>t' d. Data t' d \<in> set evs \<Longrightarrow> mysnd t' = 0\<close>
+    and t_zero: \<open>mysnd t = 0\<close>
+  shows
+    \<open>ccs (A \<union>
+       ({d. \<exists>t'. (Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set xs \<or>
+                  Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set ys \<or>
+                  Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set zs) \<and> t' \<le> t} \<union>
+        {d. \<exists>t'. Data t' d \<in> set evs \<and> t' \<le> t})) =
+      ccs (A \<union>
+       (\<Union>x\<in>((set xs \<union> (set ys \<union> (set zs \<union>
+          (\<lambda>x. case x of Data t d \<Rightarrow> (Inl d, t)) ` {x \<in> set evs. is_Data x}))) \<inter>
+          {x. myfst (snd x) \<le> myfst t}).
+          {projl (fst x), (snd (projl (fst x)), fst (projl (fst x)))}))\<close>
+  apply (subst label_prop_collected_edge_payloads_image_eq[where xs=xs and ys=ys and zs=zs and evs=evs and t=t])
+     apply (blast intro: chan_zero)
+    apply (blast intro: stream_zero)
+   apply (rule t_zero)
+  apply (rule ccs_Un_symmetric_edge_image)
+  done
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 lemma initia_fst_snd_loop_updates[simp]:
@@ -7810,13 +8045,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using subgraph_inv(1) apply simp
                             apply (simp_all add: operator_state.defs(3) subgraph_inv(2) os_inv)
         using os_inv(1,5)
-                      apply (simp add: ty1_check_def operator_state.defs(3) BENQ_def)
-                      apply (frule spec[of _ 0])
-                      apply fastforce
+                       apply (simp add: ty1_check_def operator_state.defs(3) BENQ_def)
+                       apply (frule spec[of _ 0])
+                       apply fastforce
         using os_inv(1,4-6)
-                     apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BENQ_def)
-                     apply (drule spec[of _ 0])
-                     apply simp
+                      apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BENQ_def)
+                      apply (drule spec[of _ 0])
+                      apply simp
         using os_inv(4,10) apply (simp add: BENQ_def operator_state.defs(3))
         using buffers_inv(2) apply (simp add: BENQ_def)
                    apply (rule dataplane_tracker_inv_update_outputs[OF dataplane_inv _ _ _ _ G, where nid=0 and xs=\<open>[(d, t)]\<close> and ys=xs and p=0])
@@ -7871,23 +8106,23 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                             apply (rule refl)
         using subgraph_inv(1) apply simp
                             apply (simp_all add: operator_state.defs(3) subgraph_inv(2) os_inv)
-                       apply (simp add: consumes_def add_caps_def BENQ_def)
-                       apply (intro conjI)
-                           apply (simp add: raw_summary_def fun_eq_iff)
+                        apply (simp add: consumes_def add_caps_def BENQ_def)
+                        apply (intro conjI)
+                            apply (simp add: raw_summary_def fun_eq_iff)
+                           apply (rule refl)
                           apply (rule refl)
                          apply (rule refl)
                         apply (rule refl)
-                       apply (rule refl)
         using os_inv(1,5)
-                      apply (simp add: ty1_check_def operator_state.defs(3) BTL_def)
-                      apply blast
+                       apply (simp add: ty1_check_def operator_state.defs(3) BTL_def)
+                       apply blast
         using os_inv(1,4-6)
-                     apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BTL_def BHD_def)
-                     apply (erule conjE)
-                     apply (rotate_tac 9)
-                     apply (drule spec[of _ 0])
-                     apply (simp add: Ball_def)
-                     apply (meson img_fst in_fst_imageE in_set_tlD)
+                      apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BTL_def BHD_def)
+                      apply (erule conjE)
+                      apply (rotate_tac 9)
+                      apply (drule spec[of _ 0])
+                      apply (simp add: Ball_def)
+                      apply (meson img_fst in_fst_imageE in_set_tlD)
         using os_inv(4,10) apply (simp add: BTL_def operator_state.defs(3))
         using buffers_inv(2) apply (simp add: BTL_def)
                    apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (1, p))\<close>])
@@ -8048,8 +8283,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using os_inv(8) apply simp
           using os_inv(9) apply simp
           using os_inv(4,10) apply (simp add: operator_state.defs(3))                    apply (simp add: buffers_inv BENQ_def BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def fun_eq_iff produce_def)
-                   using buffers_inv(2) apply simp
-                   apply (rule dataplane_tracker_inv_produce_singleton[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
+          using buffers_inv(2) apply simp
+                     apply (rule dataplane_tracker_inv_produce_singleton[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
           using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
                      apply (rule refl)
                     apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3))
@@ -8094,8 +8329,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using os_inv(8) apply simp
           using os_inv(9) apply simp
           using os_inv(4,10) apply simp                    apply (simp add: buffers_inv)
-                   using buffers_inv(2) apply simp
-                   apply (rule dataplane_tracker_inv_drop_cap[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
+          using buffers_inv(2) apply simp
+                     apply (rule dataplane_tracker_inv_drop_cap[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
           using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
                      apply (rule refl)
                     apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
@@ -8144,8 +8379,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using os_inv(8) apply simp
           using os_inv(9) apply simp
           using os_inv(4,10) apply simp                    apply (simp add: buffers_inv)
-                   using buffers_inv(2) apply simp
-                   apply (rule dataplane_tracker_inv_add_cap[OF D dataplane_inv G, where t=t and nid=0 and p=0])
+          using buffers_inv(2) apply simp
+                     apply (rule dataplane_tracker_inv_add_cap[OF D dataplane_inv G, where t=t and nid=0 and p=0])
           using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) timely_input_stream_def)
                      apply (rule refl)
                     apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
@@ -8194,11 +8429,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                             apply (clarsimp simp add: BENQ_def ran_def split: sum.splits)
                             apply (metis obj_sumE prod.exhaust)
                             apply (simp add: cimage_cUn csets_inv buffers_inv outputs_at_target_raw_summary subgraph_inv(1) os_inv(1,4) operator_state.defs(3) BENQ_def BULK_BENQ_def all_edges_def all_vertices_def neighbors_def)
-                           apply (rule subgraph_inv(1))
-                          apply (rule subgraph_inv(2))
-                         apply (simp add: os_inv(2))
-                        apply (simp add: os_inv(3))
-                       apply (simp add: os_inv(4) operator_state.defs(3))
+                            apply (rule subgraph_inv(1))
+                           apply (rule subgraph_inv(2))
+                          apply (simp add: os_inv(2))
+                         apply (simp add: os_inv(3))
+                        apply (simp add: os_inv(4) operator_state.defs(3))
         using os_inv(1,5) apply (simp add: BENQ_def ty1_check_def)
         using os_inv(6) apply (simp add: BENQ_def label_prob_ty2_check_def)
         using os_inv(7) apply simp
@@ -8265,8 +8500,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                             apply (simp add: BTL_def ran_def split: sum.splits)
                             apply (metis prod.exhaust sum.exhaust)
                             apply (simp add: csets_inv buffers_inv BULK_BENQ_def BENQ_def BTL_def cimage_cUn)
-                           apply (rule subgraph_inv(1))
-                          apply (rule subgraph_inv(2))
+                            apply (rule subgraph_inv(1))
+                           apply (rule subgraph_inv(2))
         using os_inv(2) apply simp
         using os_inv(3) apply simp
         using os_inv(4) apply force
@@ -8276,7 +8511,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(8) apply (simp add: inputs_ocaps_inv_consumes)
         using os_inv(9) apply simp
         using os_inv(10) apply (simp add: BHD_def BTL_def split_beta )
-                 apply (metis Un_iff in_hd_or_tl_conv)
+                  apply (metis Un_iff in_hd_or_tl_conv)
         using buffers_inv(2) apply (simp add: BTL_def)
                 apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (2, 1))\<close>])
                 apply (simp add: BHD_def)
@@ -9649,8 +9884,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (intro conjI)
                               apply (simp add: dataflow_tree_to_operator_def os_inv(1))
                               apply (simp add: csets_inv buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def release_caps_def drop_caps_def cimage_cUn)
-                             apply (rule subgraph_inv(1))
-                            apply (rule subgraph_inv(2))
+                              apply (rule subgraph_inv(1))
+                             apply (rule subgraph_inv(2))
           using os_inv(2) apply simp
           using os_inv(3) apply simp
           using os_inv(4) apply (simp add: release_caps_def drop_caps_def operator_state.defs)
@@ -9708,13 +9943,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (intro conjI)
                             apply (simp add: dataflow_tree_to_operator_def os_inv(1))
                             apply (simp add: csets_inv buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def cimage_cUn)
-                           apply (rule subgraph_inv(1))
-                          apply (rule subgraph_inv(2))
+                            apply (rule subgraph_inv(1))
+                           apply (rule subgraph_inv(2))
         using os_inv(2) apply simp
         using os_inv(3) apply simp
         using os_inv(4) apply force
         using os_inv(1,5) apply simp
-                     apply (rule os_inv(6))
+                      apply (rule os_inv(6))
         using os_inv(7) apply force
         using os_inv(7,8) apply (clarsimp simp add: input_ocaps_inv_def drop_caps_def produces_def raw_summary_def filter_False)
         using os_inv(9) apply simp
@@ -9788,19 +10023,19 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                             apply (simp add: cimage_cUn)
                             apply (simp add: consumes_def add_caps_def os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
                             apply simp
-                           apply (rule subgraph_inv(1))
-                          apply (rule subgraph_inv(2))
+                            apply (rule subgraph_inv(1))
+                           apply (rule subgraph_inv(2))
         using os_inv(2) apply simp
         using os_inv(3) apply simp
         using os_inv(4) apply (simp add: consumes_def add_caps_def operator_state.defs(3))
         using os_inv(1,5) apply (simp add: ty1_check_def BTL_def)
         using os_inv(1,4-6)
-                     apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BTL_def BHD_def)
-                     apply (erule conjE)
-                     apply (rotate_tac 5)
-                     apply (drule spec[of _ 1])
-                     apply (simp add: Ball_def)
-                     apply (meson img_fst in_fst_imageE in_set_tlD)
+                      apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BTL_def BHD_def)
+                      apply (erule conjE)
+                      apply (rotate_tac 5)
+                      apply (drule spec[of _ 1])
+                      apply (simp add: Ball_def)
+                      apply (meson img_fst in_fst_imageE in_set_tlD)
         using os_inv(7) apply simp
         using os_inv(8) apply simp
         using os_inv(9) apply simp
@@ -9877,8 +10112,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                             apply (clarsimp simp add: BENQ_def ran_def split: sum.splits)
                             apply (metis obj_sumE prod.exhaust)
                             apply (simp add: csets_inv buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) BENQ_def cimage_cUn)
-                           apply (rule subgraph_inv(1))
-                          apply (rule subgraph_inv(2))
+                            apply (rule subgraph_inv(1))
+                           apply (rule subgraph_inv(2))
         using os_inv(2) apply simp
         using os_inv(3) apply simp
         using os_inv(4) apply force
@@ -9926,7 +10161,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(3) apply simp
         using os_inv(4) apply simp
         using os_inv(1,5) apply simp
-                     apply (rule os_inv(6))
+                      apply (rule os_inv(6))
         using os_inv(7) apply (simp add: obtain_progress_def)
         using os_inv(8) apply (simp add: obtain_progress_def input_ocaps_inv_def)
         using os_inv(9) apply (simp add: obtain_progress_def)
@@ -10014,7 +10249,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(3) apply (simp add: obtain_progress_def)
         using os_inv(4) apply simp
         using os_inv(1,5) apply (simp add: obtain_progress_def ty1_check_def operator_state.defs(3))
-                     apply (rule os_inv(6))
+                      apply (rule os_inv(6))
         using os_inv(7) apply (simp add: obtain_progress_def)
         using os_inv(8) apply simp
         using os_inv(9) apply simp
@@ -10076,11 +10311,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             unfolding all_edges_def all_vertices_def set_neighbors
             by simp
           done
-                           apply (rule subgraph_inv(1))
-                          apply (rule subgraph_inv(2))
-                         apply (simp add: os_inv(2))
-                        apply (simp add: os_inv(3))
-                       apply (simp add: os_inv(4) operator_state.defs(3))
+                            apply (rule subgraph_inv(1))
+                           apply (rule subgraph_inv(2))
+                          apply (simp add: os_inv(2))
+                         apply (simp add: os_inv(3))
+                        apply (simp add: os_inv(4) operator_state.defs(3))
         using os_inv(1,5) apply simp
         using os_inv(6) unfolding label_prob_ty2_check_def apply simp
         using os_inv(7) apply simp
@@ -12416,7 +12651,7 @@ next
         (myfst t)\<close>
     if input_frontier_fresh:
       \<open>\<not> frontier_less_equal (?input_frontier_after_prefix n) t\<close>
-    and t_live:
+      and t_live:
       \<open>t |\<in>| ts lxs \<or>
         cBex (cset_from_list (((outputs_at_target (summ sg) os >> cbufs) >> inputs_at_target os) (1, 0))) (\<lambda>x. t = snd x) \<or>
         cBex (cfilter (\<lambda>t. \<exists>x\<in>set (ocaps (os 1) 0). t = myfst x) (cset_from_list (timestamps os_label_prop))) (\<lambda>x. t = MyPair x 0)\<close>
@@ -13205,7 +13440,6 @@ next
                     using prems(2)
                     by (clarsimp del: disjCI simp add: cimage_iff image_iff split_beta split: event.splits)
 
-
                   subgoal
                     using prems(2) apply -
                     apply (clarsimp del: disjCI simp add: image_iff cimage_iff split_beta split: event.splits)
@@ -13321,12 +13555,12 @@ next
               subgoal
                 apply (subst ocaps_drop_caps_port_disjoint)
                  apply auto
-                apply (subst ocaps_0_fst_snd_loop_updates)
+                  apply (subst ocaps_0_fst_snd_loop_updates)
                 subgoal
                   using os_inv(7) by (simp add: operator_state.defs os_inv(4) raw_summary_def)
                 using prems(2) apply -
-                apply (clarsimp del: disjCI simp add:  outputs_at_target_raw_summary subgraph_inv inputs_at_target_def BULK_BENQ_def ts_def operator_state.defs os_inv(4) cimage_iff split: event.splits)
-                  apply hypsubst_thin
+                  apply (clarsimp del: disjCI simp add:  outputs_at_target_raw_summary subgraph_inv inputs_at_target_def BULK_BENQ_def ts_def operator_state.defs os_inv(4) cimage_iff split: event.splits)
+                    apply hypsubst_thin
                 subgoal for e
                   apply (cases e; simp)
                   apply (elim disjE; (clarsimp del: disjCI split: event.splits)?)
@@ -13466,15 +13700,10 @@ next
                   using label_prop_inv(4) os_inv(4)
                   apply (simp add: operator_state.defs)
                   apply (metis UnCI myprod.collapse)
-
-
-
                   done
                 done
-
               subgoal
                 by (rule no_second_propa_output_frontier[OF stream_move(2)])
-
               subgoal
                 apply (clarsimp del: disjCI simp add: image_iff cimage_iff split_beta split: event.splits)
                 apply (elim disjE)
@@ -13527,8 +13756,6 @@ next
                          apply simp
                         apply simp
                         done
-
-
                       done
                     subgoal
                       using os_inv(5)[unfolded ty1_check_def os_inv operator_state.defs, simplified]
@@ -13574,15 +13801,65 @@ next
                   sorry
                 subgoal
                   apply (simp add: split_beta input_CONSUMES)
-                  sorry
+                  apply (rule sym)
+                  apply (subgoal_tac
+                      "ccs (all_edges \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1),
+                        produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1),
+                        ocaps = ocaps (os 1), initia = initia (os 1), en1 = Inl, de1 = projl, is_en1 = isl,
+                        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr> (myfst t) \<union>
+                      set (icoll (map (\<lambda>(x, t'). Data t' (projl x))
+                        (((outputs_at_target (summ sg) os >> cbufs) >> inputs_at_target os) (1, 0)) @@- lxs) t)) =
+                     ccs (all_edges \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1),
+                        produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
+                        front = frontier \<circ> (\<lambda>p. c_imp c' (Loc 1 (Trg p))), ocaps = ocaps (os 1), initia = True,
+                        en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr,
+                        timestamps = T, graph = G, vertices = V, label = L\<rparr> (myfst t) \<union>
+                      (\<Union>x\<in>(set (input (os 1) 0) \<union>
+                          (set (cbufs (1, 0)) \<union>
+                            (set (outpu (os 0) 0) \<union>
+                              case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined) `
+                                {x \<in> set (ltaken n lxs). is_Data x}))) \<inter>
+                          {x. myfst (snd x) \<le> myfst t}.
+                          {projl (fst x), (snd (projl (fst x)), fst (projl (fst x)))}))")
+                  subgoal
+                    apply simp
+                    apply (rule Wcc.components_from_labels_correct)
+                    subgoal sorry
+                    subgoal sorry
+                    done
+                  subgoal premises prems
+                    apply (subst set_icoll_lshift)
+                    subgoal
+                      using input_stream_inv timely_input_stream_expires_le by blast
+                    apply (subst (2) set_icoll_ltaken_if_no_ldropn_data_le[where n=n])
+                    subgoal
+                      using timely_input_stream_expires_le[OF timely_input_stream_ldrop[OF stream_move(1) input_stream_inv]] by blast
+                    subgoal
+                      using timely_input_stream_ldropn_no_data_le_if_not_frontier_less_equal[OF input_stream_inv stream_move(1) stream_move(2)] by blast
+                    apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary
+                        subgraph_inv(1) inputs_at_target_def set_icoll_llist_of)
+                    apply (simp add: all_edges_def all_vertices_def neighbors_def)
+                    apply (rule label_prop_collected_edge_payloads_ccs_eq)
+                    subgoal
+                      using label_prop_inv(4)
+                      by (force simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary
+                          subgraph_inv(1) inputs_at_target_def)
+                    subgoal
+                      using label_prop_inv(4)
+                      by (force dest!: setltakenD)
+                    subgoal
+                      using prems(1) label_prop_inv(4)
+                      by (force simp add: cimage_iff cin.rep_eq ts_def cset_of_llist.rep_eq
+                          buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1)
+                          inputs_at_target_def split: event.splits dest!: setltakenD)
+                    done
+                  done
                 done
               subgoal sorry
               done
-            subgoal
-              using prems by auto
+            subgoal sorry
              apply (rule refl)+
-            subgoal
-              sorry
+            subgoal sorry
             done
           done
         done
