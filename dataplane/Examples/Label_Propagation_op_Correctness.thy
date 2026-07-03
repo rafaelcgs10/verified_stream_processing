@@ -13857,7 +13857,8 @@ next
                 done
               subgoal sorry
               done
-            subgoal sorry
+            subgoal 
+              using prems(1) by assumption
              apply (rule refl)+
             subgoal sorry
             done
