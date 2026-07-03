@@ -13314,14 +13314,250 @@ next
               apply (intro cBexI[of _ "(Inr (ccs (set (icoll (map (\<lambda>(x, t'). Data t' (projl x)) (((outputs_at_target (summ sg) os >> cbufs) >> inputs_at_target os) (1, 0)) @@- lxs) t) \<union> all_edges os_label_prop (myfst t))), Cap t 0)"])
                apply simp_all
               unfolding label_prop_output_batch_def
-              apply (clarsimp del: disjCI simp add: image_iff)
+              apply (clarsimp del: disjCI simp add: image_iff filter_empty_conv obtain_progress_def simp flip: fold_append change_multiplicities_append_alt)
+
               apply (rule exI[of _ t])
               apply (intro conjI)
-              subgoal sorry
+              subgoal
+                apply (subst ocaps_drop_caps_port_disjoint)
+                 apply auto
+                apply (subst ocaps_0_fst_snd_loop_updates)
+                subgoal
+                  using os_inv(7) by (simp add: operator_state.defs os_inv(4) raw_summary_def)
+                using prems(2) apply -
+                apply (clarsimp del: disjCI simp add:  outputs_at_target_raw_summary subgraph_inv inputs_at_target_def BULK_BENQ_def ts_def operator_state.defs os_inv(4) cimage_iff split: event.splits)
+                  apply hypsubst_thin
+                subgoal for e
+                  apply (cases e; simp)
+                  apply (elim disjE; (clarsimp del: disjCI split: event.splits)?)
+
+                  subgoal for v1 v2
+                    using stream_move(3)[rule_format, of v1 v2] apply -
+                    apply (drule meta_mp)
+                    subgoal
+                      by (metis cin_code)
+                    subgoal
+                      apply (rule disjI2)+
+                      apply (intro exI[of _ e] impI allI conjI)
+                         apply argo
+                      using  os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] apply simp_all
+                      done
+                    done
+                  subgoal for a b
+                    using stream_move(3)[rule_format, of a b] apply -
+                    apply (drule meta_mp)
+                    subgoal
+                      by (metis cin_code)
+                    subgoal
+                      apply (rule disjI2)+
+                      apply (intro exI[of _ e] impI allI conjI)
+                         apply argo
+                      using  os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] apply simp_all
+                      done
+                    done
+                  subgoal for a b
+                    using stream_move(3)[rule_format, of a b] apply -
+                    apply (drule meta_mp)
+                    subgoal
+                      by (metis cin_code)
+                    subgoal
+                      apply (rule disjI2)+
+                      apply (intro exI[of _ e] impI allI conjI)
+                         apply argo
+                      using  os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] apply simp_all
+                      done
+                    done
+                  subgoal for a b
+                    using stream_move(3)[rule_format, of a b] apply -
+                    apply (drule meta_mp)
+                    subgoal
+                      by (metis cin_code)
+                    subgoal
+                      apply (rule disjI2)+
+                      apply (intro exI[of _ e] impI allI conjI)
+                         apply argo
+                      using  os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] apply simp_all
+                      done
+                    done
+                  done
+                subgoal
+                  apply (clarsimp del: disjCI simp add:  outputs_at_target_raw_summary subgraph_inv inputs_at_target_def BULK_BENQ_def ts_def operator_state.defs os_inv(4) cimage_iff split: event.splits)
+                  apply (elim disjE; (clarsimp del: disjCI split: event.splits)?)
+                  subgoal
+                    using label_prop_inv(6)
+                      [unfolded input_ocaps_inv_def, rule_format, of _ 0 0 0, unfolded os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified], simplified, of t ] apply -
+                    apply (drule meta_mp)
+                    subgoal
+                      by auto
+                    apply (metis zero_myprod_def)
+                    done
+                  subgoal
+                    by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                  subgoal
+                    by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                  subgoal
+                    using label_prop_inv(6)
+                      [unfolded input_ocaps_inv_def, rule_format, of _ 0 0 0, unfolded os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified], simplified, of undefined] apply -
+                    apply (drule meta_mp)
+                    subgoal
+                      by auto
+                    apply (metis zero_myprod_def)
+                    done
+                  subgoal
+                    by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                  subgoal
+                    by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                  subgoal
+                    using label_prop_inv(6)
+                      [unfolded input_ocaps_inv_def, rule_format, of _ 0 0 0, unfolded os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified], simplified, of undefined] apply -
+                    apply (drule meta_mp)
+                    subgoal
+                      by auto
+                    apply (metis zero_myprod_def)
+                    done
+                  subgoal
+                    by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                  subgoal
+                    by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                  subgoal
+                    using label_prop_inv(6)
+                      [unfolded input_ocaps_inv_def, rule_format, of _ 0 0 0, unfolded os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified], simplified, of undefined] apply -
+                    apply (drule meta_mp)
+                    subgoal
+                      by auto
+                    apply (metis zero_myprod_def)
+                    done
+                  subgoal
+                    by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                  subgoal
+                    by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                  done
+                subgoal
+                  apply (clarsimp del: disjCI)
+                  apply (metis UnCI label_prop_inv(4) myprod.collapse)
+                  done
+                subgoal
+                  apply (subst ocaps_0_fst_snd_loop_updates)
+                  subgoal
+                    using os_inv(7) by (simp add: operator_state.defs os_inv(4) raw_summary_def)
+                  apply (thin_tac "((nid, p), WCC, t) |\<in>| _")
+                  apply (clarsimp del: disjCI simp add: outputs_at_target_raw_summary subgraph_inv inputs_at_target_def BULK_BENQ_def ts_def operator_state.defs os_inv(4) cimage_iff split: event.splits)
+                  apply (elim disjE; (clarsimp del: disjCI split: event.splits)?)
+                  subgoal
+                    using label_prop_inv(6)
+                      [unfolded input_ocaps_inv_def, rule_format, of _ 0 0 0, unfolded os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified], simplified, of t] apply -
+                    apply (drule meta_mp)
+                    subgoal
+                      by auto
+                    apply (metis zero_myprod_def)
+                    done
+                  subgoal
+                    by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                  subgoal
+                    by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                  done
+                subgoal
+                  apply (subst ocaps_0_fst_snd_loop_updates)
+                  subgoal
+                    using os_inv(7) by (simp add: operator_state.defs os_inv(4) raw_summary_def)
+                  apply (thin_tac "((nid, p), WCC, t) |\<in>| _")
+                  apply (clarsimp del: disjCI)
+                  apply (rule disjI1)
+                  using label_prop_inv(4) os_inv(4)
+                  apply (simp add: operator_state.defs)
+                  apply (metis UnCI myprod.collapse)
+
+
+
+                  done
+                done
+
               subgoal
                 by (rule no_second_propa_output_frontier[OF stream_move(2)])
 
-              subgoal sorry
+              subgoal
+                apply (clarsimp del: disjCI simp add: image_iff cimage_iff split_beta split: event.splits)
+                apply (elim disjE)
+                subgoal
+                  apply (clarsimp del: disjCI simp add: ts_def operator_state.defs os_inv(4) split: event.splits)
+                  apply (rule disjI1)
+                  subgoal for e
+                    apply (cases e; simp)
+                    subgoal for tt d
+                      apply (cases d; simp)
+                      subgoal for v1 v2
+                        using stream_move(3)[rule_format, of v1 v2] apply -
+                        apply (drule meta_mp)
+                        subgoal
+                          by (meson cin_code)
+                        subgoal
+                          apply (rule bexI[of _ "(Inl (v1, v2), tt)"])
+                           apply simp
+                          apply (simp add: image_iff)
+                          apply (rule disjI2)+
+                          apply (rule exI[of _ "Data tt (v1, v2)"])
+                          apply simp
+
+                          done
+
+                        done
+                      done
+                    done
+                  done
+                subgoal
+                  apply (clarsimp del: disjCI simp add: outputs_at_target_raw_summary subgraph_inv inputs_at_target_def BULK_BENQ_def ts_def operator_state.defs os_inv(4) split: event.splits)
+                  subgoal for e
+                    apply (cases e; simp)
+                    subgoal for l
+                      apply (cases l; cases t; simp)
+                      apply (rule disjI1)
+                      apply (elim disjE)
+                      subgoal for a b x1 x2
+                        apply (rule bexI[of _ "(Inl (a, b), MyPair x1 x2)"])
+                         apply simp
+                        apply simp
+                        done
+                      subgoal for a b x1 x2
+                        apply (rule bexI[of _ "(Inl (a, b), MyPair x1 x2)"])
+                         apply simp
+                        apply simp
+                        done
+                      subgoal for a b x1 x2
+                        apply (rule bexI[of _ "(Inl (a, b), MyPair x1 x2)"])
+                         apply simp
+                        apply simp
+                        done
+
+
+                      done
+                    subgoal
+                      using os_inv(5)[unfolded ty1_check_def os_inv operator_state.defs, simplified]
+                        os_inv(6)[unfolded label_prob_ty2_check_def os_inv operator_state.defs, simplified]
+                      apply (elim disjE)
+                      subgoal
+                        apply (rule disjI1)
+                        apply (rule bexI[of _ "(e, t)"])
+                         apply simp
+                        apply simp
+                        done
+                      subgoal
+                        apply (rule disjI1)
+                        apply (rule bexI[of _ "(e, t)"])
+                         apply simp
+                        apply simp
+                        done
+                      subgoal
+                        apply (rule disjI1)
+                        apply (rule bexI[of _ "(e, t)"])
+                         apply simp
+                        apply simp
+                        done
+                      done
+                    done
+                  done
+                subgoal
+                  by (force simp add: os_inv operator_state.defs)
+                done
               subgoal
                 apply (simp add: operator_state.defs os_inv(4))
                 apply (subst Un_commute)
