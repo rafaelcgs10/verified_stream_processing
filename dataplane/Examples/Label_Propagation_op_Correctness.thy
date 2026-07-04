@@ -14799,7 +14799,80 @@ next
                     done
                   done
                 done
-              subgoal (* TIP 1: this reduces to cset equality. TIP 2: You probably want to do a case distinction if the given arbitrary t is frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) or not *) sorry
+              subgoal (* TIP 1: this reduces to cset equality. TIP 2: You probably want to do a case distinction if the given arbitrary t is frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) or not *)
+                apply (rule arg_cong2[where f=set_spec_op, OF _ refl])
+                apply (subgoal_tac \<open>outpu (os_after_final_output n 1) (0 :: 2) = []\<close>)
+                 prefer 2
+                 subgoal
+                   by (simp add: os_after_final_output_def os_label_after_final_output_def
+                       op_state_base_def operator_state.defs)
+                apply simp
+                (* Remaining goal (after killing outpu-after and splitting the @):
+                     cUn (cUn S OutOld) SPold
+                   = cUn (cUn (Pair (1,0) |`| cUn OutOld' FinalImg) S) SPnew
+                   where FinalImg = (\<lambda>(d,c). (d, time c)) |`| cset_from_list (final_output n).
+                   Modulo cUn-AC this is:  SPold = cUn (Pair (1,0) |`| FinalImg) SPnew.
+                   Proof plan (TIP 2): extensional via cset_eq_iff; for an element
+                   x = ((1,0), Inr (ccs ...), t) case-distinguish on
+                     frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) (myfst t):
+                   - \<not>fle (timestamp closed): x's payload is emitted in final_output n
+                     (final_output_def filters \<not> frontier_less_equal of the c''-frontier;
+                      use second_propa / label_prop_inv(2) labels_stable and
+                      label_prop_collected_edge_payloads_ccs_eq as in the subgoal near the
+                      BULK_BENQ/outputs_at_target_raw_summary proof above at ~line 14383).
+                   - fle (timestamp live): x is in SPnew with the same ccs payload:
+                     edges of (chns-after @@- ldropn n lxs) up to t plus
+                     all_edges (os_label_after_final_output n) (myfst t)
+                     equal edges of (chns @@- lxs) up to t plus all_edges os_label_prop (myfst t);
+                     cf. labels_after_final_output and the timestamps/ocaps facts
+                     ocaps0_after_final_output_mysnd, outpu_0_after_final_output_empty. *)
+                apply (simp only: cset_eq_iff)
+                apply (rule allI)
+                subgoal for x
+                  apply (case_tac \<open>frontier_less_equal
+                      (exit_scope myfst (front (os 1) 0 + front (os 1) 1))
+                      (myfst (snd (snd x)))\<close>)
+                  subgoal (* live timestamp: x \<in> SPold \<longleftrightarrow> x \<in> SPnew (same ccs payload) *)
+                    apply (clarsimp simp flip: cin.rep_eq simp add: image_iff)
+                    apply (rule iffI)
+                     apply (elim disjE)
+                       apply simp
+                    subgoal (* x \<in> OutOld \<Longrightarrow> x \<in> Pair(1,0)`(OutOld \<union> FinalImg) *)
+                      by (force simp flip: cin.rep_eq
+                          simp add: cset_from_list_def cset_of_llist.rep_eq image_iff)
+                     subgoal (* HARD 1: x \<in> SPold \<Longrightarrow> x \<in> SPnew: same t (live), same ccs
+                          payload; edges of the consumed prefix ltaken n lxs are now in
+                          all_edges (os_label_after_final_output n) *)
+                       apply (rule disjI2)+
+                       apply (clarsimp simp flip: cin.rep_eq
+                           simp add: image_iff cset_from_list_def cset_of_llist.rep_eq)
+                       apply (subst cimage_iff)
+                       apply (rule cBexI[where x=xa for xa])
+                       subgoal (* payload equality at the witness timestamp xa:
+                            ccs (edges of chns(1,0) @@- lxs up to xa \<union> all_edges os_label_prop)
+                            = ccs (edges of chns-after @@- ldropn n lxs up to xa
+                                   \<union> all_edges (os_label_after_final_output n));
+                            use label_prop_collected_edge_payloads_ccs_eq as at ~14383 *)
+                         sorry
+                       subgoal (* xa in the new domain: live prefix/buffer timestamps land in
+                            timestamps (os_label_after_final_output n) with surviving ocaps;
+                            use in_lset_ltaken_ldropn, timely_input_stream_expires_le,
+                            label_prop_inv(4) (mysnd = 0) *)
+                         sorry
+                       done
+                    apply (elim disjE)
+                      subgoal (* HARD 2: x \<in> Pair(1,0)`(OutOld \<union> FinalImg): OutOld case goes
+                           to LHS disjunct 2 (force as above); FinalImg case contradicts fle
+                           (final_output only emits closed timestamps) *)
+                        sorry
+                     apply simp
+                    subgoal (* HARD 3: x \<in> SPnew \<Longrightarrow> x \<in> SPold: reverse of HARD 1 *)
+                      sorry
+                    done
+                  subgoal (* closed timestamp: x \<in> SPold \<longleftrightarrow> x \<in> Pair (1,0) |`| FinalImg *)
+                    sorry
+                  done
+                done
               subgoal
                 using subgraph_inv(1)
                 by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
