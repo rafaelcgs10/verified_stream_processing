@@ -13858,13 +13858,22 @@ next
                 subgoal
                   by (simp add: input_CONSUMES)
                 subgoal
-                  using label_prop_inv(5) apply -
-                  apply (simp add:  operator_state.defs os_inv(4))
-                  sorry
+                  using label_prop_inv(5)
+                  apply (simp add: label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def operator_state.defs os_inv(4))
+                  apply blast
+                  done
+
+
                 subgoal
-                  using label_prop_inv(7) apply -
-                  apply (simp add: operator_state.defs os_inv(4) input_CONSUMES)
-                  sorry
+                  apply (rule wf_label_prop_updates_subset[where
+                    S="set (chns (1, 1) @ map (\<lambda>(d, t). (d, t -+- MyPair 0 1)) (chns (2, 1)))"])
+                   apply (rule wf_label_prop_updates_os_mono[OF label_prop_inv(7) _ _ _ refl])
+                      apply (simp add: os_inv(4) operator_state.defs)
+                     apply (simp add: os_inv(4) operator_state.defs)
+                    apply (simp add: os_inv(4) operator_state.defs)
+                   apply (simp add: input_CONSUMES os_inv(4) operator_state.defs buffers_inv BULK_BENQ_def inputs_at_target_def outputs_at_target_raw_summary subgraph_inv(1))
+                  done
+
                 subgoal
                   apply (simp add: split_beta input_CONSUMES)
                   apply (rule sym)
@@ -13946,18 +13955,74 @@ next
                     done
                   done
                 done
-              subgoal sorry
+              subgoal
+                apply (elim disjE)
+                subgoal
+                  apply (clarsimp simp add: cin.rep_eq ts_def cset_of_llist.rep_eq split: event.splits)
+                  subgoal for a b
+                    using label_prop_inv(4)
+                    by (metis UnCI event.sel(1) imageI myprod.collapse)
+                  done
+                subgoal
+                  apply (erule cBexE)
+                  using label_prop_inv(4)
+                  apply (clarsimp simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary
+                      subgraph_inv(1) inputs_at_target_def)
+                  apply (drule bspec[where x=t])
+                   apply force
+                  apply (cases t)
+                  apply simp
+                  done
+
+                subgoal
+                  by force
+                done
               done
             subgoal 
               using prems(1) by assumption
              apply (rule refl)+
 
 
-            subgoal sorry
+            subgoal
+          apply (rule wb_upto_b_sym)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def[simplified])
+          apply (rule exI[of _ "cUn (Pair (1, 0) |`| cset_from_list (outpu (os 1) 0 @ map  (\<lambda> (d, c). (d, time c)) (final_output n))) S"])
+          apply (rule exI[of _ "cinsert ((nid, p), WCC, t) D"])
+              apply (rule exI[of _ "ldropn n lxs"])
+          apply (rule exI[of _ "os_after_final_output n"])
+          apply (rule exI[of _ "os_label_after_final_output n"])
+          apply (rule exI[of _ "cbufs((1, 0) := Nil, (1, 1) := Nil, (2, 1) := Nil)"])
+          apply (rule exI[of _ "sg_after_second_propa n"])
+              apply (intro conjI)
+              subgoal sorry
+              subgoal (* TIP 1: this reduces to cset equality. TIP 2: You probably want to do a case distinction if the given arbitrary t is frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) or not *) sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal (* Use the sequence of have STEPS to prove this one *) sorry
+              subgoal sorry
+              subgoal (* Use the sequence of have STEPS to prove this one *) sorry
+              subgoal (* IGNORE THIS SUBGOAL SORRY *) sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
             done
           done
         done
       done
+    done
   qed
 qed
 
