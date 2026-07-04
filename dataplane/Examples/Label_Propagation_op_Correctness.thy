@@ -6725,6 +6725,40 @@ lemma set_icoll_lsetI:
    apply simp
   using data le by (simp add: lset_lmap lset_lfilter)
 
+lemma ts_lsetE:
+  assumes \<open>t |\<in>| ts lxs\<close>
+  obtains d where \<open>Data t d \<in> lset lxs\<close>
+proof -
+  from assms obtain e where e_in: \<open>e |\<in>| cset_of_llist lxs\<close>
+    and data: \<open>is_Data e\<close>
+    and t_eq: \<open>t = (case e of Data t d \<Rightarrow> t)\<close>
+    unfolding ts_def
+    by (subst (asm) cin_cimage_cfilter) auto
+  then show ?thesis
+    by (cases e) (auto intro: that simp add: cin.rep_eq cset_of_llist.rep_eq)
+qed
+
+lemma ts_lsetI:
+  assumes \<open>Data t d \<in> lset lxs\<close>
+  shows \<open>t |\<in>| ts lxs\<close>
+  unfolding ts_def
+  apply (subst cimage_iff)
+  apply (rule_tac x=\<open>Data t d\<close> in cBexI)
+   apply simp
+  using assms by (simp add: cin.rep_eq cset_of_llist.rep_eq)
+
+lemma ts_ldropnD:
+  assumes \<open>t |\<in>| ts (ldropn n lxs)\<close>
+  shows \<open>t |\<in>| ts lxs\<close>
+proof -
+  from assms obtain d where data: \<open>Data t d \<in> lset (ldropn n lxs)\<close>
+    by (rule ts_lsetE)
+  then have \<open>Data t d \<in> lset lxs\<close>
+    by (rule in_lset_ldropnD)
+  then show ?thesis
+    by (rule ts_lsetI)
+qed
+
 
 lemma icoll_empty_if_no_data_le:
   assumes \<open>\<And>t' d. t' \<le> t \<Longrightarrow> Data t' d \<notin> lset lxs\<close>
