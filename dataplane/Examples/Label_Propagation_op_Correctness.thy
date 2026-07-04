@@ -10456,7 +10456,7 @@ next
     by clarsimp
 
 (* ----------------------------- *)
-(* op 0 reports progress *)
+(* STEPS 1: op 0 reports progress *)
   define os_progress where \<open>os_progress = os(0 := op_state_base (fst (obtain_progress os_input)))\<close>
 
   define sg_progress where \<open>sg_progress = sg\<lparr>upfro := (\<lambda>_. True),
@@ -10564,7 +10564,7 @@ next
   qed
 
 (* ----------------------------- *)
-(* op 1 reads the new frontier from propagation *)
+(* STEPS 2: op 1 reads the initial frontier from propagation *)
   define os_label_after_first_propa where
     \<open>os_label_after_first_propa = os_label_prop\<lparr>front := label_front_after_first_propa, initia := True\<rparr>\<close>
 
@@ -10616,7 +10616,7 @@ next
     qed
 
 (* ----------------------------- *)
-(* op 0 produces n elements from the input stream *)  
+(* STEPS 3: op 0 produces n elements from the input stream *)  
     define xs where \<open>xs = ltaken n lxs\<close>
 
     define mint_times where \<open>mint_times = map event.time (filter is_Mint xs)\<close>
@@ -10834,7 +10834,7 @@ next
   qed
 
 (* ----------------------------- *)
-(* op 0 flushes the outpu buffer *)
+(* STEPS 4: op 0 flushes the outpu buffer *)
   define input0_msgs where \<open>input0_msgs = (\<lambda>n. cbufs (1, 0) @ outpu (os 0) 0 @ input_data n)\<close>
   define cbufs_after_input_output where \<open>cbufs_after_input_output = (\<lambda>n. cbufs((1, 0) := input0_msgs n))\<close>
   define os_input_after_output where
@@ -10890,7 +10890,7 @@ next
   qed
 
 (* ----------------------------- *)
-(* op 1 consumes all the data in the channel *)
+(* STEPS 5: op 1 consumes all the data in the channel *)
   define os_label_after_read_input0 where
     \<open>os_label_after_read_input0 = (\<lambda>n. CONSUMES 0 (input0_msgs n) os_label_after_first_propa)\<close>
 
@@ -10951,7 +10951,7 @@ next
     by (simp add: os_label_after_read_input0_def input_CONSUMES all_vertices_def all_edges_def neighbors_def min_label_def)
 
 (* ----------------------------- *)
-(* op 1 processes all the new edges in the input 0 *)
+(* STEPS 6: op 1 processes all the new edges in the input 0 *)
   define label_input0_msgs where \<open>label_input0_msgs = (\<lambda>n. input (os 1) 0 @ input0_msgs n)\<close>
 
   define os_label_after_input0 where
@@ -11050,7 +11050,7 @@ next
   qed
 
 (* ----------------------------- *)
-(* op 1 loops all the data, and processes everything until the labels converges *)
+(* STEPS 7: op 1 loops all the data, and processes everything until the labels converges *)
   define loop_res where
     \<open>loop_res = (\<lambda>n. loop_updates
       (cbufs_after_label_read_input0 n) (os_label_after_input0 n) (os_after_label_input0 n))\<close>
@@ -11479,7 +11479,7 @@ next
   qed
 
 (* ----------------------------- *)
-(* op 1 drop all capabilities that may be left *)
+(* STEPS 8: op 1 drop all capabilities that may be left *)
 
   define os_after_loop_base where
     \<open>os_after_loop_base = (\<lambda>n. (os_after_loop_updates n)(1 := op_state_base (os_label_after_loop_updates n)))\<close>
@@ -11551,8 +11551,7 @@ next
   qed
 
 (* ----------------------------- *)
-(* op 0 reports progress *)
-(* NOTE: this case needs to be adapated to consider continuing from the steps that op 1 drop all capabilities, and not from loop updates *)
+(* STEPS 9: op 0 reports progress again *)
   define os_after_loop_progress where
     \<open>os_after_loop_progress = os_after_drop_caps\<close>
 
@@ -11897,7 +11896,7 @@ next
 
 
 (* ----------------------------- *)
-(* op 1 reports progress *)
+(* STEPS 10: op 1 reports progress *)
   define os_label_after_label_progress where
     \<open>os_label_after_label_progress = (\<lambda>n. fst (obtain_progress (os_label_after_drop_caps n)))\<close>
 
@@ -11966,7 +11965,7 @@ next
         min_label_def drop_caps_def flip: map_append filter_append fold_append)
 
 (* ----------------------------- *)
-(* op 2 reports progress *)
+(* STEPS 11: op 2 reports progress *)
   define sg_after_increment_progress where
     \<open>sg_after_increment_progress = (\<lambda>n. (sg_after_label_progress n)\<lparr>upfro := (\<lambda>_. True),
       pt_tr := change_multiplicities (summ (sg_after_label_progress n))
@@ -12128,8 +12127,7 @@ next
         sg_first_propa_def sg_progress_def os_after_loop_progress_def os_after_drop_caps_def
         subgraph_inv(1,2) op_state_base_def operator_state.defs obtain_progress_def
         flip: fold_append change_multiplicities_append_alt)
-      (* ----------------------------- *)
-      (* op 1 reads the new frontier from the propagation *)
+
   obtain c'' where second_propa:
     \<open>propagate_all (summ sg_first_propa)
       (change_multiplicities (summ sg_first_propa) (second_progress n) (pt_tr sg_first_propa)) = Some (c'' n)\<close>
@@ -12280,7 +12278,7 @@ next
       using choice[OF ex_c] that by blast
   qed
 
-(* op 1 reads the new frontier from the propagation *)
+(* STEPS 12: op 1 reads the final frontier from the propagation *)
   define label_front_after_second_propa where
     \<open>label_front_after_second_propa = (\<lambda>n. frontier \<circ> (\<lambda>p. c_imp (c'' n) (Loc (1 :: 3) (Trg p))))\<close>
 
@@ -12296,8 +12294,7 @@ next
     \<open>os_after_second_propa = (\<lambda>n. (os_after_increment_progress n)
       (1 := op_state_base (os_label_after_second_propa n)))\<close>
 
-  have dataplane_after_second_propa:
-    \<open>dataplane_tracker_inv
+  have dataplane_after_second_propa: \<open>dataplane_tracker_inv
       (os_after_second_propa n) (cbufs_after_loop_updates n)
       (sg_after_second_propa n)\<close>
     for n
@@ -12335,7 +12332,7 @@ next
     qed
     define front_c where \<open>front_c = frontier \<circ> (\<lambda>p. c_imp (c'' n) (Loc (1 :: 3) (Trg p)))\<close>
 
-    have inv_front_no_upfro:
+    have inv_front_no_upfro: 
       \<open>dataplane_tracker_inv
         (os_after_second_propa n) (cbufs_after_loop_updates n)
         ((sg_after_increment_progress n)\<lparr>pt_tr := c'' n\<rparr>)\<close>
@@ -12384,7 +12381,7 @@ next
 
 
 (* ----------------------------- *)
-(* op 1 producess all the wcc components from the labels *)
+(* STEPS 13: op 1 produces all the wcc components from the labels *)
   define label_output_below_times where
     \<open>label_output_below_times = (\<lambda>n.
       filter
@@ -12486,8 +12483,7 @@ next
       by (simp add: os_after_second_propa_def os_label_after_second_propa_def
           os_label_after_label_progress_def os_label_after_drop_caps_def drop_caps_def
           obtain_progress_def op_state_base_def operator_state.defs)
-    have inv_output:
-      \<open>dataplane_tracker_inv
+    have inv_output: \<open>dataplane_tracker_inv
         ((os_after_second_propa n)(1 := drop_caps
           (produces (os_after_second_propa n 1) (label_output_batch n))
           (map (\<lambda>t. Cap t (0 :: 2)) (label_output_below_times n))))
@@ -12797,8 +12793,6 @@ next
       done
     done
 
-
-
   define final_output where
     \<open>final_output = (\<lambda> n. label_prop_output_batch
                              (drop_caps
@@ -13004,7 +12998,7 @@ next
               apply (rule transitive_closurep_trans'(2))
 
 (* ----------------------------- *)
-(* op 0 reports progress *)
+(* STEPS 1: op 0 reports progress *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -13023,7 +13017,7 @@ next
                  apply (rule refl)+
 
 (* ----------------------------- *)
-(* op 1 reads the new frontier from propagation *)
+(* STEPS 2: op 1 reads the initial frontier from propagation *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -13048,7 +13042,7 @@ next
                   apply (rule refl)+
 
 (* ----------------------------- *)
-(* op 0 produces n elements from the input stream *)
+(* STEPS 3: op 0 produces n elements from the input stream *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule relpowp_imp_rtranclp[where n="n"]) 
                 apply (rule step_n_Taus_set_op)
@@ -13072,7 +13066,7 @@ next
                    apply (rule refl)+
 
 (* ----------------------------- *)
-(* op 0 flushes the outpu buffer *)
+(* STEPS 4: op 0 flushes the outpu buffer *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule relpowp_imp_rtranclp[where n="(length (outpu (os 0) 0)) + length (filter is_Data (ltaken n lxs))"]) 
                 apply (rule step_n_Taus_set_op)
@@ -13096,7 +13090,7 @@ next
                  apply (rule refl)+
 
 (* ----------------------------- *)
-(* op 1 consumes all the data in the channel *)
+(* STEPS 5: op 1 consumes all the data in the channel *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule relpowp_imp_rtranclp[where n="(length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n lxs)))"]) 
                 apply (rule step_n_Taus_set_op)
@@ -13134,7 +13128,7 @@ next
                  apply (rule refl)+
 
 (* ----------------------------- *)
-(* op 1 processes all the new edges in the input 0 *)
+(* STEPS 6: op 1 processes all the new edges in the input 0 *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule relpowp_imp_rtranclp[where n="(length (input (os 1) 0)) + length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n lxs))"]) 
                 apply (rule step_n_Taus_set_op)
@@ -13155,7 +13149,7 @@ next
                     apply (rule refl)+
 
 (* ----------------------------- *)
-(* op 1 loops all the data, and processes everything until the labels converges *)
+(* STEPS 7: op 1 loops all the data, and processes everything until the labels converges *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule step_Taus_set_op)
                  apply (rule step_Taus_dataflow_op_Taus_intro)
@@ -13224,7 +13218,7 @@ next
                 apply (rule refl)+
 
 (* ----------------------------- *)
-(* op 1 drop all capabilities that may be left *)
+(* STEPS 8: op 1 drop all capabilities that may be left *)
                apply (rule transitive_closurep_trans'(2))
                 apply (rule step_Taus_set_op)
                  apply (rule step_Taus_dataflow_op_Taus_intro)
@@ -13264,7 +13258,7 @@ next
                  apply (rule refl)+
 
 (* ----------------------------- *)
-(* op 0 reports progress *)
+(* STEPS 9: op 0 reports progress again *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -13282,7 +13276,7 @@ next
                 apply (rule refl)+
 
 (* ----------------------------- *)
-(* op 1 reports progress *)
+(* STEPS 10: op 1 reports progress *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -13306,7 +13300,7 @@ next
                 apply (rule refl)+
 
 (* ----------------------------- *)
-(* op 2 reports progress *)
+(* STEPS 11: op 2 reports progress *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -13330,7 +13324,7 @@ next
                apply (simp add: flip: fold_append change_multiplicities_append_alt)
 
 (* ----------------------------- *)
-(* op 1 reads the new frontier from the propagation *)
+(* STEPS 12: op 1 reads the new frontier from the propagation *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -13358,7 +13352,7 @@ next
                apply (simp add: flip: fold_append change_multiplicities_append_alt)
 
 (* ----------------------------- *)
-(* op 1 producess all the wcc components from the labels *)
+(* STEPS 13: op 1 produces all the wcc components from the labels *)
                apply (rule converse_rtranclp_into_rtranclp) 
                 apply (rule step_set_op_intro_Tau_2)
                   apply simp
@@ -13488,6 +13482,8 @@ next
                 apply (rule refl)+
                apply (simp add: obtain_progress_def flip: filter_filter fold_append map_append filter_append change_multiplicities_append_alt)
 
+(* ----------------------------- *)
+(* STEPS 14: op 1 flushes outpu 0 buffer with all WCC  *)
                apply (rule relpowp_imp_rtranclp[
                   where n="length (outpu (os 1) 0) + length (final_output n)"]) 
                apply (rule step_set_op_steps_Out_intro[where xs="outpu (os 1) 0 @ map (\<lambda> (d, c). (d, time c)) (final_output n)"  and p="(1, 0)"])
@@ -13528,6 +13524,8 @@ next
                 apply simp
                apply (rule refl)+
 
+(* ----------------------------- *)
+(* STEPS 15: set_op picks the desired WCC  *)
               apply (rule rtranclp.intros(1))
              apply (rule step_set_op_intro_Out)
                 apply (rule refl)+
@@ -13853,6 +13851,8 @@ next
             subgoal 
               using prems(1) by assumption
              apply (rule refl)+
+
+
             subgoal sorry
             done
           done
