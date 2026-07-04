@@ -14441,9 +14441,40 @@ next
               subgoal sorry
               subgoal sorry
               subgoal sorry
-              subgoal sorry
-              subgoal (* Use the sequence of have STEPS to prove this one *) sorry
-              subgoal sorry
+              subgoal
+                using buffers_inv by simp
+
+              subgoal (* Use the sequence of have STEPS to prove this one *)
+                apply (subgoal_tac \<open>cbufs_after_loop_updates n =
+                    cbufs((1, 0) := [], (1, 1) := [], (2, 1) := [])\<close>)
+                 using dataplane_after_final_output[of n] apply simp
+                apply (rule ext)
+                apply (simp add: cbufs_after_loop_updates_def loop_res_def
+                    cbufs_after_label_read_input0_def cbufs_after_input_output_def
+                    loop_updates_cbufs_cleared[OF step_loop[of n], of \<open>((1 :: 3), (1 :: 2))\<close>]
+                    loop_updates_cbufs_cleared[OF step_loop[of n], of \<open>((2 :: 3), (1 :: 2))\<close>])
+                done
+
+
+
+              subgoal
+                apply (simp add: os_after_final_output_def os_after_label_produces_def
+                    os_after_second_propa_def os_after_increment_progress_def
+                    os_after_label_progress_def os_after_ooo_input_progress_def
+                    os_after_loop_progress_def os_after_drop_caps_def os_after_loop_updates_def
+                    os_after_label_input0_def os_after_label_read_input0_def
+                    os_after_input_output_def os_input_after_output_def os_after_input_stream_def
+                    os_input_after_stream_def os_first_propa_def os_progress_def input_events_def
+                    loop_res_def op_state_base_def operator_state.defs obtain_progress_def os_inv(1,4))
+                apply (subst mset_ocaps_updates[of "ltaken n lxs" "ldropn n lxs"
+                    "ocaps (os (0 :: 3)) (0 :: 2)"])
+                 apply (simp add: input_stream_inv)
+                apply (rule timely_input_stream_ldrop[OF stream_move(1) input_stream_inv])
+                done
+
+
+
+
               subgoal (* Use the sequence of have STEPS to prove this one *)
                 by (rule labels_after_final_output)
 
