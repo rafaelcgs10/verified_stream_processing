@@ -14667,8 +14667,34 @@ next
               subgoal sorry
               subgoal sorry
               subgoal sorry
-              subgoal sorry
-              subgoal sorry
+              subgoal
+                using os_inv(1,2,5) buffers_inv(2)
+                apply (simp add: ty1_check_def os_after_final_output_def
+                    os_after_label_produces_def os_after_second_propa_def
+                    os_after_increment_progress_def os_after_label_progress_def
+                    os_after_ooo_input_progress_def os_after_loop_progress_def
+                    os_after_drop_caps_def os_after_loop_updates_def loop_res_def
+                    os_after_label_input0_def os_after_label_read_input0_def
+                    os_after_input_output_def os_input_after_output_def
+                    os_after_input_stream_def os_input_after_stream_def
+                    os_first_propa_def os_progress_def input_events_def
+                    input0_msgs_def op_state_base_def operator_state.defs
+                    obtain_progress_def fun_upd_def)
+                done
+
+              subgoal
+                apply (subgoal_tac \<open>\<forall>p. input (os_label_after_loop_updates n) p = []\<close>)
+                 apply (auto simp add: label_prob_ty2_check_def os_label_after_final_output_def
+                    os_label_after_produces_def os_label_after_second_propa_def
+                    os_label_after_label_progress_def os_label_after_drop_caps_def
+                    drop_caps_def produces_def obtain_progress_def op_state_base_def
+                    operator_state.defs outpu_1_after_loop_updates_empty(1)[of n]
+                    label_produces_batch_def label_prop_output_batch_def num2_neq)
+                subgoal for p
+                  by (cases p rule: num2_cases)
+                    (simp_all add: input_0_after_loop_updates_empty input_1_after_loop_updates_empty)
+                done
+
               subgoal
                 apply (rule allI)
                 subgoal for na
