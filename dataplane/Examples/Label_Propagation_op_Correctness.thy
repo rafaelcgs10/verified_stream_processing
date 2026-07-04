@@ -13,6 +13,7 @@ imports
   "../Correctness/OCapsReorder"
   "../Correctness/Consumes"
   "HOL-ex.Sketch_and_Explore"
+  "../../Isar_Explore"
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
   "../Correctness/Timely_Collections"
@@ -6696,6 +6697,34 @@ lemma set_icoll_lshift:
     set (icoll (xs @@- lxs) t) = set (icoll (llist_of xs) t) \<union> set (icoll lxs t)\<close>
   apply (simp add: icoll_lshift)
   done
+
+lemma lfinite_lfilter_mono:
+  assumes finite: \<open>lfinite (lfilter Q xs)\<close>
+    and mono: \<open>\<And>x. x \<in> lset xs \<Longrightarrow> P x \<Longrightarrow> Q x\<close>
+  shows \<open>lfinite (lfilter P xs)\<close>
+proof -
+  have \<open>lfilter P xs = lfilter P (lfilter Q xs)\<close>
+    apply (subst lfilter_lfilter)
+    apply (rule lfilter_cong[OF refl])
+    using mono by auto
+  then show ?thesis
+    using finite by simp
+qed
+
+lemma set_icoll_lsetI:
+  assumes finite: \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) lxs)\<close>
+    and data: \<open>Data t' d \<in> lset lxs\<close>
+    and le: \<open>t' \<le> t\<close>
+  shows \<open>d \<in> set (icoll lxs t)\<close>
+  unfolding icoll_def
+  apply (subst set_list_of)
+   apply (simp add: lfinite_lmap)
+   apply (rule lfinite_lfilter_mono[OF finite])
+   apply (auto split: event.splits)
+  apply (rule image_eqI[where x=\<open>Data t' d\<close>])
+   apply simp
+  using data le by (simp add: lset_lmap lset_lfilter)
+
 
 lemma icoll_empty_if_no_data_le:
   assumes \<open>\<And>t' d. t' \<le> t \<Longrightarrow> Data t' d \<notin> lset lxs\<close>
@@ -16165,11 +16194,218 @@ subgoal
                        apply (drule_tac x=t0 in spec)
                        apply (drule mp, assumption)
                        by (simp add: BULK_BENQ_def)
-                     subgoal 
-                       sorry
+                    subgoal
+                      apply (clarsimp simp flip: cin.rep_eq
+                          simp add: image_iff cset_from_list_def cset_of_llist.rep_eq)
+                      apply (rule iffI)
+                       apply (elim disjE)
+                         subgoal by simp
+                        subgoal
+                          by (force simp flip: cin.rep_eq
+                              simp add: image_iff cset_from_list_def cset_of_llist.rep_eq)
+                       subgoal
+                         apply (rule disjI1)
+                         apply (clarsimp simp flip: cin.rep_eq
+                             simp add: image_iff cset_from_list_def cset_of_llist.rep_eq)
+                         apply (subgoal_tac \<open>mysnd xa = 0\<close>)
+                          prefer 2
+                          subgoal
+                            apply (thin_tac \<open>\<forall>t0. mysnd t0 = 0 \<longrightarrow> P t0\<close> for P)
+                            apply (thin_tac \<open>\<forall>t\<in>set (timestamps (os_label_after_second_propa n)). Q t\<close> for Q)
+                            apply (thin_tac \<open>x = y\<close> for y)
+                            apply (elim disjE)
+                            subgoal
+                              apply (clarsimp simp add: ts_def cin.rep_eq cset_of_llist.rep_eq
+                                  image_iff split: event.splits)
+                              apply (rename_tac ev)
+                              apply (case_tac ev)
+                                prefer 2
+                                subgoal by clarsimp
+                               prefer 2
+                               subgoal by clarsimp
+                              apply clarsimp
+                              using label_prop_inv(4)
+                              by (metis (mono_tags, lifting) UnCI event.sel(1) imageI)
+                            subgoal
+                              using label_prop_inv(4)[unfolded buffers_inv]
+                              by (fastforce simp flip: cin.rep_eq
+                                  simp add: cset_of_llist.rep_eq cset_from_list_def image_iff)
+                            subgoal
+                              by clarsimp
+                            done
+                         apply (rule cimageI)
+                         apply (rule cUnI2)
+                         apply (subst cimage_iff)
+                         apply (rule_tac x=\<open>(Inr (ccs (set (icoll (map (\<lambda>(x, t'). Data t' (projl x))
+                             (((outputs_at_target (summ sg) os >> cbufs) >> inputs_at_target os) (1, 0)) @@- lxs) xa) \<union>
+                             all_edges os_label_prop (myfst xa))), Cap xa (0 :: 2))\<close> in cBexI)
+                          apply simp
+                         apply (simp add: cset_of_llist.rep_eq label_produces_batch_def
+                             label_prop_output_batch_def label_produces_below_times_def)
+                         apply (subgoal_tac \<open>xa \<in> set (ocaps (os_label_after_second_propa n) (0 :: 2)) \<and>
+                             myfst xa \<in> set (timestamps (os_label_after_second_propa n))\<close>)
+                          prefer 2
+                          subgoal
+                            apply (elim disjE)
+                            subgoal (* timestamp from lxs: closed times must be in the consumed prefix *)
+                              apply (clarsimp simp add: cin.rep_eq ts_def cset_of_llist.rep_eq
+                                  image_iff)
+                              subgoal for xb
+                                apply (cases xb)
+                                  subgoal for t d
+                                    apply clarsimp
+                                    apply (cases d)
+                                    subgoal for a b
+                                      apply (subgoal_tac \<open>Data t (a, b) \<in> set (ltaken n lxs)\<close>)
+                                       subgoal
+                                         apply (rule conjI)
+                                          subgoal
+                                            apply (simp add: ocaps0_after_second_propa_eq
+                                                input0_msgs_def input_data_def input_events_def)
+                                            apply (rule disjI2)+
+                                            apply (rule image_eqI[where x=\<open>Data t (a, b)\<close>])
+                                             apply simp
+                                            by simp
+                                         apply (simp add: timestamps_after_second_propa_eq
+                                             label_input0_msgs_def input0_msgs_def input_data_def input_events_def)
+                                         apply (rule disjI1)
+                                         apply (rule image_eqI[where x=\<open>Data t (a, b)\<close>])
+                                          apply simp
+                                         by simp
+                                      apply (subgoal_tac \<open>Data t (a, b) \<in> set (ltaken n lxs) \<or>
+                                          Data t (a, b) \<in> lset (ldropn n lxs)\<close>)
+                                       prefer 2
+                                       subgoal
+                                         by (simp add: in_lset_ltaken_ldropn[of _ lxs n])
+                                      apply (erule disjE)
+                                       subgoal by simp
+                                      apply (subgoal_tac \<open>icoll (ldropn n lxs) t = []\<close>)
+                                       subgoal
+                                         apply (subgoal_tac \<open>(a, b) \<in> set (icoll (ldropn n lxs) t)\<close>)
+                                          subgoal
+                                            apply (drule arg_cong[where f=set])
+                                            by simp
+                                         apply (rule set_icoll_lsetI)
+                                           apply (rule timely_input_stream_expires_le[OF timely_input_stream_ldrop[OF stream_move(1) input_stream_inv]])
+                                          apply assumption
+                                         by simp
+                                      apply (drule_tac x=t and P=\<open>\<lambda>t0. \<not> frontier_less_equal
+                                          (exit_scope myfst (front (os_label_after_second_propa n) 0 +
+                                            front (os_label_after_second_propa n) 1)) (myfst t0) \<longrightarrow>
+                                          icoll (ldropn n lxs) t0 = []\<close> in spec)
+                                      apply (drule mp, assumption)
+                                      by assumption
+                                    done
+                                  subgoal by auto
+                                  subgoal by auto
+                                  done
+                              done
+                            subgoal (* timestamp from old buffers *)
+                              apply (rule conjI)
+                               subgoal
+                                apply (simp add: ocaps0_after_second_propa_eq input0_msgs_def)
+                                apply (simp flip: cin.rep_eq add: cimage_iff cBex_cUn
+                                    cBex.rep_eq cset_of_llist.rep_eq image_iff
+                                    inputs_at_target_def outputs_at_target_raw_summary
+                                    subgraph_inv(1) BULK_BENQ_def)
+                                apply (erule bexE)
+                                apply (elim UnE)
+                                  subgoal for y
+                                    apply (rule disjI1)
+                                    apply (subgoal_tac \<open>(0 :: (nat, nat) myprod) \<in>
+                                        set (intsum (os 1) (0 :: 2) (0 :: 2))\<close>)
+                                     subgoal
+                                       using label_prop_inv(6)[unfolded input_ocaps_inv_def,
+                                           rule_format, of \<open>snd y\<close> 0 0 0]
+                                       by simp
+                                    using spec[OF os_inv(7), of 1]
+                                    by (simp add: raw_summary_def zero_myprod_def)
+                                 subgoal by blast
+                                subgoal by blast
+                                done
+                               subgoal
+                                apply (simp add: timestamps_after_second_propa_eq
+                                    label_input0_msgs_def input0_msgs_def)
+                                apply (simp flip: cin.rep_eq add: cimage_iff cBex_cUn
+                                    cBex.rep_eq cset_of_llist.rep_eq image_iff
+                                    inputs_at_target_def outputs_at_target_raw_summary
+                                    subgraph_inv(1) BULK_BENQ_def)
+                                apply (erule bexE)
+                                apply (elim UnE)
+                                  subgoal for y
+                                    apply (rule disjI2, rule disjI2, rule disjI2, rule disjI1)
+                                    apply (rule bexI[where x=y])
+                                     apply (cases y, simp)
+                                    by assumption
+                                 subgoal for y
+                                   apply (rule disjI2, rule disjI2, rule disjI1)
+                                   apply (rule bexI[where x=y])
+                                    apply (cases y, simp)
+                                   by assumption
+                                subgoal for y
+                                  apply (rule disjI2, rule disjI1)
+                                  apply (rule bexI[where x=y])
+                                   apply (cases y, simp)
+                                  by assumption
+                                done
+                              done
+                            subgoal (* timestamp from old ocaps/timestamps *)
+                              apply (elim exE conjE bexE)
+                              apply (rule conjI)
+                               subgoal for y xb
+                                apply (simp add: ocaps0_after_second_propa_eq)
+                                apply (rule disjI1)
+                                apply (subgoal_tac \<open>mysnd xb = 0\<close>)
+                                 subgoal
+                                   apply (subgoal_tac \<open>MyPair (myfst xb) 0 = xb\<close>)
+                                    apply simp
+                                   by (cases xb, simp)
+                                using label_prop_inv(4)
+                                by blast
+                              subgoal
+                                by (simp add: timestamps_after_second_propa_eq)
+                              done
+                            done
+
+
+
+                         subgoal for xa
+                           apply (rule image_eqI[where x=\<open>myfst xa\<close>])
+                           subgoal
+                             apply (simp add: Wcc.components_from_labels_correct
+                                 labels_after_second_propa)
+                             by (metis myprod.collapse)
+                           subgoal
+                             apply (rule image_eqI[where x=xa])
+                              apply simp
+                             by simp
+                           done
+                         done
+
+                       subgoal  sorry
+
+
+
+                       done
+
+
+                     done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                      done
                   done
-                done
               subgoal
                 using subgraph_inv(1)
                 by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
