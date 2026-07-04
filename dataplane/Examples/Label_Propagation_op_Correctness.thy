@@ -12382,31 +12382,31 @@ next
 
 (* ----------------------------- *)
 (* STEPS 13: op 1 produces all the wcc components from the labels *)
-  define label_output_below_times where
-    \<open>label_output_below_times = (\<lambda>n.
+  define label_produces_below_times where
+    \<open>label_produces_below_times = (\<lambda>n.
       filter
         (\<lambda>t. \<not> frontier_less_equal
           (exit_scope myfst (front (os_label_after_second_propa n) 0 + front (os_label_after_second_propa n) 1))
           (myfst t) \<and> myfst t \<in> set (timestamps (os_label_after_second_propa n)))
         (ocaps (os_label_after_second_propa n) 0))\<close>
 
-  define label_output_batch where
-    \<open>label_output_batch = (\<lambda>n. label_prop_output_batch
-      (os_label_after_second_propa n) (label_output_below_times n) ::
+  define label_produces_batch where
+    \<open>label_produces_batch = (\<lambda>n. label_prop_output_batch
+      (os_label_after_second_propa n) (label_produces_below_times n) ::
       ((nat \<times> nat + nat set set) \<times> (2, (nat, nat) myprod) capability) list)\<close>
 
-  define os_label_after_output where
-    \<open>os_label_after_output = (\<lambda>n. drop_caps
-      (produces (os_label_after_second_propa n) (label_output_batch n))
-      (map (\<lambda>t. Cap t (0 :: 2)) (label_output_below_times n)))\<close>
+  define os_label_after_produces where
+    \<open>os_label_after_produces = (\<lambda>n. drop_caps
+      (produces (os_label_after_second_propa n) (label_produces_batch n))
+      (map (\<lambda>t. Cap t (0 :: 2)) (label_produces_below_times n)))\<close>
 
-  define os_after_label_output where
-    \<open>os_after_label_output = (\<lambda>n. (os_after_second_propa n)
-      (1 := op_state_base (os_label_after_output n)))\<close>
+  define os_after_label_produces where
+    \<open>os_after_label_produces = (\<lambda>n. (os_after_second_propa n)
+      (1 := op_state_base (os_label_after_produces n)))\<close>
 
-  have dataplane_after_label_output:
+  have dataplane_after_label_produces:
     \<open>dataplane_tracker_inv
-      (os_after_label_output n) (cbufs_after_loop_updates n)
+      (os_after_label_produces n) (cbufs_after_loop_updates n)
       (sg_after_second_propa n)\<close>
     for n
   proof -
@@ -12483,30 +12483,30 @@ next
       by (simp add: os_after_second_propa_def os_label_after_second_propa_def
           os_label_after_label_progress_def os_label_after_drop_caps_def drop_caps_def
           obtain_progress_def op_state_base_def operator_state.defs)
-    have inv_output: \<open>dataplane_tracker_inv
+    have inv_produces: \<open>dataplane_tracker_inv
         ((os_after_second_propa n)(1 := drop_caps
-          (produces (os_after_second_propa n 1) (label_output_batch n))
-          (map (\<lambda>t. Cap t (0 :: 2)) (label_output_below_times n))))
+          (produces (os_after_second_propa n 1) (label_produces_batch n))
+          (map (\<lambda>t. Cap t (0 :: 2)) (label_produces_below_times n))))
         (cbufs_after_loop_updates n) (sg_after_second_propa n)\<close>
       apply (rule dataplane_tracker_inv_produces_drop
           [of \<open>os_after_second_propa n\<close> \<open>1 :: 3\<close> \<open>os_after_second_propa n 1\<close>
             \<open>cbufs_after_loop_updates n\<close> \<open>sg_after_second_propa n\<close>
-            \<open>label_output_batch n\<close>
-            \<open>map (\<lambda>t. Cap t (0 :: 2)) (label_output_below_times n)\<close>])
+            \<open>label_produces_batch n\<close>
+            \<open>map (\<lambda>t. Cap t (0 :: 2)) (label_produces_below_times n)\<close>])
             apply (simp add: dataplane_after_second_propa)
            apply (rule D_second)
           apply (simp add: G_second)
          apply (rule Nxt_second)
       subgoal for x cap
         using ocaps0_second_mysnd
-        apply (clarsimp simp add: label_output_batch_def label_prop_output_batch_def
-            label_output_below_times_def os_after_second_propa_def os_label_after_second_propa_def
+        apply (clarsimp simp add: label_produces_batch_def label_prop_output_batch_def
+            label_produces_below_times_def os_after_second_propa_def os_label_after_second_propa_def
             op_state_base_def operator_state.defs)
         by (metis myprod.collapse)
       subgoal for p'
         apply (cases \<open>p' = (0 :: 2)\<close>)
         subgoal
-          by (simp add: label_output_below_times_def os_after_second_propa_def
+          by (simp add: label_produces_below_times_def os_after_second_propa_def
               os_label_after_second_propa_def op_state_base_def operator_state.defs
               mset_filter filter_map comp_def)
         subgoal
@@ -12514,25 +12514,26 @@ next
         done
       subgoal for p'
         by (cases \<open>p' = (0 :: 2)\<close>)
-          (auto simp add: label_output_below_times_def input0_second_empty filter_False)
+          (auto simp add: label_produces_below_times_def input0_second_empty filter_False)
 
       done
 
 
     show ?thesis
-      using inv_output
-      by (simp add: os_after_label_output_def os_label_after_output_def
+      using inv_produces
+      by (simp add: os_after_label_produces_def os_label_after_produces_def
           os_after_second_propa_def os_label_after_second_propa_def
           op_state_base_def drop_caps_def produces_def)
 
   qed
 
 
-  have labels_after_label_output:
-    \<open>\<forall>t. labels_inv (all_edges (os_label_after_output n) t) (min_label (os_label_after_output n) t)\<close>
+  have labels_after_label_produces:
+    \<open>\<forall>t. labels_inv (all_edges (os_label_after_produces n) t) (min_label (os_label_after_produces n) t)\<close>
     for n
     using labels_after_second_propa[of n]
-    by (simp add: os_label_after_output_def)
+    by (simp add: os_label_after_produces_def)
+
 
   let ?input_caps_after_prefix =
     "\<lambda>n. mset (ocaps (os 0) (0 :: 2)) +
@@ -12795,12 +12796,77 @@ next
 
 (* ----------------------------- *)
 (* STEPS 14: op 1 flushes outpu 0 buffer with all WCC  *)
-(* Insert missing preservations below *)
+  define os_label_after_final_output where
+    \<open>os_label_after_final_output = (\<lambda>n. (os_label_after_produces n)\<lparr>outpu :=
+      (outpu (os_label_after_produces n))(0 := [])\<rparr>)\<close>
+
+  define os_after_final_output where
+    \<open>os_after_final_output = (\<lambda>n. (os_after_label_produces n)
+      (1 := op_state_base (os_label_after_final_output n)))\<close>
 
 
-(* ----------------------------- *)
-(* STEPS 15: set_op picks the desired WCC  *)
-(* Insert missing preservations below *)
+  have dataplane_after_final_output:
+    \<open>dataplane_tracker_inv
+      (os_after_final_output n) (cbufs_after_loop_updates n)
+      (sg_after_second_propa n)\<close>
+    for n
+  proof -
+    have G_second:
+      \<open>graph_summar_nt (summ (sg_after_second_propa n)) (nxt (sg_after_second_propa n))
+        (os_after_second_propa n)\<close>
+    proof -
+      have eq: \<open>graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa)
+          (os_after_second_propa n) =
+        graph_summar_nt (summ sg_first_propa) (nxt sg_first_propa) (os_after_loop_progress n)\<close>
+        by (rule graph_summar_nt_intsum_cong)
+          (simp add: os_after_second_propa_def os_label_after_second_propa_def
+            os_after_increment_progress_def os_after_label_progress_def os_after_ooo_input_progress_def
+            os_label_after_label_progress_def os_after_loop_progress_def os_after_drop_caps_def
+            op_state_base_def operator_state.defs obtain_progress_def fun_upd_def)
+      then show ?thesis
+        using G_loop[of n]
+        by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
+            sg_after_label_progress_def sg_after_ooo_input_progress_def)
+    qed
+    have G_after_label_produces:
+      \<open>graph_summar_nt (summ (sg_after_second_propa n)) (nxt (sg_after_second_propa n))
+        (os_after_label_produces n)\<close>
+    proof -
+      have eq: \<open>graph_summar_nt (summ (sg_after_second_propa n)) (nxt (sg_after_second_propa n))
+          (os_after_label_produces n) =
+        graph_summar_nt (summ (sg_after_second_propa n)) (nxt (sg_after_second_propa n))
+          (os_after_second_propa n)\<close>
+        by (rule graph_summar_nt_intsum_cong)
+          (simp add: os_after_label_produces_def os_label_after_produces_def
+            os_after_second_propa_def op_state_base_def operator_state.defs drop_caps_def produces_def)
+      then show ?thesis
+        using G_second by simp
+    qed
+    have Summ_second:
+      \<open>summ (sg_after_second_propa n) = antichain_from_list \<circ>\<circ> raw_summary\<close>
+      using subgraph_inv(1)
+      by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
+          sg_after_label_progress_def sg_after_ooo_input_progress_def sg_first_propa_def sg_progress_def)
+    show ?thesis
+      apply (rule dataplane_tracker_inv_update_outputs_outside
+          [OF dataplane_after_label_produces[of n], where nid=\<open>1 :: 3\<close> and p=\<open>0 :: 2\<close> and xs=Nil])
+        apply (simp add: os_after_final_output_def os_label_after_final_output_def
+          os_after_label_produces_def op_state_base_def operator_state.defs fun_eq_iff)
+       apply (simp add: Summ_second raw_summary_def)
+      apply (rule G_after_label_produces)
+      done
+
+  qed
+
+
+
+  have labels_after_final_output:
+    \<open>\<forall>t. labels_inv (all_edges (os_label_after_final_output n) t)
+      (min_label (os_label_after_final_output n) t)\<close>
+    for n
+    using labels_after_label_produces[of n]
+    by (simp add: os_label_after_final_output_def all_edges_def all_vertices_def min_label_def)
+
 
   define final_output where
     \<open>final_output = (\<lambda> n. label_prop_output_batch
