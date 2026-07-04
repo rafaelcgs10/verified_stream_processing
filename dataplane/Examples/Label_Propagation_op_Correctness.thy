@@ -13858,13 +13858,22 @@ next
                 subgoal
                   by (simp add: input_CONSUMES)
                 subgoal
-                  using label_prop_inv(5) apply -
-                  apply (simp add:  operator_state.defs os_inv(4))
-                  sorry
+                  using label_prop_inv(5)
+                  apply (simp add: label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def operator_state.defs os_inv(4))
+                  apply blast
+                  done
+
+
                 subgoal
-                  using label_prop_inv(7) apply -
-                  apply (simp add: operator_state.defs os_inv(4) input_CONSUMES)
-                  sorry
+                  apply (rule wf_label_prop_updates_subset[where
+                    S="set (chns (1, 1) @ map (\<lambda>(d, t). (d, t -+- MyPair 0 1)) (chns (2, 1)))"])
+                   apply (rule wf_label_prop_updates_os_mono[OF label_prop_inv(7) _ _ _ refl])
+                      apply (simp add: os_inv(4) operator_state.defs)
+                     apply (simp add: os_inv(4) operator_state.defs)
+                    apply (simp add: os_inv(4) operator_state.defs)
+                   apply (simp add: input_CONSUMES os_inv(4) operator_state.defs buffers_inv BULK_BENQ_def inputs_at_target_def outputs_at_target_raw_summary subgraph_inv(1))
+                  done
+
                 subgoal
                   apply (simp add: split_beta input_CONSUMES)
                   apply (rule sym)
