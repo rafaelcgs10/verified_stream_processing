@@ -13930,7 +13930,28 @@ next
                     done
                   done
                 done
-              subgoal sorry
+              subgoal
+                apply (elim disjE)
+                subgoal
+                  apply (clarsimp simp add: cin.rep_eq ts_def cset_of_llist.rep_eq split: event.splits)
+                  subgoal for a b
+                    using label_prop_inv(4)
+                    by (metis UnCI event.sel(1) imageI myprod.collapse)
+                  done
+                subgoal
+                  apply (erule cBexE)
+                  using label_prop_inv(4)
+                  apply (clarsimp simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary
+                      subgraph_inv(1) inputs_at_target_def)
+                  apply (drule bspec[where x=t])
+                   apply force
+                  apply (cases t)
+                  apply simp
+                  done
+
+                subgoal
+                  by force
+                done
               done
             subgoal 
               using prems(1) by assumption
