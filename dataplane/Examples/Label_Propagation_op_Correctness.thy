@@ -14669,7 +14669,22 @@ next
               subgoal sorry
               subgoal sorry
               subgoal sorry
-              subgoal sorry
+              subgoal
+                apply (rule allI)
+                subgoal for na
+                  using Intsum_loop[of n, rule_format, of na]
+                    Intsum_loop[of n, rule_format, of \<open>1 :: 3\<close>]
+                  by (cases na rule: num3_cases)
+                    (auto simp add: os_after_final_output_def os_after_label_produces_def
+                      os_after_second_propa_def os_after_increment_progress_def
+                      os_after_label_progress_def os_after_ooo_input_progress_def
+                      os_after_loop_progress_def os_after_drop_caps_def
+                      os_label_after_final_output_def os_label_after_produces_def
+                      os_label_after_second_propa_def os_label_after_label_progress_def
+                      os_label_after_drop_caps_def op_state_base_def operator_state.defs
+                      obtain_progress_def drop_caps_def produces_def)
+                done
+
               subgoal
                 using outpu_1_after_loop_updates_empty(4)[of n]
                 by (simp add: os_after_final_output_def os_after_label_produces_def
