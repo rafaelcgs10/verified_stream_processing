@@ -17128,7 +17128,16 @@ subgoal
                 done
               subgoal (* Use the sequence of have STEPS to prove this one *)
                 by (rule labels_after_final_output)
-              subgoal (* IGNORE THIS SUBGOAL SORRY *) sorry
+              subgoal (* Use the sorried stability fact after second propa. *)
+                apply (rule ballI)
+                apply (rule impI)
+                using labels_stable_after_second_propa_closed[of _ n]
+                apply (simp add: timestamps_after_final_output_eq timestamps_after_second_propa_eq
+                    os_after_final_output_def os_label_after_final_output_def
+                    os_after_label_produces_def os_label_after_produces_def
+                    os_after_second_propa_def os_label_after_second_propa_def
+                    op_state_base_def operator_state.defs drop_caps_def produces_def)
+                done
               subgoal
                 by (simp add: os_after_final_output_def os_label_after_final_output_def
                     os_label_after_produces_def os_label_after_second_propa_def
