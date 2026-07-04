@@ -14220,6 +14220,16 @@ next
         os_input_after_stream_def os_first_propa_def os_progress_def
         loop_res_def op_state_base_def operator_state.defs obtain_progress_def os_inv(1))
 
+  have labels_stable_after_second_propa_closed:
+    \<open>t \<in> set (timestamps (os_label_after_second_propa n)) \<Longrightarrow>
+      \<not> frontier_less_equal
+        (exit_scope myfst (front (os_label_after_second_propa n) 0 +
+          front (os_label_after_second_propa n) 1)) t \<Longrightarrow>
+      labels_stable (all_edges (os_label_after_second_propa n) t)
+        (min_label (os_label_after_second_propa n) t)\<close>
+    for n t
+    sorry
+
 
   define final_output where
     \<open>final_output = (\<lambda> n. label_prop_output_batch
@@ -15363,8 +15373,68 @@ next
                           split_beta)
                       done
                     subgoal
-                      sorry
+                      apply (subgoal_tac \<open>labels_stable (all_edges (os_label_after_second_propa n) (myfst t))
+                        (min_label (os_label_after_second_propa n) (myfst t))\<close>)
+                       prefer 2
+                       subgoal
+                        apply (rule labels_stable_after_second_propa_closed)
+                         subgoal
+                           using timely_input_stream_ldropn_no_data_le_if_not_frontier_less_equal[OF input_stream_inv stream_move(1) stream_move(2)]
+                           apply (simp add: timestamps_after_second_propa_eq input0_msgs_def label_input0_msgs_def
+                              input_data_def input_events_def cimage_iff cin.rep_eq ts_def cset_of_llist.rep_eq
+                              buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1)
+                              inputs_at_target_def in_lset_ltaken_ldropn split: event.splits)
+                           apply (elim disjE)
+                           subgoal
+                             apply (simp add: image_iff in_lset_ltaken_ldropn)
+                             apply (erule exE)
+                             apply (rule disjI1)
+                             apply (rule_tac x=x in exI)
+                             apply simp
+                             apply (case_tac x)
+                               apply simp_all
+                             by (metis in_lset_ltaken_ldropn order_refl)
+                           subgoal
+                             by auto
+                           subgoal
+                             apply (erule cBexE)
+                             using os_inv(4)
+                             by (auto simp add: operator_state.defs)
+                           done
+                        subgoal
+                          apply (simp add: os_label_after_second_propa_def os_label_after_label_progress_def
+                            os_label_after_drop_caps_def label_front_after_second_propa_def drop_caps_def
+                            obtain_progress_def operator_state.defs)
+                          apply (rule no_second_propa_output_frontier[OF stream_move(2)])
+                          using os_inv(4)
+                          by (auto simp add: operator_state.defs)
+                        done
+                      apply (simp add: os_label_after_second_propa_def os_label_after_label_progress_def
+                        os_label_after_drop_caps_def drop_caps_def obtain_progress_def
+                        os_label_after_loop_updates_def loop_res_def os_label_after_input0_def)
+                      apply (subst (asm) all_edges_fst_label_prop_input0_batched_input_eq)
+                         apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+                            label_input0_msgs_def input_CONSUMES operator_state.defs os_inv(4))
+                        apply (simp add: label_prop_inv(5) os_label_after_read_input0_def
+                            os_label_after_first_propa_def input_CONSUMES)
+                      using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def
+                          subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+                       apply (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+                          os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+                          all_vertices_def all_edges_def neighbors_def)[1]
+                      apply (simp add: all_edges_def all_vertices_def neighbors_def
+                        os_label_after_read_input0_def os_label_after_first_propa_def
+                        label_front_after_first_propa_def
+                        os_after_label_input0_def os_after_label_read_input0_def
+                        os_after_input_output_def os_input_after_output_def
+                        os_after_input_stream_def os_input_after_stream_def
+                        os_first_propa_def os_progress_def sg_first_propa_def sg_progress_def
+                        cbufs_after_label_read_input0_def cbufs_after_input_output_def
+                        input0_msgs_def label_input0_msgs_def input_data_def input_events_def
+                        input_CONSUMES os_inv(1,4) operator_state.defs split_beta)
+                      done
                     done
+
 
 
                   subgoal premises prems
@@ -15394,33 +15464,44 @@ next
                           inputs_at_target_def split: event.splits dest!: setltakenD)
                     done
                   done
+
                 done
+
               subgoal
                 apply (elim disjE)
                 subgoal
-                  apply (clarsimp simp add: cin.rep_eq ts_def cset_of_llist.rep_eq split: event.splits)
-                  subgoal for a b
+                  apply (erule ts_lsetE)
+                  subgoal for d
                     using label_prop_inv(4)
-                    by (metis UnCI event.sel(1) imageI myprod.collapse)
+                    apply (drule_tac x=t in bspec)
+                     apply (rule UnI1)
+                     apply (rule UnI1)
+                     apply (rule image_eqI[where x=\<open>Data t d\<close>])
+                      apply simp
+                     apply simp
+                    by (cases t; simp)
                   done
                 subgoal
                   apply (erule cBexE)
-                  using label_prop_inv(4)
-                  apply (clarsimp simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary
-                      subgraph_inv(1) inputs_at_target_def)
-                  apply (drule bspec[where x=t])
-                   apply force
-                  apply (cases t)
-                  apply simp
+                  subgoal for x
+                    using label_prop_inv(4)
+                    apply (drule_tac x=\<open>snd x\<close> in bspec)
+                     apply (rule UnI1)
+                     apply (rule UnI2)
+                     apply (rule image_eqI[where x=x])
+                      apply simp
+                     apply (simp add: in_cset_from_list buffers_inv)
+                    by (cases \<open>snd x\<close>; simp)
                   done
-
                 subgoal
-                  by force
+                  apply (erule cBexE)
+                  by simp
                 done
               done
-            subgoal 
+
+            subgoal
               using prems(1) by assumption
-             apply (rule refl)+
+            apply (rule refl)+
 
 
             subgoal
@@ -15666,10 +15747,8 @@ subgoal
                     labels_stable (all_edges (os_label_after_second_propa n) t)
                       (min_label (os_label_after_second_propa n) t)\<close>)
                  prefer 2
-                 subgoal (* HARD: label propagation has converged for timestamps closed at
-                      the c'' frontier — same fact as the label_prop_inv(2) re-establishment
-                      sibling subgoal below *)
-                   sorry
+                 subgoal
+                   using labels_stable_after_second_propa_closed by blast
                 apply (simp only: cset_eq_iff)
                 apply (rule allI)
                 subgoal for x
