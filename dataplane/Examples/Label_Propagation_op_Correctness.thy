@@ -13971,7 +13971,7 @@ next
           apply (rule exI[of _ "sg_after_second_propa n"])
               apply (intro conjI)
               subgoal sorry
-              subgoal sorry
+              subgoal (* TIP 1: this reduces to cset equality. TIP 2: You probably want to do a case distinction if the given arbitrary t is frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) or not *) sorry
               subgoal sorry
               subgoal sorry
               subgoal sorry
