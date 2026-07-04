@@ -15513,7 +15513,103 @@ next
                        RHS\<Longrightarrow>LHS: FinalImg \<Longrightarrow> SPold via ocaps0_after_second_propa_eq
                        (below-times \<subseteq> old-caps \<union> consumed) mirroring the proven
                        MyPair-filter-new leaf; SPnew \<Longrightarrow> SPold as in the live case. *)
-                    sorry
+                    apply (subgoal_tac \<open>final_output n = label_produces_batch n\<close>)
+                     prefer 2
+                     subgoal
+                       unfolding final_output_def label_produces_batch_def
+                       apply (rule arg_cong2[where f=label_prop_output_batch])
+                       subgoal
+                         by (simp add: os_label_after_second_propa_def
+                             os_label_after_label_progress_def os_label_after_drop_caps_def
+                             obtain_progress_def os_label_after_loop_updates_def loop_res_def
+                             os_label_after_input0_def os_label_after_read_input0_def
+                             os_label_after_first_propa_def label_front_after_second_propa_def
+                             label_front_after_first_propa_def
+                             cbufs_after_label_read_input0_def cbufs_after_input_output_def
+                             os_after_label_input0_def os_after_label_read_input0_def
+                             os_after_input_output_def os_input_after_output_def
+                             os_after_input_stream_def os_input_after_stream_def
+                             os_first_propa_def os_progress_def sg_first_propa_def
+                             label_input0_msgs_def input0_msgs_def input_data_def
+                             input_events_def CONSUMES_CONSUMES flip: fold_append)
+                       subgoal
+                         apply (simp add: label_produces_below_times_def
+                             timestamps_after_second_propa_eq os_label_after_second_propa_def
+                             os_label_after_label_progress_def os_label_after_drop_caps_def
+                             obtain_progress_def os_label_after_loop_updates_def loop_res_def
+                             os_label_after_input0_def os_label_after_read_input0_def
+                             os_label_after_first_propa_def label_front_after_second_propa_def
+                             label_front_after_first_propa_def
+                             cbufs_after_label_read_input0_def cbufs_after_input_output_def
+                             os_after_label_input0_def os_after_label_read_input0_def
+                             os_after_input_output_def os_input_after_output_def
+                             os_after_input_stream_def os_input_after_stream_def
+                             os_first_propa_def os_progress_def sg_first_propa_def
+                             drop_caps_def
+                             label_input0_msgs_def input0_msgs_def input_data_def
+                             input_events_def CONSUMES_CONSUMES filter_filter conj_commute
+                             flip: fold_append)
+                         apply (rule filter_cong[OF refl])
+                         apply (simp only: image_Un image_image)
+                         by blast
+                       done
+                    apply (subgoal_tac \<open>\<forall>t0 :: (nat, nat) myprod. \<not> frontier_less_equal
+                        (exit_scope myfst (front (os_label_after_second_propa n) 0 +
+                          front (os_label_after_second_propa n) 1)) (myfst t0) \<longrightarrow>
+                        set (icoll (ldropn n lxs) t0) = {}\<close>)
+                     prefer 2
+                     subgoal (* HARD (allowed assumption, cf. the stability subgoal_tac):
+                          timestamps closed at the c'' frontier are expired from the
+                          remaining stream; needs the timely/stream_move frontier plumbing
+                          (timely_input_stream_ldropn_no_data_le_if_not_frontier_less_equal,
+                           icoll_empty_if_no_data_le) *)
+                       sorry
+                    apply (subgoal_tac \<open>(((outputs_at_target (summ (sg_after_second_propa n)) (os_after_final_output n) >>
+                          cbufs((1, 0) := [], (1, 1) := [], (2, 1) := [])) >>
+                         inputs_at_target (os_after_final_output n)) (1, 0)) = []\<close>)
+                     prefer 2
+                     subgoal
+                       by (simp add: outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def
+                           inputs_at_target_def sg_after_second_propa_def
+                           sg_after_increment_progress_def sg_after_label_progress_def
+                           sg_after_ooo_input_progress_def sg_first_propa_def
+                           sg_progress_def outpu_0_after_final_output_empty)
+                    apply (subgoal_tac \<open>all_edges (os_label_after_final_output n) =
+                        all_edges (os_label_after_second_propa n) \<and>
+                        min_label (os_label_after_final_output n) =
+                        min_label (os_label_after_second_propa n)\<close>)
+                     prefer 2
+                     subgoal
+                       by (simp add: os_label_after_final_output_def os_label_after_produces_def
+                           produces_def drop_caps_def all_edges_def all_vertices_def
+                           neighbors_def min_label_def fun_eq_iff)
+                    apply (subgoal_tac \<open>en2 (os_label_after_second_propa n) =
+                        (Inr :: nat set set \<Rightarrow> nat \<times> nat + nat set set)\<close>)
+                     prefer 2
+                     subgoal
+                       by (simp add: os_label_after_second_propa_def
+                           os_label_after_label_progress_def os_label_after_drop_caps_def
+                           obtain_progress_def os_label_after_loop_updates_def loop_res_def
+                           os_label_after_input0_def os_label_after_read_input0_def
+                           os_label_after_first_propa_def drop_caps_def os_inv(4)
+                           operator_state.defs)
+                    apply (subgoal_tac \<open>\<forall>t0 :: (nat, nat) myprod. mysnd t0 = 0 \<longrightarrow>
+                        \<not> frontier_less_equal (exit_scope myfst
+                          (front (os_label_after_second_propa n) 0 +
+                           front (os_label_after_second_propa n) 1)) (myfst t0) \<longrightarrow>
+                        ccs (set (icoll (map (\<lambda>(x, t'). Data t' (projl x))
+                            (((outputs_at_target (summ sg) os >> cbufs) >> inputs_at_target os) (1, 0)) @@- lxs) t0) \<union>
+                          all_edges os_label_prop (myfst t0)) =
+                        ccs (all_edges (os_label_after_second_propa n) (myfst t0))\<close>)
+                     prefer 2
+                     subgoal
+                       apply (intro allI impI)
+                       apply (drule_tac x=t0 in spec)
+                       apply (drule mp, assumption)
+                       by (simp add: BULK_BENQ_def)
+                     subgoal 
+                       sorry
+                     done
                   done
                 done
               subgoal
