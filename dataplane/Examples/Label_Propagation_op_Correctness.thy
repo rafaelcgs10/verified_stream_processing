@@ -12793,6 +12793,15 @@ next
       done
     done
 
+(* ----------------------------- *)
+(* STEPS 14: op 1 flushes outpu 0 buffer with all WCC  *)
+(* Insert missing preservations below *)
+
+
+(* ----------------------------- *)
+(* STEPS 15: set_op picks the desired WCC  *)
+(* Insert missing preservations below *)
+
   define final_output where
     \<open>final_output = (\<lambda> n. label_prop_output_batch
                              (drop_caps
