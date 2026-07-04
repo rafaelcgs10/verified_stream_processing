@@ -5737,6 +5737,79 @@ proof (induct cbufs os_label_prop os rule: loop_updates.induct)
   qed
 qed
 
+lemma input_1_snd_snd_loop_updates_empty:
+  fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+  assumes INV: \<open>label_prop_upd_inv os_label_prop\<close>
+    and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+    and WF: \<open>wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+    and EN1: \<open>en1 os_label_prop = Inl\<close>
+    and DE1: \<open>de1 os_label_prop = projl\<close>
+  shows \<open>input ((snd (snd (loop_updates cbufs os_label_prop os))) 2) (1 :: 2) = []\<close>
+  using INV LABELS WF EN1 DE1
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
+    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop (set (input os_label_prop 1) \<union> set ?msgs)\<close>
+  have good: ?good
+    using "1.prems" by simp
+  obtain cbufs1 os_label_prop1 os1 where step1:
+    \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+    by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+  have input2_empty: \<open>input (os1 2) (1 :: 2) = []\<close>
+    by (rule label_prop_input1_loop_updates_input_os2_1[OF step1[symmetric]])
+  have INV1: \<open>label_prop_upd_inv os_label_prop1\<close>
+    by (rule label_prop_upd_inv_label_prop_input1_loop_updatesI[OF step1[symmetric] "1.prems"(1) "1.prems"(3)])
+  have LABELS1:
+    \<open>\<forall>t. labels_inv (all_edges os_label_prop1 t) (min_label os_label_prop1 t)\<close>
+    by (rule labels_inv_label_prop_input1_loop_updates_allI[OF step1[symmetric] "1.prems"(1) "1.prems"(3) "1.prems"(2)])
+  have EN1_1: \<open>en1 os_label_prop1 = Inl\<close>
+    using label_prop_input1_loop_updates_en1_label[OF step1[symmetric]] "1.prems"(4)
+    by simp
+  have DE1_1: \<open>de1 os_label_prop1 = projl\<close>
+    using label_prop_input1_loop_updates_de1_label[OF step1[symmetric]] "1.prems"(5)
+    by simp
+  have input1_empty: \<open>input os_label_prop1 (1 :: 2) = []\<close>
+    by (rule label_prop_input1_loop_updates_input_label_1[OF step1[symmetric]])
+  have WF1_msgs:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    by (rule label_prop_input1_loop_updates_msgs_invI
+        [OF step1[symmetric] "1.prems"(4) "1.prems"(5) "1.prems"(1) "1.prems"(2) "1.prems"(3)])
+  have WF1:
+    \<open>wf_label_prop_updates os_label_prop1
+      (set (input os_label_prop1 1) \<union>
+       set (cbufs1 (1, 1) @ outpu (os1 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os1 2) 1 @ cbufs1 (2, 1) @ outpu os_label_prop1 1)))\<close>
+    using WF1_msgs input1_empty by simp
+  show ?case
+  proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+    case True
+    show ?thesis
+      by (subst loop_updates.simps) (use good step1 True input2_empty in simp)
+  next
+    case False
+    have rec:
+      \<open>input ((snd (snd (loop_updates cbufs1 os_label_prop1 os1))) 2) (1 :: 2) = []\<close>
+      by (rule "1.hyps"[OF good step1[symmetric] refl refl False
+            INV1 LABELS1 WF1 EN1_1 DE1_1])
+    show ?thesis
+      by (subst loop_updates.simps) (use good step1 False rec in simp)
+  qed
+qed
+
 lemma input_0_fst_snd_loop_updates:
   \<open>input (fst (snd (loop_updates cbufs os_label_prop os))) (0 :: 2) =
     input os_label_prop (0 :: 2)\<close>
@@ -6385,6 +6458,50 @@ proof (induct cbufs os_label_prop os rule: loop_updates.induct)
       case False
       have rec:
         \<open>initia (fst (snd (loop_updates cbufs1 os_label_prop1 os1))) = initia os_label_prop1\<close>
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
+      show ?thesis
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 False rec initia1 in simp)
+    qed
+  qed
+qed
+
+lemma initia_snd_snd_loop_updates2[simp]:
+  \<open>initia ((snd (snd (loop_updates cbufs os_label_prop os))) (2 :: 3)) =
+    initia (os (2 :: 3))\<close>
+proof (induct cbufs os_label_prop os rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+
+  show ?case
+  proof (cases ?good)
+    case False
+    show ?thesis
+      by (subst loop_updates.simps) (simp only: False if_False fst_conv snd_conv)
+  next
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have initia1: \<open>initia (os1 (2 :: 3)) = initia (os (2 :: 3))\<close>
+      using label_prop_input1_loop_updates_initia_os2[OF step1[symmetric]]
+      by simp
+
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      show ?thesis
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 True initia1 in simp)
+    next
+      case False
+      have rec:
+        \<open>initia ((snd (snd (loop_updates cbufs1 os_label_prop1 os1))) (2 :: 3)) =
+          initia (os1 (2 :: 3))\<close>
         by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False])
       show ?thesis
         by (subst loop_updates.simps) (use \<open>?good\<close> step1 False rec initia1 in simp)
@@ -11997,6 +12114,7 @@ next
   have outpu_1_after_loop_updates_empty:
     \<open>outpu (os_label_after_loop_updates n) (1 :: 2) = []\<close>
     \<open>outpu ((os_after_loop_updates n) 2) (1 :: 2) = []\<close>
+    \<open>input ((os_after_loop_updates n) 2) (1 :: 2) = []\<close>
     for n
   proof -
     have input_label_read:
@@ -12084,11 +12202,22 @@ next
             and os_label_prop=\<open>os_label_after_input0 n\<close>
             and os=\<open>os_after_label_input0 n\<close>,
             OF INV0 labels_after_label_input0[of n] WF0 EN0 DE0])
+    have os2_input:
+      \<open>input ((snd (snd (loop_updates (cbufs_after_label_read_input0 n)
+        (os_label_after_input0 n) (os_after_label_input0 n)))) 2) (1 :: 2) = []\<close>
+      by (rule input_1_snd_snd_loop_updates_empty
+          [where cbufs=\<open>cbufs_after_label_read_input0 n\<close>
+            and os_label_prop=\<open>os_label_after_input0 n\<close>
+            and os=\<open>os_after_label_input0 n\<close>,
+            OF INV0 labels_after_label_input0[of n] WF0 EN0 DE0])
     show \<open>outpu (os_label_after_loop_updates n) (1 :: 2) = []\<close>
       using label_out by (simp add: os_label_after_loop_updates_def loop_res_def)
     show \<open>outpu ((os_after_loop_updates n) 2) (1 :: 2) = []\<close>
       using os2_out by (simp add: os_after_loop_updates_def loop_res_def)
+    show \<open>input ((os_after_loop_updates n) 2) (1 :: 2) = []\<close>
+      using os2_input by (simp add: os_after_loop_updates_def loop_res_def)
   qed
+
 
   have wf_after_loop_updates_pending:
     \<open>wf_label_prop_updates (os_label_after_loop_updates n)
@@ -14439,8 +14568,27 @@ next
               subgoal sorry
               subgoal sorry
               subgoal sorry
-              subgoal sorry
-              subgoal sorry
+              subgoal
+                by (simp add: os_after_final_output_def os_after_label_produces_def
+                    os_after_second_propa_def os_after_increment_progress_def
+                    os_after_label_progress_def os_after_ooo_input_progress_def
+                    os_after_loop_progress_def os_after_drop_caps_def os_after_loop_updates_def
+                    os_after_label_input0_def os_after_label_read_input0_def
+                    os_after_input_output_def os_input_after_output_def os_after_input_stream_def
+                    os_input_after_stream_def os_first_propa_def os_progress_def
+                    loop_res_def op_state_base_def operator_state.defs obtain_progress_def
+                    drop_caps_def produces_def input_CONSUMES os_inv(9))
+
+              subgoal
+                by (simp add: os_after_final_output_def os_after_label_produces_def
+                    os_after_second_propa_def os_after_increment_progress_def
+                    os_after_label_progress_def os_after_ooo_input_progress_def
+                    os_after_loop_progress_def os_after_drop_caps_def
+                    op_state_base_def operator_state.defs obtain_progress_def
+                    outpu_1_after_loop_updates_empty(2)[of n]
+                    outpu_1_after_loop_updates_empty(3)[of n]
+                    loop_updates_cbufs_cleared[OF step_loop[of n], of \<open>((2 :: 3), (1 :: 2))\<close>])
+
               subgoal
                 using buffers_inv by simp
 
