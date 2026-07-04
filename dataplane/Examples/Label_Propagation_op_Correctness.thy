@@ -6602,6 +6602,81 @@ proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' rule: 
   qed
 qed
 
+
+lemma loop_updates_extension:
+  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+    and T :: \<open>nat list\<close>
+    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
+    and V :: \<open>nat \<Rightarrow> nat list\<close>
+    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
+  assumes step: \<open>(cbufs', os_label_prop', os') = loop_updates cbufs os_label_prop os\<close>
+    and ext: \<open>os_label_prop = operator_state.extend (op_state_base os_label_prop)
+      \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+        en2 = Inr, de2 = projr, is_en2 = isr,
+        timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
+  shows \<open>os_label_prop' = operator_state.extend (op_state_base os_label_prop')
+      \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+        en2 = Inr, de2 = projr, is_en2 = isr,
+        timestamps = T, graph = G, vertices = V, label = label os_label_prop'\<rparr>\<close>
+  using step ext
+proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' T G V L rule: loop_updates.induct)
+  case (1 cbufs os_label_prop os)
+  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
+    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    wf_label_prop_updates os_label_prop
+      (set (input os_label_prop 1) \<union>
+       set (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
+  show ?case
+  proof (cases ?good)
+    case False
+    have loop_eq:
+      \<open>loop_updates cbufs os_label_prop os =
+        (cbufs((2, 1) := [], (1, 1) := []), os_label_prop, os)\<close>
+      by (subst loop_updates.simps) (simp only: False if_False)
+    then have os_label_prop'_eq: \<open>os_label_prop' = os_label_prop\<close>
+      using "1.prems"(1) by simp
+    have label_eq: \<open>label os_label_prop = L\<close>
+      using arg_cong[OF "1.prems"(2), where f=label]
+      by (simp add: op_state_base_def operator_state.defs)
+
+    show ?thesis
+      using "1.prems"(2) os_label_prop'_eq label_eq
+      by (simp add: op_state_base_def operator_state.defs)
+
+  next
+    case True
+    obtain cbufs1 os_label_prop1 os1 where step1:
+      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
+    have ext1:
+      \<open>os_label_prop1 = operator_state.extend (op_state_base os_label_prop1)
+        \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+          en2 = Inr, de2 = projr, is_en2 = isr,
+          timestamps = T, graph = G, vertices = V, label = label os_label_prop1\<rparr>\<close>
+      by (rule label_prop_input1_loop_updates_extension[OF step1[symmetric] "1.prems"(2)])
+    show ?thesis
+    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
+      case True
+      have loop_eq: \<open>loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 True in simp)
+      show ?thesis
+        using "1.prems"(1) loop_eq ext1 by simp
+    next
+      case False
+      have loop_eq: \<open>loop_updates cbufs os_label_prop os = loop_updates cbufs1 os_label_prop1 os1\<close>
+        by (subst loop_updates.simps) (use \<open>?good\<close> step1 False in simp)
+      have step_rec: \<open>(cbufs', os_label_prop', os') = loop_updates cbufs1 os_label_prop1 os1\<close>
+        using "1.prems"(1) loop_eq by simp
+      show ?thesis
+        by (rule "1.hyps"[OF \<open>?good\<close> step1[symmetric] refl refl False
+              step_rec ext1])
+    qed
+  qed
+qed
 lemma en2_fst_snd_loop_updates[simp]:
   \<open>en2 (fst (snd (loop_updates cbufs os_label_prop os))) = en2 os_label_prop\<close>
 proof (induct cbufs os_label_prop os rule: loop_updates.induct)
@@ -14662,11 +14737,72 @@ next
               apply (intro conjI)
               subgoal sorry
               subgoal (* TIP 1: this reduces to cset equality. TIP 2: You probably want to do a case distinction if the given arbitrary t is frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) or not *) sorry
-              subgoal sorry
-              subgoal sorry
-              subgoal sorry
-              subgoal sorry
-              subgoal sorry
+              subgoal
+                using subgraph_inv(1)
+                by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
+                    sg_after_label_progress_def sg_after_ooo_input_progress_def
+                    sg_first_propa_def sg_progress_def)
+              subgoal
+                using subgraph_inv(2)
+                by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
+                    sg_after_label_progress_def sg_after_ooo_input_progress_def
+                    sg_first_propa_def sg_progress_def)
+              subgoal
+                by (simp add: os_after_final_output_def os_after_label_produces_def
+                    os_after_second_propa_def os_after_increment_progress_def
+                    os_after_label_progress_def os_after_ooo_input_progress_def
+                    os_after_loop_progress_def os_after_drop_caps_def os_after_loop_updates_def
+                    os_after_label_input0_def os_after_label_read_input0_def
+                    os_after_input_output_def os_input_after_output_def os_after_input_stream_def
+                    os_input_after_stream_def os_first_propa_def os_progress_def
+                    loop_res_def op_state_base_def operator_state.defs obtain_progress_def
+                    drop_caps_def produces_def input_CONSUMES os_inv(1,2))
+              subgoal
+                by (simp add: os_after_final_output_def os_after_label_produces_def
+                    os_after_second_propa_def os_after_increment_progress_def
+                    os_after_label_progress_def os_after_ooo_input_progress_def
+                    os_after_loop_progress_def os_after_drop_caps_def os_after_loop_updates_def
+                    os_after_label_input0_def os_after_label_read_input0_def
+                    os_after_input_output_def os_input_after_output_def os_after_input_stream_def
+                    os_input_after_stream_def os_first_propa_def os_progress_def
+                    loop_res_def op_state_base_def operator_state.defs obtain_progress_def
+                    drop_caps_def produces_def input_CONSUMES os_inv(1,3,9))
+              subgoal
+                apply (rule exI[of _ \<open>timestamps (os_label_after_final_output n)\<close>])
+                apply (rule exI[of _ \<open>graph (os_label_after_final_output n)\<close>])
+                apply (rule exI[of _ \<open>vertices (os_label_after_final_output n)\<close>])
+                apply (rule exI[of _ \<open>label (os_label_after_final_output n)\<close>])
+                apply (simp add: os_after_final_output_def)
+                apply (subst label_propagation_state_extend_decompose)
+                apply (subgoal_tac \<open>en1 (os_label_after_loop_updates n) = Inl \<and>
+                    de1 (os_label_after_loop_updates n) = projl \<and>
+                    is_en1 (os_label_after_loop_updates n) = isl \<and>
+                    en2 (os_label_after_loop_updates n) = Inr \<and>
+                    de2 (os_label_after_loop_updates n) = projr \<and>
+                    is_en2 (os_label_after_loop_updates n) = isr\<close>)
+                 apply (simp add: os_label_after_final_output_def os_label_after_produces_def
+                    os_label_after_second_propa_def os_label_after_label_progress_def
+                    os_label_after_drop_caps_def drop_caps_def produces_def obtain_progress_def
+                    operator_state.defs)
+                apply (subgoal_tac \<open>os_label_after_loop_updates n =
+                    operator_state.extend (op_state_base (os_label_after_loop_updates n))
+                      \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+                        en2 = Inr, de2 = projr, is_en2 = isr,
+                        timestamps = timestamps (os_label_after_input0 n),
+                        graph = graph (os_label_after_input0 n),
+                        vertices = vertices (os_label_after_input0 n),
+                        label = label (os_label_after_loop_updates n)\<rparr>\<close>)
+                 apply (simp add: op_state_base_def operator_state.defs)
+                 apply (erule ssubst)
+                 apply simp
+                apply (rule loop_updates_extension[OF step_loop[of n],
+                    where L=\<open>label (os_label_after_input0 n)\<close>])
+                apply (simp add: os_label_after_input0_def os_label_after_read_input0_def
+                    os_label_after_first_propa_def op_state_base_def operator_state.defs os_inv(4)
+                    input_CONSUMES en1_fst_label_prop_input0_batched de1_fst_label_prop_input0_batched
+                    is_en1_fst_label_prop_input0_batched en2_fst_label_prop_input0_batched
+                    de2_fst_label_prop_input0_batched is_en2_fst_label_prop_input0_batched)
+                done
               subgoal
                 using os_inv(1,2,5) buffers_inv(2)
                 apply (simp add: ty1_check_def os_after_final_output_def
@@ -14694,7 +14830,6 @@ next
                   by (cases p rule: num2_cases)
                     (simp_all add: input_0_after_loop_updates_empty input_1_after_loop_updates_empty)
                 done
-
               subgoal
                 apply (rule allI)
                 subgoal for na
@@ -14710,7 +14845,6 @@ next
                       os_label_after_drop_caps_def op_state_base_def operator_state.defs
                       obtain_progress_def drop_caps_def produces_def)
                 done
-
               subgoal
                 using outpu_1_after_loop_updates_empty(4)[of n]
                 by (simp add: os_after_final_output_def os_after_label_produces_def
@@ -14719,7 +14853,6 @@ next
                     os_after_loop_progress_def os_after_drop_caps_def
                     input_ocaps_inv_def input_ocaps_inv_op_state_base
                     op_state_base_def operator_state.defs obtain_progress_def)
-
               subgoal
                 by (simp add: os_after_final_output_def os_after_label_produces_def
                     os_after_second_propa_def os_after_increment_progress_def
@@ -14730,7 +14863,6 @@ next
                     os_input_after_stream_def os_first_propa_def os_progress_def
                     loop_res_def op_state_base_def operator_state.defs obtain_progress_def
                     drop_caps_def produces_def input_CONSUMES os_inv(9))
-
               subgoal
                 by (simp add: os_after_final_output_def os_after_label_produces_def
                     os_after_second_propa_def os_after_increment_progress_def
@@ -14740,7 +14872,6 @@ next
                     outpu_1_after_loop_updates_empty(2)[of n]
                     outpu_1_after_loop_updates_empty(3)[of n]
                     loop_updates_cbufs_cleared[OF step_loop[of n], of \<open>((2 :: 3), (1 :: 2))\<close>])
-
               subgoal
                 using buffers_inv by simp
 
@@ -14754,9 +14885,6 @@ next
                     loop_updates_cbufs_cleared[OF step_loop[of n], of \<open>((1 :: 3), (1 :: 2))\<close>]
                     loop_updates_cbufs_cleared[OF step_loop[of n], of \<open>((2 :: 3), (1 :: 2))\<close>])
                 done
-
-
-
               subgoal
                 apply (simp add: os_after_final_output_def os_after_label_produces_def
                     os_after_second_propa_def os_after_increment_progress_def
@@ -14771,14 +14899,8 @@ next
                  apply (simp add: input_stream_inv)
                 apply (rule timely_input_stream_ldrop[OF stream_move(1) input_stream_inv])
                 done
-
-
-
-
               subgoal (* Use the sequence of have STEPS to prove this one *)
                 by (rule labels_after_final_output)
-
-
               subgoal (* IGNORE THIS SUBGOAL SORRY *) sorry
               subgoal
                 by (simp add: os_after_final_output_def os_label_after_final_output_def
@@ -14786,9 +14908,6 @@ next
                     os_label_after_label_progress_def os_label_after_drop_caps_def
                     op_state_base_def operator_state.defs drop_caps_def produces_def obtain_progress_def
                     input_0_after_loop_updates_empty input_1_after_loop_updates_empty)
-
-
-
               subgoal
                 apply (rule ballI)
                 apply (erule UnE)
@@ -14797,7 +14916,6 @@ next
                   subgoal
                     using label_prop_inv(4)
                     by (metis (mono_tags, lifting) UnCI image_iff in_lset_ltaken_ldropn)
-
                   subgoal
                     using outpu_0_after_final_output_empty[of n]
                     by (simp add: outputs_at_target_raw_summary inputs_at_target_def BULK_BENQ_def
@@ -14809,15 +14927,11 @@ next
                         os_label_after_label_progress_def os_label_after_drop_caps_def
                         op_state_base_def operator_state.defs drop_caps_def produces_def obtain_progress_def
                         input_0_after_loop_updates_empty)
-
                   done
                 subgoal
                   using ocaps0_after_final_output_mysnd[of n]
                   by simp
                 done
-
-
-
               subgoal
                 apply (simp add: os_label_after_final_output_def os_label_after_produces_def
                     os_label_after_second_propa_def os_label_after_label_progress_def
