@@ -13958,7 +13958,41 @@ next
              apply (rule refl)+
 
 
-            subgoal sorry
+            subgoal
+          apply (rule wb_upto_b_sym)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def[simplified])
+          apply (rule exI[of _ "cUn (Pair (1, 0) |`| cset_from_list (outpu (os 1) 0 @ map  (\<lambda> (d, c). (d, time c)) (final_output n))) S"])
+          apply (rule exI[of _ "cinsert ((nid, p), WCC, t) D"])
+              apply (rule exI[of _ "ldropn n lxs"])
+          apply (rule exI[of _ "os_after_final_output n"])
+          apply (rule exI[of _ "os_label_after_final_output n"])
+          apply (rule exI[of _ "cbufs((0, 0) := Nil, (1, 1) := Nil, (2, 1) := Nil)"])
+          apply (rule exI[of _ "sg_after_second_propa n"])
+              apply (intro conjI)
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal (* Use the sequence of have STEPS to prove this one *) sorry
+              subgoal sorry
+              subgoal (* Use the sequence of have STEPS to prove this one *) sorry
+              subgoal (* IGNORE THIS SUBGOAL SORRY *) sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
             done
           done
         done
