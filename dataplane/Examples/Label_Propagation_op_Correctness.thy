@@ -2932,6 +2932,17 @@ lemma op_state_base_CONSUMES[simp]:
   unfolding op_state_base_def fold_consumes
   by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
 
+lemma op_state_base_obtain_progress:
+  \<open>op_state_base (fst (obtain_progress os)) = fst (obtain_progress (op_state_base os))\<close>
+  unfolding op_state_base_def obtain_progress_def
+  by (rule operator_state_eqI) simp_all
+
+lemma op_state_base_front_initia_update[simp]:
+
+  \<open>op_state_base (os\<lparr>front := F, initia := I\<rparr>) = (op_state_base os)\<lparr>front := F, initia := I\<rparr>\<close>
+  unfolding op_state_base_def
+  by (rule operator_state_eqI) simp_all
+
 section \<open>Capability bookkeeping for produced batches\<close>
 
 lemma cap_times_filter_single_port_subset:
@@ -13970,10 +13981,23 @@ next
           apply (rule exI[of _ "cbufs((1, 0) := Nil, (1, 1) := Nil, (2, 1) := Nil)"])
           apply (rule exI[of _ "sg_after_second_propa n"])
               apply (intro conjI)
-              subgoal sorry
+              subgoal
+                apply (rule arg_cong3[where f=set_op])
+                  apply (rule refl)
+                 apply (rule refl)
+                apply (rule arg_cong2[where f=dataflow_op])
+                subgoal sorry
+                subgoal sorry
+                done
               subgoal (* TIP 1: this reduces to cset equality. TIP 2: You probably want to do a case distinction if the given arbitrary t is frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) or not *) sorry
-              subgoal sorry
-              subgoal sorry
+              subgoal
+                using subgraph_inv(1)
+                by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
+                    sg_after_label_progress_def sg_after_ooo_input_progress_def sg_first_propa_def sg_progress_def)
+              subgoal
+                using subgraph_inv(2)
+                by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
+                    sg_after_label_progress_def sg_after_ooo_input_progress_def sg_first_propa_def sg_progress_def)
               subgoal sorry
               subgoal sorry
               subgoal sorry
