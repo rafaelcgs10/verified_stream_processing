@@ -6431,6 +6431,54 @@ lemma label_prop_collected_edge_payloads_ccs_eq:
   done
 
 
+lemma label_prop_collected_edge_payloads_ccs_eq_ldropn:
+  fixes A B :: \<open>('a::order \<times> 'a) set\<close>
+  assumes chan_zero:
+    \<open>\<And>x. x \<in> set xs \<union> set ys \<union> set zs \<Longrightarrow> mysnd (snd x) = 0\<close>
+    and stream_zero:
+    \<open>\<And>t' d. Data t' d \<in> set evs \<Longrightarrow> mysnd t' = 0\<close>
+    and t_zero: \<open>mysnd t = 0\<close>
+    and DD: \<open>dd = projl\<close>
+  shows
+    \<open>ccs ({d. \<exists>t'. (Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set xs \<or>
+                  Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set ys \<or>
+                  Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set zs) \<and> t' \<le> t} \<union>
+        ({d. \<exists>t'. Data t' d \<in> set evs \<and> t' \<le> t} \<union> B) \<union> A) =
+      ccs (B \<union> (A \<union>
+        ((\<Union>(d, t')\<in>set xs. if myfst t' \<le> myfst t
+            then {dd d, (snd (dd d), fst (dd d))} else {}) \<union>
+         ((\<Union>(d, t')\<in>set ys. if myfst t' \<le> myfst t
+             then {dd d, (snd (dd d), fst (dd d))} else {}) \<union>
+          ((\<Union>(d, t')\<in>set zs. if myfst t' \<le> myfst t
+              then {dd d, (snd (dd d), fst (dd d))} else {}) \<union>
+           (\<Union>a\<in>{x \<in> set evs. is_Data x}.
+              case case a of Data t' d \<Rightarrow> (Inl d, t') of (d, t') \<Rightarrow>
+                if myfst t' \<le> myfst t
+                then {dd d, (snd (dd d), fst (dd d))} else {}))))))\<close>
+  apply (rule trans[of _ \<open>ccs ((B \<union> A) \<union>
+      ({d. \<exists>t'. (Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set xs \<or>
+                 Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set ys \<or>
+                 Data t' d \<in> (\<lambda>(x, t'). Data t' (projl x)) ` set zs) \<and> t' \<le> t} \<union>
+       {d. \<exists>t'. Data t' d \<in> set evs \<and> t' \<le> t}))\<close>])
+  subgoal
+    by (rule arg_cong[where f=ccs]) auto
+  apply (rule trans[OF label_prop_collected_edge_payloads_ccs_eq])
+     apply (blast intro: chan_zero)
+    apply (blast intro: stream_zero)
+   apply (rule t_zero)
+  apply (rule arg_cong[where f=ccs])
+  apply (unfold DD)
+  apply (simp only: Un_assoc)
+  apply (rule arg_cong[where f=\<open>(\<union>) B\<close>])
+  apply (rule arg_cong[where f=\<open>(\<union>) A\<close>])
+  apply (simp only: Int_Un_distrib2 UN_Un)
+  apply (intro arg_cong2[where f=\<open>(\<union>)\<close>])
+  subgoal by (auto split: if_splits)
+  subgoal by (auto split: if_splits)
+  subgoal by (auto split: if_splits)
+  subgoal by (auto split: event.splits if_splits)
+  done
+
 
 
 
@@ -13608,6 +13656,82 @@ next
     done
 
 
+  have timestamps_after_final_output_eq:
+    \<open>timestamps (os_label_after_final_output n) =
+      rev (map (\<lambda>(d, t). myfst t) (label_input0_msgs n)) @ timestamps os_label_prop\<close>
+    for n
+    by (simp add: os_label_after_final_output_def os_label_after_produces_def
+        produces_def drop_caps_def os_label_after_second_propa_def
+        os_label_after_label_progress_def os_label_after_drop_caps_def obtain_progress_def
+        os_label_after_loop_updates_def loop_res_def os_label_after_input0_def
+        os_label_after_read_input0_def fold_consumes os_label_after_first_propa_def
+        os_inv(4) operator_state.defs)
+
+  have timestamps_after_second_propa_eq:
+    \<open>timestamps (os_label_after_second_propa n) =
+      rev (map (\<lambda>(d, t). myfst t) (label_input0_msgs n)) @ timestamps os_label_prop\<close>
+    for n
+    by (simp add: os_label_after_second_propa_def
+        os_label_after_label_progress_def os_label_after_drop_caps_def obtain_progress_def
+        drop_caps_def os_label_after_loop_updates_def loop_res_def os_label_after_input0_def
+        os_label_after_read_input0_def fold_consumes os_label_after_first_propa_def
+        os_inv(4) operator_state.defs)
+
+  have ocaps0_after_second_propa_eq:
+    \<open>ocaps (os_label_after_second_propa n) (0 :: 2) =
+      ocaps (os 1) 0 @ map snd (input0_msgs n)\<close>
+    for n
+  proof -
+    have intsum_label_input0_10:
+      \<open>intsum (os_label_after_input0 n) (1 :: 2) (0 :: 2) = []\<close>
+      using Intsum_after_label_input0[of n, rule_format, of 1]
+      by (simp add: os_after_label_input0_def op_state_base_def operator_state.defs raw_summary_def)
+    have ocaps0_loop:
+      \<open>ocaps (os_label_after_loop_updates n) (0 :: 2) = ocaps (os_label_after_input0 n) 0\<close>
+      unfolding os_label_after_loop_updates_def loop_res_def
+      by (subst ocaps_0_fst_snd_loop_updates) (rule intsum_label_input0_10, simp)
+    have intsum_label_first_00:
+      \<open>intsum os_label_after_first_propa (0 :: 2) (0 :: 2) = [MyPair 0 0]\<close>
+      using os_inv(7)[rule_format, of 1]
+      by (simp add: os_label_after_first_propa_def os_inv(4) operator_state.defs raw_summary_def)
+    have concat_single: \<open>concat (map (\<lambda>(d, t). [t]) xs) = map snd xs\<close> for xs :: \<open>('a \<times> 'b) list\<close>
+      by (induct xs) auto
+    have ocaps0_read:
+      \<open>ocaps (os_label_after_read_input0 n) (0 :: 2) = ocaps (os 1) 0 @ map snd (input0_msgs n)\<close>
+      using intsum_label_first_00
+      by (simp add: os_label_after_read_input0_def fold_consumes os_label_after_first_propa_def
+          os_inv(4) operator_state.defs concat_single flip: zero_myprod_def)
+    show ?thesis
+      using ocaps0_loop ocaps0_read
+      by (simp add: os_label_after_second_propa_def os_label_after_label_progress_def
+          os_label_after_drop_caps_def os_label_after_input0_def drop_caps_def
+          obtain_progress_def operator_state.defs)
+  qed
+
+  have ocaps0_after_final_output_set:
+    \<open>set (ocaps (os_after_final_output n 1) (0 :: 2)) =
+      {t \<in> set (ocaps (os 1) 0) \<union> snd ` set (input0_msgs n).
+        frontier_less_equal
+          (exit_scope myfst (front (os_label_after_second_propa n) 0 +
+            front (os_label_after_second_propa n) 1)) (myfst t) \<or>
+        myfst t \<notin> set (timestamps (os_label_after_second_propa n))}\<close>
+    for n
+  proof -
+    have *: \<open>set (ocaps (os_after_final_output n 1) (0 :: 2)) =
+      {t \<in> set (ocaps (os_label_after_second_propa n) (0 :: 2)).
+        \<not> (\<not> frontier_less_equal
+            (exit_scope myfst (front (os_label_after_second_propa n) 0 +
+              front (os_label_after_second_propa n) 1)) (myfst t) \<and>
+           myfst t \<in> set (timestamps (os_label_after_second_propa n)))}\<close>
+      by (simp add: os_after_final_output_def os_label_after_final_output_def
+          os_after_label_produces_def os_label_after_produces_def
+          label_produces_below_times_def produces_def drop_caps_def
+          op_state_base_def operator_state.defs filter_map comp_def capability.sel)
+    show ?thesis
+      unfolding *
+      by (auto simp add: ocaps0_after_second_propa_eq)
+  qed
+
   show ?case (is \<open>wsim ((~) OO \<U> ?R OO (\<approx>)) _ _\<close>)
   proof -
     define R where "R = ?R"
@@ -14840,28 +14964,99 @@ next
                      cUn (cUn S OutOld) SPold
                    = cUn (cUn (Pair (1,0) |`| cUn OutOld' FinalImg) S) SPnew
                    where FinalImg = (\<lambda>(d,c). (d, time c)) |`| cset_from_list (final_output n).
-                   Modulo cUn-AC this is:  SPold = cUn (Pair (1,0) |`| FinalImg) SPnew.
-                   Proof plan (TIP 2): extensional via cset_eq_iff; for an element
-                   x = ((1,0), Inr (ccs ...), t) case-distinguish on
-                     frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) (myfst t):
-                   - \<not>fle (timestamp closed): x's payload is emitted in final_output n
-                     (final_output_def filters \<not> frontier_less_equal of the c''-frontier;
-                      use second_propa / label_prop_inv(2) labels_stable and
-                      label_prop_collected_edge_payloads_ccs_eq as in the subgoal near the
-                      BULK_BENQ/outputs_at_target_raw_summary proof above at ~line 14383).
-                   - fle (timestamp live): x is in SPnew with the same ccs payload:
-                     edges of (chns-after @@- ldropn n lxs) up to t plus
-                     all_edges (os_label_after_final_output n) (myfst t)
-                     equal edges of (chns @@- lxs) up to t plus all_edges os_label_prop (myfst t);
-                     cf. labels_after_final_output and the timestamps/ocaps facts
-                     ocaps0_after_final_output_mysnd, outpu_0_after_final_output_empty. *)
+                   Plan: hoist (a) the ccs payload equality (\<forall>t0 with mysnd t0 = 0) and
+                   (b) labels_stable for timestamps closed at the SECOND-PROPA frontier;
+                   then extensional via cset_eq_iff, case-splitting on the second-propa
+                   (c'') frontier — NOT the old front (os 1) — because
+                   label_produces_below_times/final_output filter on the c'' frontier:
+                   - fle-new (live): x \<in> SPold \<longleftrightarrow> x \<in> SPnew (caps survive the produces
+                     drop by ocaps0_after_final_output_set; FinalImg contradicts fle-new);
+                   - \<not>fle-new (closed): SPnew index excludes t0 (cap dropped + ldropn
+                     expired), so x \<in> SPold \<longleftrightarrow> x \<in> Pair (1,0) |`| FinalImg via (b). *)
+                apply (subgoal_tac \<open>\<forall>t0 :: (nat, nat) myprod. mysnd t0 = 0 \<longrightarrow>
+                    ccs (set (icoll (map (\<lambda>(x, t'). Data t' (projl x))
+                          (((outputs_at_target (summ sg) os >> cbufs) >> inputs_at_target os) (1, 0)) @@- lxs) t0) \<union>
+                        all_edges os_label_prop (myfst t0)) =
+                    ccs (set (icoll (map (\<lambda>(x, t'). Data t' (projl x))
+                          (((outputs_at_target (summ (sg_after_second_propa n)) (os_after_final_output n) >>
+                             cbufs((1, 0) := [], (1, 1) := [], (2, 1) := [])) >>
+                            inputs_at_target (os_after_final_output n)) (1, 0)) @@- ldropn n lxs) t0) \<union>
+                        all_edges (os_label_after_final_output n) (myfst t0))\<close>)
+                 prefer 2
+                 subgoal
+                   apply (intro allI impI)
+                   apply (simp add: os_label_after_final_output_def os_label_after_produces_def
+                     os_label_after_second_propa_def os_label_after_label_progress_def
+                     os_label_after_drop_caps_def os_label_after_loop_updates_def loop_res_def
+                     label_produces_batch_def label_produces_below_times_def
+                     drop_caps_def produces_def obtain_progress_def)
+                   apply (subst set_icoll_lshift)
+                   subgoal
+                     using input_stream_inv timely_input_stream_expires_le by blast
+                   apply (simp add: outputs_at_target_raw_summary inputs_at_target_def
+                     buffers_inv BULK_BENQ_def subgraph_inv(1) set_icoll_llist_of)
+                   apply (simp only: os_label_after_input0_def)
+                   apply (simp only: os_label_after_read_input0_def os_label_after_first_propa_def)
+                   apply (simp only: label_input0_msgs_def input0_msgs_def input_data_def input_events_def)
+                   apply (simp add: input_CONSUMES)
+                   apply (subst all_edges_fst_label_prop_input0_batched_input_eq)
+                      apply (simp add: input_CONSUMES label_prop_inv(5) label_prop_upd_inv_def
+                        operator_state.defs os_inv(4,7))
+                    using label_prop_inv(5)
+                    apply (simp add: label_prop_upd_inv_def input_CONSUMES
+                      operator_state.defs os_inv(4,7) all_edges_def all_vertices_def neighbors_def)
+                    apply metis
+                   using label_prop_inv(7)
+                     [unfolded inputs_at_target_def buffers_inv BULK_BENQ_def
+                       subgraph_inv outputs_at_target_raw_summary operator_state.defs,
+                       simplified]
+                   apply (auto simp add: os_inv(4) operator_state.defs input_CONSUMES
+                     wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def)[1]
+                   apply (simp add: all_edges_def all_vertices_def neighbors_def)
+                   apply (subst set_icoll_lshift)
+                   subgoal
+                     using timely_input_stream_expires_le[OF timely_input_stream_ldrop[OF stream_move(1) input_stream_inv]] by blast
+                   apply (simp add: set_icoll_llist_of)
+                   apply (subst set_icoll_ltaken_ldropn[where n=n])
+                   subgoal
+                     using timely_input_stream_expires_le[OF timely_input_stream_ldrop[OF stream_move(1) input_stream_inv]] by blast
+                   subgoal
+                     apply (simp add: sg_after_second_propa_def sg_after_increment_progress_def
+                         sg_after_label_progress_def sg_after_ooo_input_progress_def
+                         sg_first_propa_def sg_progress_def outputs_at_target_raw_summary
+                         subgraph_inv(1) outpu_0_after_final_output_empty)
+                     apply (rule label_prop_collected_edge_payloads_ccs_eq_ldropn)
+                     subgoal
+                       using label_prop_inv(4)
+                       by (force simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary
+                           subgraph_inv(1) inputs_at_target_def)
+                     subgoal
+                       using label_prop_inv(4)
+                       by (force dest!: setltakenD)
+                     subgoal
+                       by simp
+                     subgoal
+                       by (simp add: os_inv(4) operator_state.defs)
+                     done
+                   done
+                apply (subgoal_tac \<open>\<forall>t \<in> set (timestamps (os_label_after_second_propa n)).
+                    \<not> frontier_less_equal (exit_scope myfst (front (os_label_after_second_propa n) 0 +
+                      front (os_label_after_second_propa n) 1)) t \<longrightarrow>
+                    labels_stable (all_edges (os_label_after_second_propa n) t)
+                      (min_label (os_label_after_second_propa n) t)\<close>)
+                 prefer 2
+                 subgoal (* HARD: label propagation has converged for timestamps closed at
+                      the c'' frontier — same fact as the label_prop_inv(2) re-establishment
+                      sibling subgoal below *)
+                   sorry
                 apply (simp only: cset_eq_iff)
                 apply (rule allI)
                 subgoal for x
                   apply (case_tac \<open>frontier_less_equal
-                      (exit_scope myfst (front (os 1) 0 + front (os 1) 1))
+                      (exit_scope myfst (front (os_label_after_second_propa n) 0 +
+                        front (os_label_after_second_propa n) 1))
                       (myfst (snd (snd x)))\<close>)
-                  subgoal (* live timestamp: x \<in> SPold \<longleftrightarrow> x \<in> SPnew (same ccs payload) *)
+                  subgoal (* live at the new (second-propa) frontier: x \<in> SPold \<longleftrightarrow> x \<in> SPnew *)
                     apply (clarsimp simp flip: cin.rep_eq simp add: image_iff)
                     apply (rule iffI)
                      apply (elim disjE)
@@ -14869,74 +15064,458 @@ next
                     subgoal (* x \<in> OutOld \<Longrightarrow> x \<in> Pair(1,0)`(OutOld \<union> FinalImg) *)
                       by (force simp flip: cin.rep_eq
                           simp add: cset_from_list_def cset_of_llist.rep_eq image_iff)
-                     subgoal (* HARD 1: x \<in> SPold \<Longrightarrow> x \<in> SPnew: same t (live), same ccs
-                          payload; edges of the consumed prefix ltaken n lxs are now in
-                          all_edges (os_label_after_final_output n) *)
+                     subgoal (* x \<in> SPold \<Longrightarrow> x \<in> SPnew *)
                        apply (rule disjI2)+
                        apply (clarsimp simp flip: cin.rep_eq
                            simp add: image_iff cset_from_list_def cset_of_llist.rep_eq)
                        apply (subst cimage_iff)
                        apply (rename_tac t0)
+                       apply (subgoal_tac \<open>mysnd t0 = 0\<close>)
+                        prefer 2
+                        subgoal
+                          apply (thin_tac \<open>\<forall>t0. mysnd t0 = 0 \<longrightarrow> P t0\<close> for P)
+                          apply (thin_tac \<open>\<forall>t\<in>set (timestamps (os_label_after_second_propa n)). Q t\<close> for Q)
+                          apply (thin_tac \<open>x = y\<close> for y)
+                          apply (elim disjE)
+                          subgoal
+                            apply (clarsimp simp add: ts_def cin.rep_eq cset_of_llist.rep_eq
+                                image_iff split: event.splits)
+                            apply (case_tac x)
+                              prefer 2
+                              subgoal by clarsimp
+                             prefer 2
+                             subgoal by clarsimp
+                            apply clarsimp
+                            using label_prop_inv(4)
+                            by (metis (mono_tags, lifting) UnCI event.sel(1) imageI)
+                          subgoal
+                            using label_prop_inv(4)[unfolded buffers_inv]
+                            by (fastforce simp flip: cin.rep_eq
+                                simp add: cset_of_llist.rep_eq cset_from_list_def image_iff)
+                          subgoal
+                            by clarsimp
+                          done
                        apply (rule_tac x=t0 in cBexI)
-
-
-                       subgoal (* payload equality at the witness timestamp t0:
-                            ccs (edges of chns(1,0) @@- lxs up to t0 \<union> all_edges os_label_prop)
-                            = ccs (edges of chns-after @@- ldropn n lxs up to t0
-                                   \<union> all_edges (os_label_after_final_output n));
-                            use label_prop_collected_edge_payloads_ccs_eq as at ~14383 *)
-                         apply (simp add: os_label_after_final_output_def os_label_after_produces_def
-                           os_label_after_second_propa_def os_label_after_label_progress_def
-                           os_label_after_drop_caps_def os_label_after_loop_updates_def loop_res_def
-                           label_produces_batch_def label_produces_below_times_def
-                           drop_caps_def produces_def obtain_progress_def)
-                         apply (subst set_icoll_lshift)
-                         subgoal
-                           using input_stream_inv timely_input_stream_expires_le by blast
-                         apply (simp add: outputs_at_target_raw_summary inputs_at_target_def
-                           buffers_inv BULK_BENQ_def subgraph_inv(1) set_icoll_llist_of)
-                         apply (simp only: os_label_after_input0_def)
-                         apply (simp only: os_label_after_read_input0_def os_label_after_first_propa_def)
-                         apply (simp only: label_input0_msgs_def input0_msgs_def input_data_def input_events_def)
-
-                         apply (simp add: input_CONSUMES)
-                        apply (subst all_edges_fst_label_prop_input0_batched_input_eq)
-                           apply (simp add: input_CONSUMES label_prop_inv(5) label_prop_upd_inv_def
-                             operator_state.defs os_inv(4,7))
-                         using label_prop_inv(5)
-                         apply (simp add: label_prop_upd_inv_def input_CONSUMES
-                           operator_state.defs os_inv(4,7) all_edges_def all_vertices_def neighbors_def)
-                         apply metis
-                        using label_prop_inv(7)
-                          [unfolded inputs_at_target_def buffers_inv BULK_BENQ_def
-                            subgraph_inv outputs_at_target_raw_summary operator_state.defs,
-                            simplified]
-                        apply (auto simp add: os_inv(4) operator_state.defs input_CONSUMES
-                          wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def)[1]
-                        apply (simp add: all_edges_def all_vertices_def neighbors_def)
-                        apply (subst set_icoll_lshift)
+                        apply simp
+                       apply (subgoal_tac \<open>(((outputs_at_target (summ (sg_after_second_propa n)) (os_after_final_output n) >>
+                             cbufs((1, 0) := [], (1, 1) := [], (2, 1) := [])) >>
+                            inputs_at_target (os_after_final_output n)) (1, 0)) = []\<close>)
+                        prefer 2
                         subgoal
-                          using timely_input_stream_expires_le[OF timely_input_stream_ldrop[OF stream_move(1) input_stream_inv]] by blast
-                        apply (simp add: set_icoll_llist_of)
-                        apply (subst set_icoll_ltaken_ldropn[where n=n])
+                          by (simp add: outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def
+                              inputs_at_target_def sg_after_second_propa_def sg_after_increment_progress_def
+                              sg_after_label_progress_def sg_after_ooo_input_progress_def sg_first_propa_def
+                              sg_progress_def outpu_0_after_final_output_empty)
+                       apply (subgoal_tac \<open>\<forall>d t'. (d, t') \<in> set (input (os 1) (0 :: 2)) \<longrightarrow>
+                           t' \<in> set (ocaps (os 1) (0 :: 2))\<close>)
+                        prefer 2
                         subgoal
-                          using timely_input_stream_expires_le[OF timely_input_stream_ldrop[OF stream_move(1) input_stream_inv]] by blast
-                        subgoal
-                          apply (rule ccs_eq_if_undirected)
-                          using label_prop_inv(4) outpu_0_after_final_output_empty[of n]
-                          sorry
-                        done
-                  subgoal (* closed timestamp: x \<in> SPold \<longleftrightarrow> x \<in> Pair (1,0) |`| FinalImg *)
-                    apply (clarsimp simp flip: cin.rep_eq
-                      simp add: image_iff cset_from_list_def cset_of_llist.rep_eq final_output_def)
+                          using label_prop_inv(6)[unfolded input_ocaps_inv_def, rule_format]
+                            os_inv(7)[rule_format, of 1]
+                          by (fastforce simp add: raw_summary_def zero_myprod_def[symmetric])
+                       apply (elim disjE)
+                       subgoal for t0 (* t0 \<in> ts lxs *)
+                         apply (clarsimp simp flip: cin.rep_eq
+                             simp add: image_iff cset_from_list_def cset_of_llist.rep_eq ts_def
+                             split: event.splits)
+                         apply (rename_tac y)
+                         apply (simp add: BULK_BENQ_def)
+                         apply (case_tac y)
+                           prefer 2
+                           subgoal by clarsimp
+                          prefer 2
+                          subgoal by clarsimp
+                         apply clarsimp
+                         subgoal for a b
+                           apply (subgoal_tac \<open>Data t0 (a, b) \<in> set (ltaken n lxs) \<or>
+                               Data t0 (a, b) \<in> lset (ldropn n lxs)\<close>)
+                            prefer 2
+                            subgoal
+                              by (simp add: cin.rep_eq cset_of_llist.rep_eq
+                                  in_lset_ltaken_ldropn[symmetric])
+                           apply (erule disjE)
+                            prefer 2
+                            subgoal
+                              apply (drule_tac x=\<open>Data t0 (a, b)\<close> in spec)
+                              by (clarsimp simp add: cin.rep_eq cset_of_llist.rep_eq)
+                           apply (subgoal_tac \<open>t0 \<in> set (ocaps (os_after_final_output n 1) (0 :: 2))\<close>)
+                            prefer 2
+                            subgoal
+                              apply (simp only: ocaps0_after_final_output_set mem_Collect_eq Un_iff)
+                              apply (rule conjI)
+                               subgoal
+                                 apply (rule disjI2)
+                                 apply (simp only: input0_msgs_def input_data_def input_events_def
+                                     set_append set_map image_Un Un_iff)
+                                 apply (rule disjI2, rule disjI2)
+                                 apply (rule image_eqI[where x=\<open>(Inl (a, b), t0)\<close>])
+                                  apply simp
+                                 apply (rule image_eqI[where x=\<open>Data t0 (a, b)\<close>])
+                                  apply simp
+                                 by simp
+                               subgoal
+                                 by simp
+                              done
+                           apply (subgoal_tac \<open>myfst t0 \<in> set (timestamps (os_label_after_final_output n))\<close>)
+                            prefer 2
+                            subgoal
+                              apply (simp only: timestamps_after_final_output_eq set_append set_rev
+                                  set_map Un_iff)
+                              apply (rule disjI1)
+                              apply (rule image_eqI[where x=\<open>(Inl (a, b), t0)\<close>])
+                               apply simp
+                              apply (simp only: label_input0_msgs_def input0_msgs_def input_data_def
+                                  input_events_def set_append set_map Un_iff)
+                              apply (rule disjI2, rule disjI2, rule disjI2)
+                              apply (rule image_eqI[where x=\<open>Data t0 (a, b)\<close>])
+                               apply simp
+                              by simp
+                           apply (metis myprod.collapse)
+                           done
+                         done
+                       subgoal for t0 (* t0 \<in> old buffer times *)
+                         apply (clarsimp simp flip: cin.rep_eq
+                             simp add: image_iff cset_from_list_def cset_of_llist.rep_eq)
+                         subgoal for a
+                           apply (simp add: BULK_BENQ_def)
+                           apply (subgoal_tac \<open>t0 \<in> set (ocaps (os_after_final_output n 1) (0 :: 2))\<close>)
+                            prefer 2
+                            subgoal
+                              apply (simp only: ocaps0_after_final_output_set mem_Collect_eq Un_iff)
+                              apply (rule conjI)
+                               subgoal
+                                 apply (elim disjE)
+                                 subgoal (* input buffer: cap via input_ocaps_inv *)
+                                   apply (rule disjI1)
+                                   apply (subgoal_tac \<open>(a, t0) \<in> set (input (os 1) (0 :: 2))\<close>)
+                                    prefer 2
+                                    subgoal by (simp add: inputs_at_target_def)
+                                   by blast
+                                 subgoal (* cbufs part *)
+                                   apply (rule disjI2)
+                                   apply (simp only: input0_msgs_def set_append set_map image_Un Un_iff)
+                                   apply (rule disjI1)
+                                   apply (rule image_eqI[where x=\<open>(a, t0)\<close>])
+                                    apply simp
+                                   by simp
+                                 subgoal (* outpu part *)
+                                   apply (rule disjI2)
+                                   apply (simp only: input0_msgs_def set_append set_map image_Un Un_iff)
+                                   apply (rule disjI2, rule disjI1)
+                                   apply (rule image_eqI[where x=\<open>(a, t0)\<close>])
+                                    apply simp
+                                   by (simp add: outputs_at_target_raw_summary subgraph_inv(1))
+                                 done
+                               subgoal
+                                 by simp
+                              done
+                           apply (subgoal_tac \<open>myfst t0 \<in> set (timestamps (os_label_after_final_output n))\<close>)
+                            prefer 2
+                            subgoal
+                              apply (simp only: timestamps_after_final_output_eq set_append set_rev
+                                  set_map Un_iff)
+                              apply (rule disjI1)
+                              apply (rule image_eqI[where x=\<open>(a, t0)\<close>])
+                               apply simp
+                              apply (simp only: label_input0_msgs_def input0_msgs_def set_append Un_iff)
+                              apply (elim disjE)
+                                apply (simp add: inputs_at_target_def)
+                               apply simp
+                              by (simp add: outputs_at_target_raw_summary subgraph_inv(1))
+                           apply (metis myprod.collapse)
+                           done
+                         done
+                       subgoal (* t0 \<in> MyPair-filter of old timestamps/ocaps *)
+                         by (force simp flip: cin.rep_eq
+                             simp add: image_iff cset_from_list_def cset_of_llist.rep_eq
+                             timestamps_after_final_output_eq timestamps_after_second_propa_eq
+                             ocaps0_after_final_output_set)
+                       done
+                     subgoal (* reverse direction: RHS \<Longrightarrow> LHS *)
+                       apply (clarsimp simp flip: cin.rep_eq
+                           simp add: image_iff cset_from_list_def cset_of_llist.rep_eq)
+                       apply (elim disjE)
+                       subgoal (* Pair`(OutOld \<union> FinalImg): OutOld direct; FinalImg contradicts fle-new *)
+                         apply (clarsimp simp flip: cin.rep_eq
+                             simp add: image_iff cset_from_list_def cset_of_llist.rep_eq)
+                         apply (subgoal_tac \<open>\<forall>p. front (os_label_after_second_propa n) p =
+                             frontier (c_imp (c'' n) (Loc 1 (Trg p)))\<close>)
+                          prefer 2
+                          subgoal
+                            by (simp add: os_label_after_second_propa_def
+                                label_front_after_second_propa_def)
+                         by (clarsimp simp add: final_output_def label_prop_output_batch_def
+                             image_iff)
+                       subgoal (* x \<in> SPnew \<Longrightarrow> contradiction with \<not> x \<in> SPold *)
+                         apply (clarsimp simp flip: cin.rep_eq
+                             simp add: image_iff cset_from_list_def cset_of_llist.rep_eq)
+                         subgoal for xa
+                           apply (subgoal_tac \<open>(((outputs_at_target (summ (sg_after_second_propa n)) (os_after_final_output n) >>
+                                 cbufs((1, 0) := [], (1, 1) := [], (2, 1) := [])) >>
+                                inputs_at_target (os_after_final_output n)) (1, 0)) = []\<close>)
+                            prefer 2
+                            subgoal
+                              by (simp add: outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def
+                                  inputs_at_target_def sg_after_second_propa_def sg_after_increment_progress_def
+                                  sg_after_label_progress_def sg_after_ooo_input_progress_def sg_first_propa_def
+                                  sg_progress_def outpu_0_after_final_output_empty)
+                           apply (subgoal_tac \<open>mysnd xa = 0\<close>)
+                            prefer 2
+                            subgoal
+                              apply (thin_tac \<open>\<forall>t0. mysnd t0 = 0 \<longrightarrow> P t0\<close> for P)
+                              apply (thin_tac \<open>\<forall>t\<in>set (timestamps (os_label_after_second_propa n)). Q t\<close> for Q)
+                              apply (thin_tac \<open>x = y\<close> for y)
+                              apply (thin_tac \<open>\<not> x' |\<in>| A\<close> for x' A)+
+                              apply (elim disjE)
+                              subgoal
+                                apply (clarsimp simp add: ts_def cin.rep_eq cset_of_llist.rep_eq
+                                    image_iff split: event.splits)
+                                apply (rename_tac ev)
+                                apply (case_tac ev)
+                                  prefer 2
+                                  subgoal by clarsimp
+                                 prefer 2
+                                 subgoal by clarsimp
+                                apply clarsimp
+                                subgoal for a b
+                                  apply (subgoal_tac \<open>Data xa (a, b) \<in> lset lxs\<close>)
+                                   prefer 2
+                                   subgoal
+                                     by (simp add: in_lset_ltaken_ldropn[of _ lxs n])
+                                  using label_prop_inv(4)
+                                  by (metis (mono_tags, lifting) UnCI event.sel(1) imageI)
+                                done
+                              subgoal
+                                by (simp add: BULK_BENQ_def cin.rep_eq cimage.rep_eq
+                                    cset_of_llist.rep_eq)
+                              subgoal
+                                by clarsimp
+                              done
+                           apply (thin_tac \<open>\<not> x' |\<in>| S\<close> for x')
+                           apply (erule notE)
+                           apply (subst cimage_iff)
+                           apply (rule_tac x=xa in cBexI)
+                            subgoal
+                              by (simp add: BULK_BENQ_def)
+                           apply (elim disjE)
+                           subgoal (* xa \<in> ts (ldropn n lxs) \<Longrightarrow> xa \<in> ts lxs *)
+                             apply (thin_tac \<open>\<forall>t0. mysnd t0 = 0 \<longrightarrow> P t0\<close> for P)
+                             apply (thin_tac \<open>\<forall>t\<in>set (timestamps (os_label_after_second_propa n)). Q t\<close> for Q)
+                             apply (thin_tac \<open>x = y\<close> for y)
+                             apply (clarsimp simp flip: cin.rep_eq
+                                 simp add: image_iff cset_from_list_def cset_of_llist.rep_eq ts_def
+                                 split: event.splits)
+                             apply (rename_tac ev)
+                             apply (case_tac ev)
+                               prefer 2
+                               subgoal by clarsimp
+                              prefer 2
+                              subgoal by clarsimp
+                             apply clarsimp
+                             subgoal for a b
+                               apply (subgoal_tac \<open>Data xa (a, b) \<in> lset lxs\<close>)
+                                prefer 2
+                                subgoal
+                                  by (simp add: cin.rep_eq cset_of_llist.rep_eq
+                                      in_lset_ltaken_ldropn[of _ lxs n])
+                               apply (drule_tac x=\<open>Data xa (a, b)\<close> in spec)
+                               by (clarsimp simp add: cin.rep_eq cset_of_llist.rep_eq)
+                             done
+                           subgoal (* xa \<in> times of the emptied new buffers *)
+                             by (simp add: BULK_BENQ_def cin.rep_eq cimage.rep_eq
+                                 cset_of_llist.rep_eq)
+                           subgoal (* MyPair-filter-new \<Longrightarrow> index-old *)
+                             apply (thin_tac \<open>\<forall>t0. mysnd t0 = 0 \<longrightarrow> P t0\<close> for P)
+                             apply (thin_tac \<open>\<forall>t\<in>set (timestamps (os_label_after_second_propa n)). Q t\<close> for Q)
+                             apply (thin_tac \<open>x = y\<close> for y)
+                             apply (elim exE conjE bexE)
+                             apply (subst (asm) ocaps0_after_final_output_set)
+                             apply (subst (asm) timestamps_after_final_output_eq)
+                             apply clarsimp
+                             subgoal for x'
+                               apply (erule disjE)
+                               subgoal (* y = myfst of a consumed message *)
+                                 apply (thin_tac \<open>x' \<in> A \<or> x' \<in> B\<close> for A B)
+                                 apply (clarsimp simp add: image_iff)
+                                 subgoal for d t'
+                                   apply (simp only: label_input0_msgs_def input0_msgs_def
+                                       set_append Un_iff)
+                                   apply (elim disjE)
+                                   subgoal (* from input (os 1) 0 *)
+                                     apply (subgoal_tac \<open>mysnd t' = 0\<close>)
+                                      prefer 2
+                                      subgoal
+                                        using label_prop_inv(4)[unfolded buffers_inv]
+                                        by (fastforce simp add: BULK_BENQ_def inputs_at_target_def
+                                            image_iff)
+                                     apply (subgoal_tac \<open>MyPair (myfst t') 0 = t'\<close>)
+                                      prefer 2
+                                      subgoal
+                                        by (metis myprod.collapse)
+                                     apply (simp only: cin.rep_eq cimage.rep_eq
+                                         cset_of_llist.rep_eq lset_llist_of BULK_BENQ_def)
+                                     by (fastforce simp add: inputs_at_target_def image_iff)
+                                   subgoal (* from cbufs (1, 0) *)
+                                     apply (subgoal_tac \<open>mysnd t' = 0\<close>)
+                                      prefer 2
+                                      subgoal
+                                        using label_prop_inv(4)[unfolded buffers_inv]
+                                        by (fastforce simp add: BULK_BENQ_def image_iff)
+                                     apply (subgoal_tac \<open>MyPair (myfst t') 0 = t'\<close>)
+                                      prefer 2
+                                      subgoal
+                                        by (metis myprod.collapse)
+                                     apply (simp only: cin.rep_eq cimage.rep_eq
+                                         cset_of_llist.rep_eq lset_llist_of BULK_BENQ_def)
+                                     by (fastforce simp add: image_iff)
+                                   subgoal (* from outpu (os 0) 0 *)
+                                     apply (subgoal_tac \<open>mysnd t' = 0\<close>)
+                                      prefer 2
+                                      subgoal
+                                        using label_prop_inv(4)[unfolded buffers_inv]
+                                        by (fastforce simp add: BULK_BENQ_def
+                                            outputs_at_target_raw_summary subgraph_inv(1) image_iff)
+                                     apply (subgoal_tac \<open>MyPair (myfst t') 0 = t'\<close>)
+                                      prefer 2
+                                      subgoal
+                                        by (metis myprod.collapse)
+                                     apply (simp only: cin.rep_eq cimage.rep_eq
+                                         cset_of_llist.rep_eq lset_llist_of BULK_BENQ_def)
+                                     by (fastforce simp add: outputs_at_target_raw_summary
+                                         subgraph_inv(1) image_iff)
+                                   subgoal (* from the consumed prefix: contradicts \<not> ts lxs *)
+                                     apply (simp only: input_data_def input_events_def set_map)
+                                     apply (clarsimp simp add: image_iff)
+                                     apply (rename_tac ev)
+                                     apply (case_tac ev)
+                                       prefer 2
+                                       subgoal by clarsimp
+                                      prefer 2
+                                      subgoal by clarsimp
+                                     apply clarsimp
+                                     subgoal for a b
+                                       apply (erule notE)
+                                       apply (subgoal_tac \<open>mysnd t' = 0\<close>)
+                                        prefer 2
+                                        subgoal
+                                          using label_prop_inv(4)
+                                          by (metis (mono_tags, lifting) UnCI event.sel(1)
+                                              imageI setltakenD)
+                                       apply (subgoal_tac \<open>MyPair (myfst t') 0 = t'\<close>)
+                                        prefer 2
+                                        subgoal
+                                          by (metis myprod.collapse)
+                                       apply (subgoal_tac \<open>Data t' (a, b) \<in> lset lxs\<close>)
+                                        prefer 2
+                                        subgoal
+                                          by (simp add: in_lset_ltaken_ldropn[of _ lxs n])
+                                       apply (simp only: ts_def)
+                                       apply (subst cimage_iff)
+                                       apply (rule_tac x=\<open>Data t' (a, b)\<close> in cBexI)
+                                        subgoal
+                                          by simp
+                                       by (simp add: cin.rep_eq cset_of_llist.rep_eq)
+                                     done
+                                   done
+                                 done
+                               subgoal (* y \<in> old timestamps *)
+                                 apply (erule disjE)
+                                 subgoal (* cap in old ocaps: contradicts the negated filter-old *)
+                                   by blast
+                                 subgoal (* cap consumed: xa is the consumed time itself *)
+                                   apply (clarsimp simp add: image_iff)
+                                   subgoal for d
+                                     apply (simp only: input0_msgs_def set_append Un_iff)
+                                     apply (elim disjE)
+                                     subgoal (* from cbufs (1, 0) *)
+                                       apply (subgoal_tac \<open>mysnd x' = 0\<close>)
+                                        prefer 2
+                                        subgoal
+                                          using label_prop_inv(4)[unfolded buffers_inv]
+                                          by (fastforce simp add: BULK_BENQ_def image_iff)
+                                       apply (subgoal_tac \<open>MyPair (myfst x') 0 = x'\<close>)
+                                        prefer 2
+                                        subgoal
+                                          by (metis myprod.collapse)
+                                       apply (simp only: cin.rep_eq cimage.rep_eq
+                                           cset_of_llist.rep_eq lset_llist_of BULK_BENQ_def)
+                                       by (fastforce simp add: image_iff)
+                                     subgoal (* from outpu (os 0) 0 *)
+                                       apply (subgoal_tac \<open>mysnd x' = 0\<close>)
+                                        prefer 2
+                                        subgoal
+                                          using label_prop_inv(4)[unfolded buffers_inv]
+                                          by (fastforce simp add: BULK_BENQ_def
+                                              outputs_at_target_raw_summary subgraph_inv(1) image_iff)
+                                       apply (subgoal_tac \<open>MyPair (myfst x') 0 = x'\<close>)
+                                        prefer 2
+                                        subgoal
+                                          by (metis myprod.collapse)
+                                       apply (simp only: cin.rep_eq cimage.rep_eq
+                                           cset_of_llist.rep_eq lset_llist_of BULK_BENQ_def)
+                                       by (fastforce simp add: outputs_at_target_raw_summary
+                                           subgraph_inv(1) image_iff)
+                                     subgoal (* from the consumed prefix: contradicts \<not> ts lxs *)
+                                       apply (simp only: input_data_def input_events_def set_map)
+                                       apply (clarsimp simp add: image_iff)
+                                       apply (rename_tac ev)
+                                       apply (case_tac ev)
+                                         prefer 2
+                                         subgoal by clarsimp
+                                        prefer 2
+                                        subgoal by clarsimp
+                                       apply clarsimp
+                                       subgoal for a b
+                                         apply (erule notE)
+                                         apply (subgoal_tac \<open>mysnd x' = 0\<close>)
+                                          prefer 2
+                                          subgoal
+                                            using label_prop_inv(4)
+                                            by (metis (mono_tags, lifting) UnCI event.sel(1)
+                                                imageI setltakenD)
+                                         apply (subgoal_tac \<open>MyPair (myfst x') 0 = x'\<close>)
+                                          prefer 2
+                                          subgoal
+                                            by (metis myprod.collapse)
+                                         apply (subgoal_tac \<open>Data x' (a, b) \<in> lset lxs\<close>)
+                                          prefer 2
+                                          subgoal
+                                            by (simp add: in_lset_ltaken_ldropn[of _ lxs n])
+                                         apply (simp only: ts_def)
+                                         apply (subst cimage_iff)
+                                         apply (rule_tac x=\<open>Data x' (a, b)\<close> in cBexI)
+                                          subgoal
+                                            by simp
+                                         by (simp add: cin.rep_eq cset_of_llist.rep_eq)
+                                       done
+                                     done
+                                   done
+                                 done
+                               done
+                             done
+                           done
+                         done
+                     done
+                    done
+                  subgoal (* closed at the new frontier: x \<in> SPold \<longleftrightarrow> x \<in> Pair (1,0) |`| FinalImg *)
+                    (* Plan: open with the live-case clarsimp (flip cin.rep_eq, image_iff,
+                       cset_from_list_def, cset_of_llist.rep_eq), rule iffI.
+                       LHS\<Longrightarrow>RHS: S and OutOld direct; SPold-witness t0 is excluded from
+                       SPnew (ocaps0_after_final_output_set needs fle \<or> \<notin>ts-second, both
+                       false here; ts (ldropn) excluded by
+                       timely_input_stream_ldropn_no_data_le_if_not_frontier_less_equal),
+                       so x lands in FinalImg: t0 \<in> label_produces_below_times n (cap via
+                       the live-case source analysis, \<not>fle-new given, myfst t0 \<in> ts-second
+                       via timestamps_after_second_propa_eq); emitted payload equals the
+                       SPold payload by the hoisted payload \<forall>-fact + icoll (ldropn) t0 = {}
+                       (expiry) + Wcc.components_from_labels_correct with labels_inv
+                       (labels_after_final_output) and the sorried STABILITY subgoal_tac.
+                       RHS\<Longrightarrow>LHS: FinalImg \<Longrightarrow> SPold via ocaps0_after_second_propa_eq
+                       (below-times \<subseteq> old-caps \<union> consumed) mirroring the proven
+                       MyPair-filter-new leaf; SPnew \<Longrightarrow> SPold as in the live case. *)
                     sorry
-
-
                   done
-                sorry
-              subgoal sorry
-              done
-            done
+                done
               subgoal
                 using subgraph_inv(1)
                 by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
