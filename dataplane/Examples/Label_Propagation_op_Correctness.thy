@@ -13967,7 +13967,7 @@ next
               apply (rule exI[of _ "ldropn n lxs"])
           apply (rule exI[of _ "os_after_final_output n"])
           apply (rule exI[of _ "os_label_after_final_output n"])
-          apply (rule exI[of _ "cbufs((0, 0) := Nil, (1, 1) := Nil, (2, 1) := Nil)"])
+          apply (rule exI[of _ "cbufs((1, 0) := Nil, (1, 1) := Nil, (2, 1) := Nil)"])
           apply (rule exI[of _ "sg_after_second_propa n"])
               apply (intro conjI)
               subgoal sorry
