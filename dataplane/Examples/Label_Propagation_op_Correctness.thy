@@ -6224,6 +6224,16 @@ lemma icoll_empty_if_no_data_le:
    apply (use assms in \<open>auto split: event.splits\<close>)
   done
 
+lemma set_icoll_ltaken_ldropn:
+  assumes \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) (ldropn n lxs))\<close>
+  shows \<open>set (icoll lxs t) =
+    {d. \<exists>t'. Data t' d \<in> set (ltaken n lxs) \<and> t' \<le> t} \<union> set (icoll (ldropn n lxs) t)\<close>
+  apply (subst ltaken_lshift_ldropn[symmetric, of lxs n])
+  apply (subst set_icoll_lshift)
+   apply (rule assms)
+  apply (simp add: set_icoll_llist_of)
+  done
+
 lemma set_icoll_ltaken_if_no_ldropn_data_le:
   assumes finite: \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) (ldropn n lxs))\<close>
     and no_data: \<open>\<And>t' d. t' \<le> t \<Longrightarrow> Data t' d \<notin> lset (ldropn n lxs)\<close>
@@ -13588,6 +13598,15 @@ next
                                          1)))
                                    0))))\<close>
 
+  have label_prop_upd_inv_after_final_output:
+    \<open>label_prop_upd_inv (os_label_after_final_output n)\<close>
+    for n
+    apply (simp add: os_label_after_final_output_def os_label_after_produces_def
+        os_label_after_second_propa_def os_label_after_label_progress_def
+        os_label_after_drop_caps_def drop_caps_def produces_def obtain_progress_def)
+    apply (rule label_prop_upd_inv_after_loop_updates)
+    done
+
 
   show ?case (is \<open>wsim ((~) OO \<U> ?R OO (\<approx>)) _ _\<close>)
   proof -
@@ -14806,6 +14825,16 @@ next
                  subgoal
                    by (simp add: os_after_final_output_def os_label_after_final_output_def
                        op_state_base_def operator_state.defs)
+                apply (subgoal_tac \<open>input (os_after_final_output n 1) (0 :: 2) = []\<close>)
+                 prefer 2
+                 subgoal
+                   using input_0_after_loop_updates_empty[of n]
+                   by (simp add: os_after_final_output_def os_label_after_final_output_def
+                       os_after_label_produces_def os_label_after_produces_def
+                       os_after_second_propa_def os_label_after_second_propa_def
+                       os_label_after_label_progress_def os_label_after_drop_caps_def
+                       drop_caps_def op_state_base_def operator_state.defs produces_def
+                       obtain_progress_def)
                 apply simp
                 (* Remaining goal (after killing outpu-after and splitting the @):
                      cUn (cUn S OutOld) SPold
@@ -14847,32 +14876,67 @@ next
                        apply (clarsimp simp flip: cin.rep_eq
                            simp add: image_iff cset_from_list_def cset_of_llist.rep_eq)
                        apply (subst cimage_iff)
-                       apply (rule cBexI[where x=xa for xa])
-                       subgoal (* payload equality at the witness timestamp xa:
-                            ccs (edges of chns(1,0) @@- lxs up to xa \<union> all_edges os_label_prop)
-                            = ccs (edges of chns-after @@- ldropn n lxs up to xa
+                       apply (rename_tac t0)
+                       apply (rule_tac x=t0 in cBexI)
+
+
+                       subgoal (* payload equality at the witness timestamp t0:
+                            ccs (edges of chns(1,0) @@- lxs up to t0 \<union> all_edges os_label_prop)
+                            = ccs (edges of chns-after @@- ldropn n lxs up to t0
                                    \<union> all_edges (os_label_after_final_output n));
                             use label_prop_collected_edge_payloads_ccs_eq as at ~14383 *)
-                         sorry
-                       subgoal (* xa in the new domain: live prefix/buffer timestamps land in
-                            timestamps (os_label_after_final_output n) with surviving ocaps;
-                            use in_lset_ltaken_ldropn, timely_input_stream_expires_le,
-                            label_prop_inv(4) (mysnd = 0) *)
-                         sorry
-                       done
-                    apply (elim disjE)
-                      subgoal (* HARD 2: x \<in> Pair(1,0)`(OutOld \<union> FinalImg): OutOld case goes
-                           to LHS disjunct 2 (force as above); FinalImg case contradicts fle
-                           (final_output only emits closed timestamps) *)
-                        sorry
-                     apply simp
-                    subgoal (* HARD 3: x \<in> SPnew \<Longrightarrow> x \<in> SPold: reverse of HARD 1 *)
-                      sorry
-                    done
+                         apply (simp add: os_label_after_final_output_def os_label_after_produces_def
+                           os_label_after_second_propa_def os_label_after_label_progress_def
+                           os_label_after_drop_caps_def os_label_after_loop_updates_def loop_res_def
+                           label_produces_batch_def label_produces_below_times_def
+                           drop_caps_def produces_def obtain_progress_def)
+                         apply (subst set_icoll_lshift)
+                         subgoal
+                           using input_stream_inv timely_input_stream_expires_le by blast
+                         apply (simp add: outputs_at_target_raw_summary inputs_at_target_def
+                           buffers_inv BULK_BENQ_def subgraph_inv(1) set_icoll_llist_of)
+                         apply (simp only: os_label_after_input0_def)
+                         apply (simp only: os_label_after_read_input0_def os_label_after_first_propa_def)
+                         apply (simp only: label_input0_msgs_def input0_msgs_def input_data_def input_events_def)
+
+                         apply (simp add: input_CONSUMES)
+                        apply (subst all_edges_fst_label_prop_input0_batched_input_eq)
+                           apply (simp add: input_CONSUMES label_prop_inv(5) label_prop_upd_inv_def
+                             operator_state.defs os_inv(4,7))
+                         using label_prop_inv(5)
+                         apply (simp add: label_prop_upd_inv_def input_CONSUMES
+                           operator_state.defs os_inv(4,7) all_edges_def all_vertices_def neighbors_def)
+                         apply metis
+                        using label_prop_inv(7)
+                          [unfolded inputs_at_target_def buffers_inv BULK_BENQ_def
+                            subgraph_inv outputs_at_target_raw_summary operator_state.defs,
+                            simplified]
+                        apply (auto simp add: os_inv(4) operator_state.defs input_CONSUMES
+                          wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def)[1]
+                        apply (simp add: all_edges_def all_vertices_def neighbors_def)
+                        apply (subst set_icoll_lshift)
+                        subgoal
+                          using timely_input_stream_expires_le[OF timely_input_stream_ldrop[OF stream_move(1) input_stream_inv]] by blast
+                        apply (simp add: set_icoll_llist_of)
+                        apply (subst set_icoll_ltaken_ldropn[where n=n])
+                        subgoal
+                          using timely_input_stream_expires_le[OF timely_input_stream_ldrop[OF stream_move(1) input_stream_inv]] by blast
+                        subgoal
+                          apply (rule ccs_eq_if_undirected)
+                          using label_prop_inv(4) outpu_0_after_final_output_empty[of n]
+                          sorry
+                        done
                   subgoal (* closed timestamp: x \<in> SPold \<longleftrightarrow> x \<in> Pair (1,0) |`| FinalImg *)
+                    apply (clarsimp simp flip: cin.rep_eq
+                      simp add: image_iff cset_from_list_def cset_of_llist.rep_eq final_output_def)
                     sorry
+
+
                   done
-                done
+                sorry
+              subgoal sorry
+              done
+            done
               subgoal
                 using subgraph_inv(1)
                 by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
@@ -15010,11 +15074,8 @@ next
 
 
               subgoal
-                apply (simp add: os_label_after_final_output_def os_label_after_produces_def
-                    os_label_after_second_propa_def os_label_after_label_progress_def
-                    os_label_after_drop_caps_def drop_caps_def produces_def obtain_progress_def)
-                apply (rule label_prop_upd_inv_after_loop_updates)
-                done
+                by (rule label_prop_upd_inv_after_final_output)
+
               subgoal
                 apply (simp add: os_after_final_output_def input_ocaps_inv_op_state_base)
                 apply (rule input_ocaps_inv_empty_inputsI)
