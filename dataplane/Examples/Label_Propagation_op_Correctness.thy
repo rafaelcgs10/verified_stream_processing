@@ -13890,9 +13890,34 @@ next
                   subgoal
                     apply simp
                     apply (rule Wcc.components_from_labels_correct)
-                    subgoal sorry
+                    subgoal
+                      using labels_after_loop_updates[of n, rule_format, of \<open>myfst t\<close>]
+                      apply (simp add: os_label_after_loop_updates_def loop_res_def
+                          os_label_after_input0_def)
+                      apply (subst (asm) all_edges_fst_label_prop_input0_batched_input_eq)
+                         apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+                            label_input0_msgs_def input_CONSUMES operator_state.defs os_inv(4))
+                        apply (simp add: label_prop_inv(5) os_label_after_read_input0_def
+                            os_label_after_first_propa_def input_CONSUMES)
+                      using label_prop_inv(7)[unfolded inputs_at_target_def buffers_inv BULK_BENQ_def
+                          subgraph_inv outputs_at_target_raw_summary operator_state.defs, simplified]
+                       apply (auto simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+                          os_inv(4) operator_state.defs input_CONSUMES wf_label_prop_updates_def
+                          all_vertices_def all_edges_def neighbors_def)[1]
+                      apply (simp add: os_label_after_read_input0_def os_label_after_first_propa_def
+                          label_front_after_first_propa_def
+                          os_after_label_input0_def os_after_label_read_input0_def
+                          os_after_input_output_def os_input_after_output_def
+                          os_after_input_stream_def os_input_after_stream_def
+                          os_first_propa_def os_progress_def sg_first_propa_def sg_progress_def
+                          cbufs_after_label_read_input0_def cbufs_after_input_output_def
+                          input0_msgs_def label_input0_msgs_def input_data_def input_events_def
+                          input_CONSUMES os_inv(1,4) operator_state.defs obtain_progress_def
+                          split_beta)
+                      done
                     subgoal sorry
                     done
+
                   subgoal premises prems
                     apply (subst set_icoll_lshift)
                     subgoal
