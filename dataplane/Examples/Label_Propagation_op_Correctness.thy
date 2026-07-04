@@ -3413,6 +3413,17 @@ lemma op_state_base_CONSUMES[simp]:
   unfolding op_state_base_def fold_consumes
   by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
 
+lemma op_state_base_obtain_progress:
+  \<open>op_state_base (fst (obtain_progress os)) = fst (obtain_progress (op_state_base os))\<close>
+  unfolding op_state_base_def obtain_progress_def
+  by (rule operator_state_eqI) simp_all
+
+lemma op_state_base_front_initia_update[simp]:
+
+  \<open>op_state_base (os\<lparr>front := F, initia := I\<rparr>) = (op_state_base os)\<lparr>front := F, initia := I\<rparr>\<close>
+  unfolding op_state_base_def
+  by (rule operator_state_eqI) simp_all
+
 section \<open>Capability bookkeeping for produced batches\<close>
 
 lemma cap_times_filter_single_port_subset:
@@ -15218,7 +15229,134 @@ next
           apply (rule exI[of _ "cbufs((1, 0) := Nil, (1, 1) := Nil, (2, 1) := Nil)"])
           apply (rule exI[of _ "sg_after_second_propa n"])
               apply (intro conjI)
-              subgoal sorry
+subgoal
+                apply (rule arg_cong3[where f=set_op])
+                  apply (rule refl)
+                 apply (rule refl)
+                apply (rule arg_cong2[where f=dataflow_op])
+                subgoal
+                  by (simp add: sg_after_second_propa_def sg_after_increment_progress_def
+                      sg_after_label_progress_def sg_after_ooo_input_progress_def
+                      sg_first_propa_def sg_progress_def)
+                subgoal
+                  apply (subst dataflow_tree_to_operator_def)
+                  apply (simp only: dataflow_tree_to_operator_aux.simps Let_def prod.case
+                      fst_conv snd_conv add_0 one_add_one diff_zero)
+                  apply (rule arg_cong[where f=\<open>map_op (case_sum id id) (case_sum id id)\<close>])
+                  apply (rule comp_op_buf_cong)
+                  subgoal
+                    by (auto simp add: fun_eq_iff split: sum.splits)
+                  subgoal
+                    apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+                    apply (rule arg_cong[where f=\<open>ooo_input_op _\<close>])
+                    by (simp add: os_after_final_output_def os_after_label_produces_def
+                        os_after_second_propa_def os_after_increment_progress_def
+                        os_after_label_progress_def os_after_ooo_input_progress_def
+                        os_after_loop_progress_def os_after_drop_caps_def os_after_loop_updates_def
+                        os_after_label_input0_def os_after_label_read_input0_def
+                        os_after_input_output_def os_input_after_output_def os_after_input_stream_def
+                        os_input_after_stream_def os_first_propa_def os_progress_def input_events_def
+                        input_data_def loop_res_def op_state_base_def operator_state.defs
+                        obtain_progress_def os_inv(1,4))
+                  subgoal
+                    apply (rule loop_op_buf_cong)
+                    subgoal
+                      by (auto simp add: fun_eq_iff eq_diff_eq one_add_one split: sum.splits)
+                    subgoal
+                      apply (rule arg_cong[where f=\<open>map_op (case_sum id id) (case_sum id id)\<close>])
+                      apply (rule comp_op_buf_cong)
+                      subgoal
+                        by (auto simp add: fun_eq_iff eq_diff_eq split: sum.splits)
+                      subgoal
+                        apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+                        apply (rule arg_cong[where f=label_propagation_op])
+                        by (simp add: os_label_after_final_output_def
+                            os_label_after_produces_def label_produces_batch_def
+                            label_produces_below_times_def os_label_after_second_propa_def
+                            label_front_after_second_propa_def os_label_after_label_progress_def
+                            os_label_after_drop_caps_def os_label_after_loop_updates_def
+                            loop_res_def os_label_after_input0_def label_input0_msgs_def
+                            os_label_after_read_input0_def input0_msgs_def input_data_def
+                            input_events_def os_label_after_first_propa_def
+                            label_front_after_first_propa_def sg_first_propa_def
+                            sg_progress_def cbufs_after_label_read_input0_def
+                            cbufs_after_input_output_def os_after_label_input0_def
+                            os_after_label_read_input0_def os_after_input_output_def
+                            os_after_input_stream_def os_first_propa_def os_progress_def
+                            obtain_progress_def CONSUMES_CONSUMES image_Un image_image
+                            Un_ac disj_ac flip: fold_append)
+                      subgoal
+                        apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+                        apply (rule arg_cong[where f=\<open>increment_op _ _ _\<close>])
+                        apply (simp add: os_after_final_output_def os_after_label_produces_def
+                            os_after_second_propa_def os_after_increment_progress_def
+                            os_after_label_progress_def os_after_ooo_input_progress_def
+                            os_after_loop_progress_def os_after_drop_caps_def
+                            os_after_loop_updates_def loop_res_def)
+                        apply (simp add: os_after_label_input0_def os_after_label_read_input0_def
+                            os_after_input_output_def os_after_input_stream_def
+                            os_first_propa_def os_progress_def
+                            cbufs_after_label_read_input0_def cbufs_after_input_output_def
+                            snd_snd_loop_updates_cbufs_irrelevant2)
+                        apply (rule trans[of _ \<open>snd (snd (loop_updates cbufs
+                            (os_label_after_input0 n) os)) 2
+                            \<lparr>consu := [], inter := [], produ := []\<rparr>\<close>])
+                        subgoal
+                          by (rule operator_state_eqI)
+                            (simp_all add: op_state_base_def obtain_progress_def)
+                        apply (rule arg_cong[where
+                              f=\<open>\<lambda>x. x\<lparr>consu := [], inter := [], produ := []\<rparr>\<close>])
+                        apply (rule arg_cong[where
+                              f=\<open>\<lambda>l. snd (snd (loop_updates cbufs l os)) 2\<close>])
+                        apply (simp add: os_label_after_input0_def label_input0_msgs_def
+                            os_label_after_read_input0_def input0_msgs_def input_data_def
+                            input_events_def os_label_after_first_propa_def
+                            label_front_after_first_propa_def sg_first_propa_def
+                            sg_progress_def CONSUMES_CONSUMES flip: fold_append)
+                        done
+                      subgoal
+                        apply (rule ballI)
+                        apply (erule IntE)
+                        apply (thin_tac \<open>p \<in> inputs X\<close> for p X)
+                        apply (case_tac p)
+                         apply simp
+                        apply (clarsimp split: prod.splits if_splits)
+                        apply (clarsimp simp add: ran_def)
+                        apply (rename_tac x)
+                        apply (case_tac x)
+                         apply simp
+                        apply (clarsimp split: prod.splits if_splits)
+                        done
+                      done
+                    subgoal
+                      apply (rule ballI)
+                      apply (erule IntE)
+                      apply (thin_tac \<open>p \<in> inputs X\<close> for p X)
+                      apply (case_tac p)
+                       apply simp
+                      apply (clarsimp split: prod.splits if_splits)
+                      apply (clarsimp simp add: ran_def)
+                      apply (rename_tac x)
+                      apply (case_tac x)
+                       apply simp
+                      apply (clarsimp split: prod.splits if_splits)
+                      done
+                    done
+                  subgoal
+                    apply (rule ballI)
+                    apply (erule IntE)
+                    apply (thin_tac \<open>p \<in> inputs X\<close> for p X)
+                    apply (case_tac p)
+                     apply simp
+                    apply (clarsimp split: prod.splits if_splits)
+                    apply (clarsimp simp add: ran_def)
+                    apply (rename_tac x)
+                    apply (case_tac x)
+                     apply simp
+                    apply (clarsimp split: prod.splits if_splits)
+                    done
+                  done
+                done
               subgoal (* TIP 1: this reduces to cset equality. TIP 2: You probably want to do a case distinction if the given arbitrary t is frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) or not *) sorry
               subgoal
                 using subgraph_inv(1)
@@ -15300,7 +15438,6 @@ next
                     input0_msgs_def op_state_base_def operator_state.defs
                     obtain_progress_def fun_upd_def)
                 done
-
               subgoal
                 apply (subgoal_tac \<open>\<forall>p. input (os_label_after_loop_updates n) p = []\<close>)
                  apply (auto simp add: label_prob_ty2_check_def os_label_after_final_output_def
