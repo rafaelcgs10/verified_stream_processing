@@ -9119,6 +9119,40 @@ lemma label_prop_covered_inv_input_tl[simp]:
   unfolding label_prop_covered_inv_def all_edges_def all_vertices_def neighbors_def min_label_def input_tl_def
   by simp
 
+lemma label_prop_covered_inv_mono:
+  "label_prop_covered_inv os M \<Longrightarrow> M \<subseteq> M' \<Longrightarrow> label_prop_covered_inv os M'"
+  unfolding label_prop_covered_inv_def by blast
+
+lemma label_prop_covered_inv_msgs_transportI:
+  assumes "label_prop_covered_inv os M"
+    and "\<And>a l' t t'. (Inl (a, l'), MyPair t t') \<in> M \<Longrightarrow> \<exists>t''. (Inl (a, l'), MyPair t t'') \<in> M'"
+  shows "label_prop_covered_inv os M'"
+  using assms unfolding label_prop_covered_inv_def by blast
+
+lemma label_prop_covered_inv_cong:
+  "timestamps os' = timestamps os \<Longrightarrow> graph os' = graph os \<Longrightarrow>
+   vertices os' = vertices os \<Longrightarrow> label os' = label os \<Longrightarrow> M' = M \<Longrightarrow>
+   label_prop_covered_inv os' M' = label_prop_covered_inv os M"
+  unfolding label_prop_covered_inv_def all_edges_def all_vertices_def neighbors_def min_label_def
+  by simp
+
+lemma label_prop_covered_inv_transportI:
+  assumes "label_prop_covered_inv os M"
+    and "timestamps os' = timestamps os" "graph os' = graph os"
+    and "vertices os' = vertices os" "label os' = label os"
+    and "\<And>a l' t t'. (Inl (a, l'), MyPair t t') \<in> M \<Longrightarrow> \<exists>t''. (Inl (a, l'), MyPair t t'') \<in> M'"
+  shows "label_prop_covered_inv os' M'"
+  apply (subst label_prop_covered_inv_cong[OF assms(2-5) refl])
+  apply (rule label_prop_covered_inv_msgs_transportI[OF assms(1)])
+  by (rule assms(6))
+
+lemma label_prop_covered_inv_consumes[simp]:
+  "label_prop_covered_inv (consumes os p t d) M = label_prop_covered_inv os M"
+  unfolding consumes_def
+  apply (subst label_prop_covered_inv_add_caps)
+  apply (rule label_prop_covered_inv_cong)
+  by simp_all
+
 lemma label_prop_label_batch_out:
   "(x, cap) \<in> set (label_prop_label_batch os os2 t1 v new_l et) \<Longrightarrow> out cap = 1"
   by (auto simp add: label_prop_label_batch_def label_prop_neighbor_batch_def Let_def split: if_splits)
@@ -9676,7 +9710,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(5) apply (simp add: os_inv(4,7) operator_state.defs(3))
           apply (rule label_prop_inv(6))
         using label_prop_inv(7) apply (simp add: os_inv(4,7) buffers_inv BULK_BENQ_def BENQ_def outputs_at_target_raw_summary subgraph_inv(1) image_Un operator_state.defs(3) Un_assoc)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3))
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply blast
+          done
         apply (clarsimp simp add: dataflow_tree_to_operator_def intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
         apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
          apply (fastforce simp add: BENQ_def)
@@ -9794,7 +9834,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
            apply (subst label_prop_upd_inv_cong; simp add: BENQ_def)
           apply (rule inputs_ocaps_inv_consumes[OF label_prop_inv(6)])
         using label_prop_inv(7) apply (simp add: os_inv(4,7) operator_state.defs(3) buffers_inv)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def BENQ_def BTL_def BHD_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3) consumes_def add_caps_def)
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply blast
+          done
         apply (clarsimp simp add: dataflow_tree_to_operator_def intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
         apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
          apply (simp add: BTL_def fun_eq_iff map_tl split: sum.splits)
@@ -9853,7 +9899,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
           using label_prop_inv(7) apply (simp add: os_inv(4) buffers_inv)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp only: fun_upd_triv)
+          by (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3))
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         subgoal for lxs' t v w
@@ -9904,7 +9953,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
           using label_prop_inv(7) apply (simp add: os_inv(4) BENQ_def)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          by (simp add: BENQ_def os_inv(4))
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         subgoal for lxs' t
@@ -9955,7 +10006,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
           using label_prop_inv(7) apply (simp add: os_inv(4) buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def inputs_at_target_def)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          by (simp add: BENQ_def os_inv(4) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         subgoal for lxs' t
@@ -10006,7 +10059,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
           using label_prop_inv(7) apply (simp add: os_inv(4) buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def inputs_at_target_def)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          by (simp add: BENQ_def os_inv(4) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         done
@@ -10081,7 +10136,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (subst wf_label_prop_updates_cong[where os'=os_label_prop
               and S'=\<open>set (chns (1, 1) @ map (\<lambda>(d, t). (d, t -+- MyPair 0 1)) (chns (2, 1)))\<close>])
         using label_prop_inv(7) apply (auto simp add: os_inv(4) operator_state.defs(3) buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def BENQ_def inputs_at_target_def image_Un)
-             subgoal sorry
+             subgoal
+               using label_prop_inv(8)
+               apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3))
+               apply (erule label_prop_covered_inv_transportI)
+                   apply simp_all
+               apply blast
+               done
         done
       subgoal for d t
         apply (intro exI conjI relcomppI)
@@ -10137,7 +10198,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (subst wf_label_prop_updates_cong[OF refl refl refl refl _])
          defer
           apply assumption
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def BTL_def BENQ_def BHD_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3))
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply (metis list.collapse set_ConsD)
+          done
         apply (simp add: buffers_inv BULK_BENQ_def BTL_def BENQ_def BHD_def image_set map_consI(2) flip: set_append)
         done
       subgoal for os'
@@ -10830,7 +10897,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             apply (subst wf_label_prop_updates_cong)
             using label_prop_inv(7)
             by (auto simp add: produces_def buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def inputs_at_target_def label_prop_output_batch_def)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3) produces_def drop_caps_def label_prop_output_batch_def)
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply blast
+          done
           done
         subgoal
           apply (simp  del: filter.simps split: list.splits)
@@ -11554,7 +11627,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
            apply (rule input_ocaps_inv_release_capsI)
           using label_prop_inv(6) os_inv(4) apply (simp add: operator_state.defs)
           using label_prop_inv(7) apply (simp add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def release_caps_def drop_caps_def)
-          subgoal sorry
+          subgoal
+            using label_prop_inv(8)
+            apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3) release_caps_def drop_caps_def Let_def)
+            apply (erule label_prop_covered_inv_transportI)
+                apply simp_all
+            apply blast
+            done
           done
         done
       subgoal for os_incr'
@@ -11620,7 +11699,19 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule label_prop_inv(5))
         using label_prop_inv(6) apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def filter_True split_beta)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3) produces_def drop_caps_def image_Un split_beta)
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply (elim disjE)
+               apply blast
+              apply blast
+             apply blast
+            apply (force simp add: image_iff)
+           apply blast
+          apply blast
+          done
         done
       subgoal for _ d t
         apply (simp add: ran_loop_wire cUNIV_def cin_def)
@@ -11716,7 +11807,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           done
         using inputs_ocaps_inv_consumes[OF label_prop_inv(6)] apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv flip: BULK_BENQ_assoc)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def BTL_def BENQ_def BHD_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3) consumes_def add_caps_def)
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply (metis list.collapse set_ConsD)
+          done
         done
       subgoal for d t xs
         apply (intro exI conjI relcomppI)
@@ -11772,7 +11869,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule label_prop_inv(5))
         using label_prop_inv(6) apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def BENQ_def outputs_at_target_raw_summary subgraph_inv(1) image_Un Un_assoc)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def BTL_def BENQ_def BHD_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3) consumes_def add_caps_def)
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply (metis list.collapse set_ConsD)
+          done
         done
       subgoal for _ os_incr'
         apply (intro exI conjI relcomppI)
@@ -11817,7 +11920,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule label_prop_inv(5))
         using label_prop_inv(6) apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def obtain_progress_def image_Un Un_assoc)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3) obtain_progress_def)
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply blast
+          done
         done
       subgoal for _ os_label_prop'
         apply (intro exI conjI relcomppI)
@@ -11862,7 +11971,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(5) apply (simp add: obtain_progress_def)
         using label_prop_inv(6) apply (simp add: obtain_progress_def input_ocaps_inv_def)
         using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def obtain_progress_def image_Un Un_assoc)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3) obtain_progress_def)
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply blast
+          done
         done
       subgoal
         apply (intro exI conjI relcomppI)
@@ -11907,7 +12022,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule label_prop_inv(5))
         using label_prop_inv(6) apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3))
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply blast
+          done
         done
       subgoal
         apply (insert dataplane_inv subgraph_inv(1))
@@ -12025,13 +12146,47 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             done
           done
         subgoal
-          apply safe
-          sorry
+          apply (intro ballI)
+          apply simp
+          apply (elim disjE)
+           apply (clarsimp simp add: image_iff)
+           subgoal for a b
+             apply (drule imageI[where f=snd])
+             apply (drule label_prop_inv(6)[unfolded input_ocaps_inv_def, rule_format, where p'=1 and s="MyPair 0 0"])
+              apply (simp add: os_inv(7) raw_summary_def)
+             apply (drule dataplane_tracker_inv_c_imp_frontier_le_ocaps[OF D _ _ dataplane_inv, rotated 2, where s="MyPair 0 1" and L="Loc (1::3) (Trg (1::2))"])
+               apply (simp add: subgraph_inv(1) in_antichain_singleton)
+              apply (simp add: subgraph_inv(1))
+             apply assumption
+             apply (rule frontier_less_equal_exit_scope_myfst_le)
+              apply assumption
+             apply simp
+             done
+          apply (clarsimp simp add: image_iff)
+          subgoal for a b
+            apply (drule imageI[where f=snd])
+            apply (drule label_prop_inv(6)[unfolded input_ocaps_inv_def, rule_format, where p'=1 and s="MyPair 0 0"])
+             apply (simp add: os_inv(7) raw_summary_def)
+            apply (drule dataplane_tracker_inv_c_imp_frontier_le_ocaps[OF D _ _ dataplane_inv, rotated 2, where s="MyPair 0 1" and L="Loc (1::3) (Trg (1::2))"])
+              apply (simp add: subgraph_inv(1) in_antichain_singleton)
+             apply (simp add: subgraph_inv(1))
+            apply assumption
+            apply (rule frontier_less_equal_exit_scope_myfst_le)
+             apply assumption
+            apply simp
+            done
+          done
         using label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
         using label_prop_inv(5) apply simp
         using label_prop_inv(6) apply (simp add: input_ocaps_inv_def)
         using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def image_Un Un_assoc)
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3))
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply blast
+          done
         done
       subgoal for d t xs
         apply (intro exI conjI)
@@ -12112,7 +12267,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (subst wf_label_prop_updates_cong[where os'=os_label_prop])
           using label_prop_inv(7)
           by (simp_all add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
-        subgoal sorry
+        subgoal
+          using label_prop_inv(8)
+          apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3))
+          apply (erule label_prop_covered_inv_transportI)
+              apply simp_all
+          apply blast
+          done
         done
       done
   qed
