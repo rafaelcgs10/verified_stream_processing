@@ -101,7 +101,9 @@ definition label_prop_upd_inv where
       edge_vertices {(v, w). w \<in> set (graph os t v)} \<noteq> {}) \<and>
     (\<forall>t. set (vertices os t) = edge_vertices {(v, w). w \<in> set (graph os t v)}) \<and>
     (\<forall>t. sym {(v, w). w \<in> set (graph os t v)}) \<and>
-    (\<forall>t v. v \<notin> all_vertices os t \<longrightarrow> label os t v = v)"
+    (\<forall>t v. v \<notin> all_vertices os t \<longrightarrow> label os t v = v) \<and>
+    (\<forall>t v. t \<notin> set (timestamps os) \<longrightarrow> label os t v = v) \<and>
+    (\<forall>t v. label os t v \<le> v)"
 
 lemma label_prop_upd_inv_intsum_update[simp]:
   "label_prop_upd_inv (os\<lparr>intsum := xs\<rparr>) = label_prop_upd_inv os"
@@ -2409,6 +2411,8 @@ proof -
     and vertices_old: "\<And>q. set (vertices os q) = edge_vertices {(a, b). b \<in> set (graph os q a)}"
     and sym_old: "\<And>q. sym {(a, b). b \<in> set (graph os q a)}"
     and label_old: "\<And>q x. x \<notin> all_vertices os q \<Longrightarrow> label os q x = x"
+    and label5_old: "\<And>q x. q \<notin> set (timestamps os) \<Longrightarrow> label os q x = x"
+    and label6_old: "\<And>q x. label os q x \<le> x"
     using inv unfolding label_prop_upd_inv_def by metis+
   have old_edges_subset: "\<And>q. all_edges os q \<subseteq> all_edges os' q"
     using timestamps_eq graph_eq vertices_eq
@@ -2460,9 +2464,23 @@ proof -
   have wf_upd_new: \<open>wf_label_prop_updates os' (set (input os' 1))\<close>
     using input1_eq timestamps_eq all_vertices_mono de1_eq old_edges_subset cc_of_mono wf_upd
     unfolding wf_label_prop_updates_def by (smt (verit, best) list.set_intros(2) split_beta')
+  have label5_new: "\<And>q x. q \<notin> set (timestamps os') \<Longrightarrow> label os' q x = x"
+    using label5_old timestamps_eq by (auto simp add: label_eq)
+  have l_le_v: "l \<le> v"
+  proof -
+    have "l \<le> min_label os t1 v"
+      using label_update by (auto split: if_splits simp add: less_imp_le)
+    also have "min_label os t1 v \<le> label os t1 v"
+      by (rule min_label_le_current_labelI)
+    also have "label os t1 v \<le> v"
+      by (rule label6_old)
+    finally show ?thesis .
+  qed
+  have label6_new: "\<And>q x. label os' q x \<le> x"
+    using label6_old l_le_v by (auto simp add: label_eq)
   show ?thesis
     unfolding label_prop_upd_inv_def
-    using ts_new vertices_eq_new sym_new label_new wf_upd_new by blast
+    using ts_new vertices_eq_new sym_new label_new label5_new label6_new wf_upd_new by blast
 qed
 
 lemma label_prop_upd_inv_cong:
@@ -2491,6 +2509,8 @@ proof -
     and vertices_old: "\<And>q. set (vertices os q) = edge_vertices {(a, b). b \<in> set (graph os q a)}"
     and sym_old: "\<And>q. sym {(a, b). b \<in> set (graph os q a)}"
     and label_old: "\<And>q x. x \<notin> all_vertices os q \<Longrightarrow> label os q x = x"
+    and label5_old: "\<And>q x. q \<notin> set (timestamps os) \<Longrightarrow> label os q x = x"
+    and label6_old: "\<And>q x. label os q x \<le> x"
     using inv unfolding label_prop_upd_inv_def by metis+
 
   have all_edges_eq: "\<And>q. all_edges os' q = all_edges os q"
@@ -2504,6 +2524,9 @@ proof -
       using wf_upd unfolding wf_label_prop_updates_def by fast
     then show ?thesis using msg t1_def by auto
   qed
+
+  have t1_ts: "t1 \<in> set (timestamps os)"
+    using wf_upd input1 t1_def unfolding wf_label_prop_updates_def by fastforce
 
   have ts_new: "\<And>q. q \<in> set (timestamps os') \<longleftrightarrow>
       edge_vertices {(a, b). b \<in> set (graph os' q a)} \<noteq> {}"
@@ -2538,9 +2561,16 @@ proof -
   have wf_upd_new: \<open>wf_label_prop_updates os' (set (input os' 1))\<close>
     using input1_eq input1 timestamps_eq vertices_eq de1_eq all_edges_eq wf_upd
     unfolding wf_label_prop_updates_def all_vertices_def by simp
+  have label5_new: "\<And>q x. q \<notin> set (timestamps os') \<Longrightarrow> label os' q x = x"
+    using label5_old timestamps_eq t1_ts by (auto simp add: label_eq)
+  have upd_le: "min (min_label os t1 v) l \<le> v"
+    using min_label_le_current_labelI[of os t1 v] label6_old[of t1 v]
+    by (meson min.coboundedI1 order_trans)
+  have label6_new: "\<And>q x. label os' q x \<le> x"
+    using label6_old upd_le by (auto simp add: label_eq)
   show ?thesis
     unfolding label_prop_upd_inv_def
-    using ts_new vertices_new sym_new label_new wf_upd_new by blast
+    using ts_new vertices_new sym_new label_new label5_new label6_new wf_upd_new by blast
 qed
 
 

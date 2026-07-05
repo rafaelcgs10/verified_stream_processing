@@ -9182,21 +9182,21 @@ definition label_prop_covered_inv where
     (\<forall> t \<in> set (timestamps os). \<forall> a b.
       (a, b) \<in> all_edges os t \<union> (all_edges os t)\<inverse> \<longrightarrow>
       \<not> min_label os t a \<le> min_label os t b \<longrightarrow>
-      (\<exists> t' l'. (Inl (a, l'), MyPair t t') \<in> msgs \<and> l' \<le> min_label os t b))\<close>
+      (\<exists> s t' l'. (Inl (a, l'), MyPair s t') \<in> msgs \<and> s \<le> t \<and> l' \<le> min_label os t b))\<close>
 
 lemma label_prop_covered_inv_unstable_msgD:
   assumes covered: \<open>label_prop_covered_inv os msgs\<close>
     and t_in: \<open>t \<in> set (timestamps os)\<close>
     and unstable: \<open>\<not> labels_stable (all_edges os t) (min_label os t)\<close>
-  shows \<open>\<exists>a l' t'. (Inl (a, l'), MyPair t t') \<in> msgs\<close>
+  shows \<open>\<exists>a l' s t'. (Inl (a, l'), MyPair s t') \<in> msgs \<and> s \<le> t\<close>
 proof -
   from unstable obtain a b where
     edge: \<open>(a, b) \<in> all_edges os t \<union> (all_edges os t)\<inverse>\<close> and
     not_le: \<open>\<not> min_label os t a \<le> min_label os t b\<close>
     unfolding labels_stable_def by blast
-  from covered t_in edge not_le obtain t' l' where
-    \<open>(Inl (a, l'), MyPair t t') \<in> msgs\<close>
-    unfolding label_prop_covered_inv_def by blast
+  from covered t_in edge not_le obtain s t' l' where
+    \<open>(Inl (a, l'), MyPair s t') \<in> msgs\<close> \<open>s \<le> t\<close>
+    unfolding label_prop_covered_inv_def by fast
   then show ?thesis by blast
 qed
 
@@ -9226,13 +9226,13 @@ lemma label_prop_covered_inv_input_tl[simp]:
 
 lemma label_prop_covered_inv_mono:
   "label_prop_covered_inv os M \<Longrightarrow> M \<subseteq> M' \<Longrightarrow> label_prop_covered_inv os M'"
-  unfolding label_prop_covered_inv_def by blast
+  unfolding label_prop_covered_inv_def by fast
 
 lemma label_prop_covered_inv_msgs_transportI:
   assumes "label_prop_covered_inv os M"
     and "\<And>a l' t t'. (Inl (a, l'), MyPair t t') \<in> M \<Longrightarrow> \<exists>t''. (Inl (a, l'), MyPair t t'') \<in> M'"
   shows "label_prop_covered_inv os M'"
-  using assms unfolding label_prop_covered_inv_def by blast
+  using assms unfolding label_prop_covered_inv_def by fast
 
 lemma label_prop_covered_inv_cong:
   "timestamps os' = timestamps os \<Longrightarrow> graph os' = graph os \<Longrightarrow>
@@ -9500,6 +9500,7 @@ lemma label_prop_covered_inv_label_batch_updateI:
     and headM: "\<And>x. x \<in> M \<Longrightarrow> x = (Inl (v, lh), et) \<or> x \<in> M'"
     and batchM: "\<And>x tm. (x, Cap tm (1 :: 2)) \<in> set (label_prop_label_batch os (label_prop_label_record_update os' t1 v new_l) t1 v new_l et)
       \<Longrightarrow> (x, tm) \<in> M'"
+    and t1_ts: "t1 \<in> set (timestamps os)"
   shows "label_prop_covered_inv (label_prop_label_record_update os' t1 v new_l) M'"
   unfolding label_prop_covered_inv_def
 proof (intro ballI allI impI)
@@ -9522,24 +9523,27 @@ proof (intro ballI allI impI)
   have sym_graph: "\<And>s. sym {(x, y). y \<in> set (graph os s x)}"
     using upd unfolding label_prop_upd_inv_def by blast
   from violated_edge_label_record_updateD[where et=et, OF viol edge' ts_eq graph_eq vertices_eq label_eq t'_ts dec sym_graph]
-  show "\<exists>t'' l'. (Inl (a, l'), MyPair t' t'') \<in> M' \<and> l' \<le> min_label ?upd t' b"
+  show "\<exists>s t'' l'. (Inl (a, l'), MyPair s t'') \<in> M' \<and> s \<le> t' \<and> l' \<le> min_label ?upd t' b"
   proof (elim disjE conjE)
     assume edge_os: "(a, b) \<in> all_edges os t' \<union> (all_edges os t')\<inverse>"
       and viol_os: "\<not> min_label os t' a \<le> min_label os t' b"
       and b_eq: "min_label ?upd t' b = min_label os t' b"
-    obtain t'' l' where w: "(Inl (a, l'), MyPair t' t'') \<in> M"
+    obtain s t'' l' where w: "(Inl (a, l'), MyPair s t'') \<in> M"
+      and s_le: "s \<le> t'"
       and cover: "l' \<le> min_label os t' b"
       using cov[unfolded label_prop_covered_inv_def] t'_ts edge_os viol_os by blast
     from headM[OF w] show ?thesis
     proof
-      assume head: "(Inl (a, l'), MyPair t' t'') = (Inl (v, lh), et)"
-      then have av: "a = v" and llh: "l' = lh" and tt: "et = MyPair t' t''"
+      assume head: "(Inl (a, l'), MyPair s t'') = (Inl (v, lh), et)"
+      then have av: "a = v" and llh: "l' = lh" and tt: "et = MyPair s t''"
         by auto
-      have t1t': "t1 = t'"
+      have t1s: "t1 = s"
         using head_t tt by simp
+      have t1t': "t1 \<le> t'"
+        using t1s s_le by simp
       have "min_label ?upd t' a \<le> new_l"
         unfolding av
-        by (rule min_label_record_update_le) (simp_all add: ts_eq t'_ts t1t')
+        by (rule min_label_record_update_le) (simp_all add: ts_eq t1_ts t1t')
       also have "new_l \<le> lh"
         unfolding nl by (rule min.cobounded2)
       also have "lh \<le> min_label ?upd t' b"
@@ -9548,9 +9552,9 @@ proof (intro ballI allI impI)
       then show ?thesis
         using viol by simp
     next
-      assume "(Inl (a, l'), MyPair t' t'') \<in> M'"
+      assume "(Inl (a, l'), MyPair s t'') \<in> M'"
       then show ?thesis
-        using cover b_eq by auto
+        using cover b_eq s_le by auto
     qed
   next
     assume elem: "(en1 os (a, new_l), Cap (MyPair t' (mysnd et)) (1 :: 2))
@@ -9647,8 +9651,8 @@ lemma not_labels_stable_covered_witnessE:
   assumes "\<not> labels_stable (all_edges osl t) (min_label osl t)"
     and "label_prop_covered_inv osl M"
     and "t \<in> set (timestamps osl)"
-  obtains a t' l' where "(Inl (a, l'), MyPair t t') \<in> M"
-  using assms unfolding label_prop_covered_inv_def labels_stable_def by blast
+  obtains a s t' l' where "(Inl (a, l'), MyPair s t') \<in> M" and "s \<le> t"
+  using assms unfolding label_prop_covered_inv_def labels_stable_def by fast
 
 lemma frontier_less_equal_exit_scope_myfst_le:
   assumes "frontier_less_equal A T"
@@ -9661,6 +9665,506 @@ proof -
     using assms(2) by (rule frontier_less_equal_trans)
 qed
 
+(* Auxiliary lemmas for label_prop_covered_inv preservation under edge insertion. *)
+
+lemma min_label_edge_record_update_not_le:
+  fixes t1 t' :: "'t::order"
+  assumes ts_eq: "timestamps os' = t1 # timestamps os"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(x := l))"
+    and not_le: "\<not> t1 \<le> t'"
+  shows "min_label os' t' w = min_label os t' w"
+proof -
+  have set_eq: "{r \<in> set (timestamps os'). r \<le> t'} = {r \<in> set (timestamps os). r \<le> t'}"
+    using ts_eq not_le by auto
+  have img: "(\<lambda>r. label os' r w) ` {r \<in> set (timestamps os). r \<le> t'}
+      = (\<lambda>r. label os r w) ` {r \<in> set (timestamps os). r \<le> t'}"
+    by (intro image_cong refl) (use label_eq not_le in auto)
+  have lab_cur: "label os' t' w = label os t' w"
+    using label_eq not_le by auto
+  show ?thesis
+    unfolding min_label_def set_eq img lab_cur ..
+qed
+
+lemma min_label_edge_record_update_other:
+  fixes t1 t' :: "'t::order"
+  assumes ts_eq: "timestamps os' = t1 # timestamps os"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(x := l))"
+    and inv: "label_prop_upd_inv os"
+    and w_neq: "w \<noteq> x"
+  shows "min_label os' t' w = min_label os t' w"
+proof (cases "t1 \<le> t'")
+  case False
+  then show ?thesis using assms min_label_edge_record_update_not_le by metis
+next
+  case True
+  have lab_w: "\<And>r. label os' r w = label os r w"
+    using label_eq w_neq by simp
+  have S'_eq: "insert (label os' t' w) ((\<lambda>r. label os' r w) ` {r \<in> set (timestamps os'). r \<le> t'})
+    = insert (label os t1 w) (insert (label os t' w) ((\<lambda>r. label os r w) ` {r \<in> set (timestamps os). r \<le> t'}))"
+    using ts_eq True lab_w by auto
+  have le1: "min_label os t' w \<le> label os t1 w"
+  proof (cases "t1 \<in> set (timestamps os)")
+    case True2: True
+    then have "label os t1 w \<in> (\<lambda>r. label os r w) ` {r \<in> set (timestamps os). r \<le> t'}"
+      using \<open>t1 \<le> t'\<close> by auto
+    then show ?thesis unfolding min_label_def by (intro Min_le) auto
+  next
+    case False2: False
+    then have lt1: "label os t1 w = w"
+      using inv unfolding label_prop_upd_inv_def by blast
+    have "min_label os t' w \<le> label os t' w"
+      unfolding min_label_def by (intro Min_le) auto
+    also have "label os t' w \<le> w"
+      using inv unfolding label_prop_upd_inv_def by blast
+    finally show ?thesis using lt1 by simp
+  qed
+  have "min_label os' t' w = Min (insert (label os t1 w)
+      (insert (label os t' w) ((\<lambda>r. label os r w) ` {r \<in> set (timestamps os). r \<le> t'})))"
+    unfolding min_label_def using S'_eq by simp
+  also have "\<dots> = min (label os t1 w) (min_label os t' w)"
+    unfolding min_label_def by (subst Min_insert) auto
+  also have "\<dots> = min_label os t' w"
+    using le1 by (simp add: min.absorb2)
+  finally show ?thesis .
+qed
+
+lemma min_label_edge_record_update_chosen:
+  fixes t1 t' :: "'t::order"
+  assumes ts_eq: "timestamps os' = t1 # timestamps os"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(x := l))"
+    and t1_le: "t1 \<le> t'"
+    and l_le: "l \<le> min_label os t1 x"
+  shows "min_label os' t' x = min l (min_label os t' x)"
+proof -
+  let ?S' = "insert (label os' t' x) ((\<lambda>r. label os' r x) ` {r \<in> set (timestamps os'). r \<le> t'})"
+  let ?S = "insert (label os t' x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> t'})"
+  have l_lab_t1: "l \<le> label os t1 x"
+    using l_le min_label_le_current_labelI[of os t1 x] by (rule order_trans)
+  have l_in: "l \<in> ?S'"
+  proof -
+    have "t1 \<in> set (timestamps os')" using ts_eq by simp
+    moreover have "label os' t1 x = l" using label_eq by simp
+    ultimately show ?thesis using t1_le by force
+  qed
+  have upper: "\<And>e. e \<in> ?S \<Longrightarrow> \<exists>e' \<in> ?S'. e' \<le> e"
+  proof -
+    fix e assume "e \<in> ?S"
+    then consider (cur) "e = label os t' x"
+      | (st) r where "r \<in> set (timestamps os)" "r \<le> t'" "e = label os r x"
+      by auto
+    then show "\<exists>e' \<in> ?S'. e' \<le> e"
+    proof cases
+      case cur
+      show ?thesis
+      proof (cases "t' = t1")
+        case True
+        then have "e = label os t1 x" using cur by simp
+        then show ?thesis using l_in l_lab_t1 by auto
+      next
+        case False
+        then have "label os' t' x = e" using cur label_eq by simp
+        then show ?thesis by force
+      qed
+    next
+      case (st r)
+      show ?thesis
+      proof (cases "r = t1")
+        case True
+        then have "e = label os t1 x" using st by simp
+        then show ?thesis using l_in l_lab_t1 by auto
+      next
+        case False
+        then have "label os' r x = e" using st label_eq by simp
+        moreover have "r \<in> set (timestamps os')" using st ts_eq by simp
+        ultimately show ?thesis using st by force
+      qed
+    qed
+  qed
+  have lower: "\<And>e'. e' \<in> ?S' \<Longrightarrow> min l (min_label os t' x) \<le> e'"
+  proof -
+    fix e' assume "e' \<in> ?S'"
+    then consider (cur) "e' = label os' t' x"
+      | (st) r where "r \<in> set (timestamps os')" "r \<le> t'" "e' = label os' r x"
+      by auto
+    then show "min l (min_label os t' x) \<le> e'"
+    proof cases
+      case cur
+      show ?thesis
+      proof (cases "t' = t1")
+        case True
+        then have "e' = l" using cur label_eq by simp
+        then show ?thesis by simp
+      next
+        case False
+        then have "e' = label os t' x" using cur label_eq by simp
+        then have "min_label os t' x \<le> e'"
+          unfolding min_label_def by (auto intro: Min_le)
+        then show ?thesis by (simp add: min.coboundedI2)
+      qed
+    next
+      case (st r)
+      show ?thesis
+      proof (cases "r = t1")
+        case True
+        then have "e' = l" using st label_eq by simp
+        then show ?thesis by simp
+      next
+        case False
+        then have e'_eq: "e' = label os r x" using st label_eq by simp
+        have "r \<in> set (timestamps os)" using st ts_eq False by simp
+        then have "label os r x \<in> (\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> t'}"
+          using st by auto
+        then have "min_label os t' x \<le> e'"
+          unfolding min_label_def e'_eq by (intro Min_le) auto
+        then show ?thesis by (simp add: min.coboundedI2)
+      qed
+    qed
+  qed
+  show ?thesis
+  proof (rule antisym)
+    have le_l: "min_label os' t' x \<le> l"
+      using l_in unfolding min_label_def by (intro Min_le) auto
+    have min_S_in: "Min ?S \<in> ?S" by (intro Min_in) auto
+    obtain e' where e'_in: "e' \<in> ?S'" and e'_le: "e' \<le> Min ?S"
+      using upper[OF min_S_in] by blast
+    have "min_label os' t' x \<le> e'"
+      using e'_in unfolding min_label_def by (intro Min_le) auto
+    then have "min_label os' t' x \<le> min_label os t' x"
+      using e'_le unfolding min_label_def by (rule order_trans)
+    then show "min_label os' t' x \<le> min l (min_label os t' x)"
+      using le_l by simp
+    show "min l (min_label os t' x) \<le> min_label os' t' x"
+      unfolding min_label_def by (intro Min.boundedI) (use lower[unfolded min_label_def] in auto)
+  qed
+qed
+
+lemma all_edges_edge_record_update_not_le:
+  fixes t1 t' :: "'t::order"
+  assumes ts_eq: "timestamps os' = t1 # timestamps os"
+    and graph_eq: "graph os' = (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
+      v2 := v1 # graph os t1 v2))"
+    and vertices_eq: "vertices os' = (vertices os)(t1 := [v1, v2] @ vertices os t1)"
+    and not_le: "\<not> t1 \<le> t'"
+  shows "all_edges os' t' = all_edges os t'"
+proof -
+  have av: "all_vertices os' t' = all_vertices os t'"
+    using ts_eq vertices_eq not_le unfolding all_vertices_def
+    by (fastforce split: if_splits)
+  have nb: "\<And>v. set (neighbors os' t' v) = set (neighbors os t' v)"
+    using ts_eq graph_eq not_le unfolding set_neighbors
+    by (fastforce split: if_splits)
+  show ?thesis
+    unfolding all_edges_def av nb ..
+qed
+
+lemma all_edges_edge_record_update_le:
+  fixes t1 t' :: "'t::order"
+  assumes ts_eq: "timestamps os' = t1 # timestamps os"
+    and graph_eq: "graph os' = (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
+      v2 := v1 # graph os t1 v2))"
+    and vertices_eq: "vertices os' = (vertices os)(t1 := [v1, v2] @ vertices os t1)"
+    and inv: "label_prop_upd_inv os"
+    and t1_le: "t1 \<le> t'"
+  shows "all_edges os' t' = all_edges os t' \<union> {(v1, v2), (v2, v1)}"
+proof -
+  have vt1: "t1 \<notin> set (timestamps os) \<Longrightarrow> set (vertices os t1) = {}"
+    and gt1: "\<And>v. t1 \<notin> set (timestamps os) \<Longrightarrow> graph os t1 v = []"
+    using inv label_prop_upd_inv_vertices_timestamps_iff
+      label_prop_upd_inv_graph_empty_if_not_timestamp by blast+
+  have av: "all_vertices os' t' = insert v1 (insert v2 (all_vertices os t'))"
+    using ts_eq vertices_eq t1_le vt1 unfolding all_vertices_def
+    by (fastforce split: if_splits)
+  have nb: "\<And>v. set (neighbors os' t' v) = set (neighbors os t' v)
+      \<union> (if v = v1 then {v2} else {}) \<union> (if v = v2 then {v1} else {})"
+    using ts_eq graph_eq t1_le gt1 unfolding set_neighbors
+    by (fastforce split: if_splits)
+  have nbv: "\<And>v w. w \<in> set (neighbors os t' v) \<Longrightarrow> v \<in> all_vertices os t' \<and> w \<in> all_vertices os t'"
+    by (rule label_prop_upd_inv_neighborsD[OF inv])
+  show ?thesis
+    unfolding all_edges_def av nb using nbv by (auto split: if_splits)
+qed
+
+lemma min_label_fresh_collapse:
+  fixes t' :: nat
+  assumes inv: "label_prop_upd_inv os"
+    and fresh: "t' \<notin> set (timestamps os)"
+    and ne: "{s \<in> set (timestamps os). s \<le> t'} \<noteq> {}"
+    and smax: "s = Max {s \<in> set (timestamps os). s \<le> t'}"
+  shows min_label_fresh_collapse_in: "s \<in> set (timestamps os)"
+    and min_label_fresh_collapse_le: "s \<le> t'"
+    and min_label_fresh_collapse_min_label: "min_label os t' y = min_label os s y"
+    and min_label_fresh_collapse_all_edges: "all_edges os t' = all_edges os s"
+proof -
+  have fin: "finite {s \<in> set (timestamps os). s \<le> t'}"
+    by simp
+  have s_in_filter: "s \<in> {s \<in> set (timestamps os). s \<le> t'}"
+    unfolding smax by (intro Max_in fin ne)
+  then show s_in: "s \<in> set (timestamps os)" and s_le: "s \<le> t'"
+    by auto
+  have filter_eq: "{r \<in> set (timestamps os). r \<le> t'} = {r \<in> set (timestamps os). r \<le> s}"
+  proof (intro equalityI subsetI)
+    fix r assume "r \<in> {r \<in> set (timestamps os). r \<le> t'}"
+    then show "r \<in> {r \<in> set (timestamps os). r \<le> s}"
+      using smax fin by (auto intro: Max_ge)
+  next
+    fix r assume "r \<in> {r \<in> set (timestamps os). r \<le> s}"
+    then show "r \<in> {r \<in> set (timestamps os). r \<le> t'}"
+      using s_le by auto
+  qed
+  show "min_label os t' y = min_label os s y"
+  proof -
+    have cur_t': "label os t' y = y"
+      using inv fresh unfolding label_prop_upd_inv_def by blast
+    have cur_s_le: "label os s y \<le> y"
+      using inv unfolding label_prop_upd_inv_def by blast
+    have s_img: "label os s y \<in> (\<lambda>r. label os r y) ` {r \<in> set (timestamps os). r \<le> t'}"
+      using s_in s_le by auto
+    have "min_label os t' y = Min (insert y ((\<lambda>r. label os r y) ` {r \<in> set (timestamps os). r \<le> t'}))"
+      unfolding min_label_def cur_t' ..
+    also have "\<dots> = Min ((\<lambda>r. label os r y) ` {r \<in> set (timestamps os). r \<le> t'})"
+    proof -
+      have le_y: "Min ((\<lambda>r. label os r y) ` {r \<in> set (timestamps os). r \<le> t'}) \<le> y"
+        using s_img cur_s_le by (auto intro: order_trans[OF Min_le])
+      then show ?thesis
+        using s_img by (subst Min_insert) (auto simp add: min.absorb2)
+    qed
+    also have "\<dots> = Min (insert (label os s y) ((\<lambda>r. label os r y) ` {r \<in> set (timestamps os). r \<le> s}))"
+      unfolding filter_eq using s_img[unfolded filter_eq] by (simp add: insert_absorb)
+    finally show ?thesis
+      unfolding min_label_def .
+  qed
+  have av_eq: "all_vertices os t' = all_vertices os s"
+    unfolding all_vertices_def filter_eq ..
+  have nb_eq: "\<And>v. set (neighbors os t' v) = set (neighbors os s v)"
+    unfolding set_neighbors using filter_eq by auto
+  show "all_edges os t' = all_edges os s"
+    unfolding all_edges_def av_eq nb_eq ..
+qed
+
+lemma fold_min_le_base:
+  fixes a :: "'a::linorder"
+  shows "fold min xs a \<le> a"
+  unfolding fold_min_Min by (intro Min_le) auto
+
+lemma fold_min_le_mem:
+  fixes a :: "'a::linorder"
+  assumes "b \<in> set xs"
+  shows "fold min xs a \<le> b"
+  unfolding fold_min_Min using assms by (intro Min_le) auto
+
+lemma violated_edge_edge_record_updateD:
+  fixes t1 t' :: nat
+  assumes ts_eq: "timestamps os' = t1 # timestamps os"
+    and graph_eq: "graph os' = (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
+      v2 := v1 # graph os t1 v2))"
+    and vertices_eq: "vertices os' = (vertices os)(t1 := [v1, v2] @ vertices os t1)"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(x := l))"
+    and inv: "label_prop_upd_inv os"
+    and choice: "(x, l) = (if min_label os t1 v2 < min_label os t1 v1
+        then (v1, min_label os t1 v2) else (v2, min_label os t1 v1))"
+    and t'_in: "t' \<in> set (timestamps os')"
+    and edge: "(a, b) \<in> all_edges os' t' \<union> (all_edges os' t')\<inverse>"
+    and viol: "\<not> min_label os' t' a \<le> min_label os' t' b"
+  shows "(\<exists>s. s \<in> set (timestamps os) \<and> s \<le> t' \<and>
+        (a, b) \<in> all_edges os s \<union> (all_edges os s)\<inverse> \<and>
+        \<not> min_label os s a \<le> min_label os s b \<and>
+        min_label os s b \<le> min_label os' t' b)
+    \<or> (a \<in> set (x # neighbors os' t' x) \<and> t1 \<le> t' \<and>
+       fold min (map (min_label os t') (neighbors os' t' x)) (min (min_label os t' x) l)
+         \<le> min_label os' t' b \<and>
+       fold min (map (min_label os t') (neighbors os' t' x)) (min (min_label os t' x) l)
+         < min_label os t' a)"
+proof -
+  have x_or: "x = v1 \<or> x = v2" and l_le: "l \<le> min_label os t1 x"
+    using choice by (auto split: if_splits intro: less_imp_le)
+  have ab: "a \<noteq> b"
+    using viol by auto
+  have other: "\<And>w. w \<noteq> x \<Longrightarrow> min_label os' t' w = min_label os t' w"
+    by (rule min_label_edge_record_update_other[OF ts_eq label_eq inv])
+  note collapse = min_label_fresh_collapse[OF inv]
+  have old_case: "(\<exists>s. s \<in> set (timestamps os) \<and> s \<le> t' \<and>
+        (a, b) \<in> all_edges os s \<union> (all_edges os s)\<inverse> \<and>
+        \<not> min_label os s a \<le> min_label os s b \<and>
+        min_label os s b \<le> min_label os' t' b)"
+    if edge_os: "(a, b) \<in> all_edges os t' \<union> (all_edges os t')\<inverse>"
+      and viol_os: "\<not> min_label os t' a \<le> min_label os t' b"
+      and b_eq: "min_label os t' b \<le> min_label os' t' b"
+  proof (cases "t' \<in> set (timestamps os)")
+    case True
+    then show ?thesis
+      using edge_os viol_os b_eq by blast
+  next
+    case False
+    have ne: "{s \<in> set (timestamps os). s \<le> t'} \<noteq> {}"
+    proof -
+      obtain c d where cd: "(c, d) \<in> all_edges os t'"
+        using edge_os by auto
+      then have "c \<in> all_vertices os t'"
+        unfolding all_edges_def by auto
+      then show ?thesis
+        unfolding all_vertices_def by auto
+    qed
+    define s where "s = Max {s \<in> set (timestamps os). s \<le> t'}"
+    note c = collapse[OF False ne s_def]
+    show ?thesis
+      apply (rule exI[of _ s])
+      using c(1,2) edge_os viol_os b_eq
+      unfolding c(3)[symmetric] c(4)[symmetric] by blast
+  qed
+  show ?thesis
+  proof (cases "t1 \<le> t'")
+    case False
+    have mins: "\<And>w. min_label os' t' w = min_label os t' w"
+      by (rule min_label_edge_record_update_not_le[OF ts_eq label_eq False])
+    have edges: "all_edges os' t' = all_edges os t'"
+      by (rule all_edges_edge_record_update_not_le[OF ts_eq graph_eq vertices_eq False])
+    show ?thesis
+      using old_case edge viol unfolding mins edges by blast
+  next
+    case True
+    have edges: "all_edges os' t' = all_edges os t' \<union> {(v1, v2), (v2, v1)}"
+      by (rule all_edges_edge_record_update_le[OF ts_eq graph_eq vertices_eq inv True])
+    have chosen: "min_label os' t' x = min l (min_label os t' x)"
+      by (rule min_label_edge_record_update_chosen[OF ts_eq label_eq True l_le])
+    have sym': "\<And>s c d. d \<in> set (graph os' s c) \<Longrightarrow> c \<in> set (graph os' s d)"
+      using inv graph_eq unfolding label_prop_upd_inv_def sym_def
+      by (auto split: if_splits)
+    have nb_sym': "\<And>c d. d \<in> set (neighbors os' t' c) \<Longrightarrow> c \<in> set (neighbors os' t' d)"
+      using sym' unfolding set_neighbors by fastforce
+    have edge_nb: "\<And>c d. (c, d) \<in> all_edges os' t' \<union> (all_edges os' t')\<inverse> \<Longrightarrow>
+        d \<in> set (neighbors os' t' c)"
+      using nb_sym' unfolding all_edges_def by auto
+    let ?m = "fold min (map (min_label os t') (neighbors os' t' x)) (min (min_label os t' x) l)"
+    have m_le_l: "?m \<le> l" and m_le_x: "?m \<le> min_label os t' x"
+      using fold_min_le_base[of _ "min (min_label os t' x) l"]
+      by (auto intro: order_trans simp add: min.coboundedI1 min.coboundedI2)
+    have m_le_nb: "\<And>w. w \<in> set (neighbors os' t' x) \<Longrightarrow> ?m \<le> min_label os t' w"
+      by (auto intro: fold_min_le_mem)
+    show ?thesis
+    proof (cases "b = x")
+      case b_x: True
+      have a_nx: "a \<noteq> x"
+        using ab b_x by simp
+      have a_nb: "a \<in> set (neighbors os' t' x)"
+        using edge_nb[OF edge[unfolded b_x]] by (rule nb_sym')
+      have a_eq: "min_label os' t' a = min_label os t' a"
+        by (rule other[OF a_nx])
+      have m_le_b: "?m \<le> min_label os' t' b"
+        unfolding b_x chosen using m_le_l m_le_x by simp
+      have m_lt_a: "?m < min_label os t' a"
+      proof -
+        have "min_label os' t' b < min_label os' t' a"
+          using viol by (simp add: not_le)
+        from le_less_trans[OF m_le_b this, unfolded a_eq] show ?thesis .
+      qed
+      show ?thesis
+        using a_nb True m_le_b m_lt_a by simp
+    next
+      case b_nx: False
+      have b_eq: "min_label os' t' b = min_label os t' b"
+        by (rule other[OF b_nx])
+      show ?thesis
+      proof (cases "a = x")
+        case a_x: True
+        have viol': "\<not> min l (min_label os t' a) \<le> min_label os t' b"
+          using viol chosen a_x b_eq by simp
+        then have viol_os: "\<not> min_label os t' a \<le> min_label os t' b"
+          and l_gt: "\<not> l \<le> min_label os t' b"
+          by (auto simp add: min_le_iff_disj)
+        consider (old) "(a, b) \<in> all_edges os t' \<union> (all_edges os t')\<inverse>"
+          | (new) "(a, b) \<in> {(v1, v2), (v2, v1)}"
+          using edge unfolding edges by auto
+        then show ?thesis
+        proof cases
+          case old
+          show ?thesis
+            using old_case[OF old viol_os] b_eq by auto
+        next
+          case new
+          have b_nb: "b \<in> set (neighbors os' t' x)"
+            by (rule edge_nb[OF edge[unfolded a_x]])
+          have m_le_b: "?m \<le> min_label os' t' b"
+            using m_le_nb[OF b_nb] b_eq by simp
+          have m_lt_a: "?m < min_label os t' a"
+          proof -
+            have "min_label os t' b < min_label os t' a"
+              using viol_os by (simp add: not_le)
+            from le_less_trans[OF m_le_nb[OF b_nb] this] show ?thesis .
+          qed
+          show ?thesis
+            using True m_le_b m_lt_a a_x by simp
+        qed
+      next
+        case a_nx: False
+        have a_eq: "min_label os' t' a = min_label os t' a"
+          by (rule other[OF a_nx])
+        have viol_os: "\<not> min_label os t' a \<le> min_label os t' b"
+          using viol a_eq b_eq by simp
+        have edge_old: "(a, b) \<in> all_edges os t' \<union> (all_edges os t')\<inverse>"
+          using edge x_or a_nx b_nx unfolding edges by auto
+        show ?thesis
+          using old_case[OF edge_old viol_os] b_eq by auto
+      qed
+    qed
+  qed
+qed
+
+lemma label_prop_covered_inv_edge_batch_updateI:
+  fixes t1 :: nat
+  assumes cov: "label_prop_covered_inv os M"
+    and ts_eq: "timestamps os' = t1 # timestamps os"
+    and graph_eq: "graph os' = (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
+      v2 := v1 # graph os t1 v2))"
+    and vertices_eq: "vertices os' = (vertices os)(t1 := [v1, v2] @ vertices os t1)"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(x := l))"
+    and inv: "label_prop_upd_inv os"
+    and en1_eq: "en1 os = Inl"
+    and choice: "(x, l) = (if min_label os t1 v2 < min_label os t1 v1
+        then (v1, min_label os t1 v2) else (v2, min_label os t1 v1))"
+    and head_t: "myfst et = t1"
+    and monoM: "\<And>y. y \<in> M \<Longrightarrow> y \<in> M'"
+    and batchM: "\<And>d tm. (d, Cap tm (1 :: 2)) \<in> set (label_prop_edge_batch os os' t1 x l et)
+      \<Longrightarrow> (d, tm) \<in> M'"
+  shows "label_prop_covered_inv os' M'"
+  unfolding label_prop_covered_inv_def
+proof (intro ballI allI impI)
+  fix t' a b
+  assume t'_in: "t' \<in> set (timestamps os')"
+    and edge: "(a, b) \<in> all_edges os' t' \<union> (all_edges os' t')\<inverse>"
+    and viol: "\<not> min_label os' t' a \<le> min_label os' t' b"
+  from violated_edge_edge_record_updateD[OF ts_eq graph_eq vertices_eq label_eq inv choice
+      t'_in edge viol]
+  show "\<exists>s t'' l'. (Inl (a, l'), MyPair s t'') \<in> M' \<and> s \<le> t' \<and> l' \<le> min_label os' t' b"
+  proof (elim disjE conjE exE)
+    fix s
+    assume s_in: "s \<in> set (timestamps os)" and s_le: "s \<le> t'"
+      and edge_os: "(a, b) \<in> all_edges os s \<union> (all_edges os s)\<inverse>"
+      and viol_os: "\<not> min_label os s a \<le> min_label os s b"
+      and b_le: "min_label os s b \<le> min_label os' t' b"
+    obtain s0 t'' l' where w: "(Inl (a, l'), MyPair s0 t'') \<in> M"
+      and s0_le: "s0 \<le> s" and cover: "l' \<le> min_label os s b"
+      using cov[unfolded label_prop_covered_inv_def] s_in edge_os viol_os by fast
+    have "(Inl (a, l'), MyPair s0 t'') \<in> M'"
+      using w by (rule monoM)
+    then show ?thesis
+      using s0_le s_le cover b_le by (blast intro: order_trans)
+  next
+    let ?m = "fold min (map (min_label os t') (neighbors os' t' x)) (min (min_label os t' x) l)"
+    assume a_in: "a \<in> set (x # neighbors os' t' x)" and t1_le: "t1 \<le> t'"
+      and m_le_b: "?m \<le> min_label os' t' b"
+      and m_lt_a: "?m < min_label os t' a"
+    have t'_batch: "t' \<in> set (filter ((\<le>) t1) (timestamps os'))"
+      using t'_in t1_le by simp
+    have "(en1 os (a, ?m), Cap (MyPair t' (mysnd et)) (1 :: 2))
+        \<in> set (label_prop_edge_batch os os' t1 x l et)"
+      unfolding label_prop_edge_batch_def Let_def
+      using t'_batch a_in m_lt_a by fastforce
+    then have "(Inl (a, ?m), MyPair t' (mysnd et)) \<in> M'"
+      using batchM[unfolded en1_eq] by (metis en1_eq)
+    then show ?thesis
+      using m_le_b by blast
+  qed
+qed
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -11353,6 +11857,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       using label_prop_inv(7)
                       by (auto intro: wf_label_prop_updates_subset simp add: buffers_inv BULK_BENQ_def inputs_at_target_def operator_state.defs os_inv(4) input_tl_def release_caps_def drop_caps_def produces_def)
                     apply (simp add: input_tl_def)
+                    apply (force split: if_split_asm)
                     apply (rule impI)
                     apply (rule label_prop_edge_batch_cc_of_all_edges[OF refl refl])
                     using os_inv(4) apply (simp add: operator_state.defs(3))
@@ -11368,28 +11873,28 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                        apply assumption
                       apply simp
                      apply (erule sym)
-                    subgoal
-                      apply safe
-                      subgoal for t''
-                        apply (rule labels_inv_input0_preserved[where xs=xs])
-                        using label_prop_inv(1) apply blast
-                        subgoal
-                          using label_prop_inv(5) by assumption
-                        subgoal
-                          by (clarsimp simp add: input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                            apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                            apply simp
-                           apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                           apply simp
-                          apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                         apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                         apply simp
-                        apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                        done
-                      done
+                    apply (rule label_prop_inv(1))
+                    apply (rule label_prop_inv(5))
                     done
                   done
-                           subgoal sorry
+                           subgoal
+                             apply (simp only: label_prop_covered_inv_release_caps label_prop_covered_inv_drop_caps
+                                 label_prop_covered_inv_produces label_prop_covered_inv_add_caps)
+                             apply (rule label_prop_covered_inv_edge_batch_updateI[where et=t])
+                                       apply (rule label_prop_inv(8))
+                                      apply (simp add: label_prop_edge_record_update_def input_tl_def)
+                                     apply (simp add: label_prop_edge_record_update_def input_tl_def)
+                                    apply (simp add: label_prop_edge_record_update_def input_tl_def)
+                                   apply (simp add: label_prop_edge_record_update_def input_tl_def)
+                                  apply (rule label_prop_inv(5))
+                                 apply (simp add: os_inv(4) operator_state.defs)
+                                apply (erule sym)
+                               apply (rule refl)
+                              subgoal for y
+                                by (force simp add: buffers_inv BULK_BENQ_def inputs_at_target_def outputs_at_target_raw_summary subgraph_inv(1) image_iff split_beta os_inv(4) operator_state.defs input_tl_def produces_def add_caps_def drop_caps_def release_caps_def Let_def)
+                             subgoal for d' tm
+                               by (force simp add: buffers_inv BULK_BENQ_def inputs_at_target_def outputs_at_target_raw_summary subgraph_inv(1) image_iff split_beta os_inv(4) operator_state.defs input_tl_def produces_def add_caps_def drop_caps_def release_caps_def Let_def)
+                             done
                 done
               done
             done
@@ -11670,7 +12175,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                      by (force simp add: buffers_inv BULK_BENQ_def inputs_at_target_def outputs_at_target_raw_summary subgraph_inv(1) image_iff split_beta os_inv(4) operator_state.defs input_tl_def produces_def add_caps_def drop_caps_def release_caps_def Let_def)
                   subgoal for x tm
                     by (force simp add: buffers_inv BULK_BENQ_def inputs_at_target_def outputs_at_target_raw_summary subgraph_inv(1) image_iff split_beta os_inv(4) operator_state.defs input_tl_def produces_def add_caps_def drop_caps_def release_caps_def Let_def)
-                  done
+                  subgoal
+                    using label_prop_inv(7)[unfolded wf_label_prop_updates_def]
+                    by (fastforce simp add: buffers_inv BULK_BENQ_def inputs_at_target_def os_inv(4) operator_state.defs)                  done
                 done
               done
             done
@@ -11902,7 +12409,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             apply (simp add: consumes_def)
            apply (simp add: consumes_def)
           apply (simp add: consumes_def all_vertices_def)
-          done
+          apply (simp add: consumes_def)
+          apply (simp add: consumes_def)          done
         using inputs_ocaps_inv_consumes[OF label_prop_inv(6)] apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv flip: BULK_BENQ_assoc)
         subgoal
@@ -12189,11 +12697,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             apply (erule not_labels_stable_covered_witnessE)
               apply assumption
              apply assumption
-            subgoal for a t' l'
-              apply (subgoal_tac "(Inl (a, l'), MyPair t t') \<in> set ((outputs_at_target (summ sg) os >> cbufs) (1, 1)) \<union> set (input (os 1) 1) \<union> set ((outputs_at_target (summ sg) os >> cbufs) (2, 1)) \<union> set (input (os 2) 1)")
+            subgoal for a s t' l'
+              apply (subgoal_tac "(Inl (a, l'), MyPair s t') \<in> set ((outputs_at_target (summ sg) os >> cbufs) (1, 1)) \<union> set (input (os 1) 1) \<union> set ((outputs_at_target (summ sg) os >> cbufs) (2, 1)) \<union> set (input (os 2) 1)")
                prefer 2
                subgoal using buffers_inv by (auto simp add: BULK_BENQ_def inputs_at_target_def)
-              apply (thin_tac "(Inl (a, l'), MyPair t t') \<in> set (chns (1, 1) @ chns (2, 1))")
+              apply (thin_tac "(Inl (a, l'), MyPair s t') \<in> set (chns (1, 1) @ chns (2, 1))")
               apply (elim UnE)
               subgoal
                 apply (drule imageI[where f=snd])
@@ -12207,7 +12715,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 apply blast
                 done
               subgoal
-                apply (subgoal_tac "MyPair t t' -+- MyPair 0 0 \<in> set (ocaps (os 1) 1)")
+                apply (subgoal_tac "MyPair s t' -+- MyPair 0 0 \<in> set (ocaps (os 1) 1)")
                  prefer 2
                  subgoal using label_prop_inv(6)[unfolded input_ocaps_inv_def] os_inv(7) by (fastforce simp add: raw_summary_def)
                 apply (drule dataplane_tracker_inv_c_imp_frontier_le_ocaps[OF D _ _ dataplane_inv, rotated 2, where s="MyPair 0 1" and L="Loc (1::3) (Trg (1::2))"])
@@ -12229,7 +12737,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 apply blast
                 done
               subgoal
-                apply (subgoal_tac "MyPair t t' -+- MyPair 0 1 \<in> set (ocaps (os 2) 1)")
+                apply (subgoal_tac "MyPair s t' -+- MyPair 0 1 \<in> set (ocaps (os 2) 1)")
                  prefer 2
                  subgoal using os_inv(8)[unfolded input_ocaps_inv_def] os_inv(7) by (fastforce simp add: raw_summary_def)
                 apply (drule dataplane_tracker_inv_c_imp_frontier_le_ocaps[OF D _ _ dataplane_inv, rotated 2, where s="0 :: (nat, nat) myprod" and L="Loc (1::3) (Trg (1::2))"])
