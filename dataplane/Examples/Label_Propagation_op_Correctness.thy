@@ -11760,9 +11760,72 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule FalseE)
         apply (rule propagate_all_terminates[OF D, unfolded not_def, rule_format])
         by (auto simp add: raw_summary_def)
-      subgoal 
- (* here 2 *)
-        sorry
+      subgoal for c
+        apply (erule thin_rl)
+        apply (erule thin_rl)
+        apply (intro exI conjI)
+         apply (rule rtranclp.rtrancl_refl)
+        apply (intro relcomppI)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def[simplified])
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(1 := (os 1)\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p))), initia := True\<rparr>)\<close>])
+        apply (rule exI[of _ \<open>os_label_prop\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p))), initia := True\<rparr>\<close>])
+        apply (rule exI[of _ cbufs])
+        apply (rule exI[of _ \<open>sg\<lparr>pt_tr := c, upfro := (upfro sg)(1 := False)\<rparr>\<close>])
+        apply (intro conjI)
+                            apply (simp add: dataflow_tree_to_operator_def os_inv(1))
+                            apply (simp add: csets_inv buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def cimage_cUn)
+        using subgraph_inv(1) apply simp
+        using subgraph_inv(2) apply simp
+        using os_inv(2) apply simp
+        using os_inv(3) apply simp
+        using os_inv(4) apply (simp add: operator_state.defs(3))
+        using os_inv(1,5) apply simp
+        using os_inv(6) apply (simp add: label_prob_ty2_check_def)
+        using os_inv(7) apply simp
+        using os_inv(8) apply simp
+        using os_inv(9) apply simp
+        using os_inv(10) apply simp
+        using buffers_inv(2) apply simp
+                apply (subst dataplane_tracker_inv_clean[where f=\<open>(upfro sg)(1 := False)\<close>, of _ \<open>sg\<lparr>pt_tr := c\<rparr>\<close> _ \<open>os(1 := (os 1)\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p)))\<rparr>)\<close>])
+                  apply simp
+                 apply simp
+                apply (rule dataplane_tracker_inv_front_update[OF D _ _ G dataplane_inv])
+                 apply (simp add: subgraph_inv(1))
+                apply assumption
+        using input_stream_inv apply simp
+        using label_prop_inv(1) apply simp
+        subgoal
+          apply (intro ballI impI)
+          subgoal for t
+            apply simp
+            apply (rule ccontr)
+            using label_prop_inv(8) apply -
+
+
+
+
+
+
+end
+          sorry
+        subgoal
+          apply safe
+          sorry
+        using label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
+        using label_prop_inv(5) apply simp
+        using label_prop_inv(6) apply (simp add: input_ocaps_inv_def)
+        using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def image_Un Un_assoc)
+        subgoal sorry
+        done
+
+end
       subgoal for d t xs
         apply (intro exI conjI)
          apply (rule rtranclp.rtrancl_refl)
