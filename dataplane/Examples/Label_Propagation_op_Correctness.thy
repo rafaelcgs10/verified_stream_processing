@@ -3758,31 +3758,17 @@ lemma label_prop_input0_step_batch_caps:
     and input: \<open>(d, t) \<in> set (input os (0 :: 2))\<close>
     and member: \<open>(x, cap) \<in> set (label_prop_input0_step_batch os d t)\<close>
   shows \<open>\<exists>t'\<in>set (ocaps os (out cap)). t' \<le> capability.time cap\<close>
-  using member input IOC zero
-  unfolding label_prop_input0_step_batch_def label_prop_edge_batch_def
-    label_prop_neighbor_batch_def input_ocaps_inv_def
-  apply (auto simp add: zero_myprod_def less_eq_myprod_def split: if_splits)
-  subgoal
-    apply (rule bexI[where x=t])
-     apply (cases t; simp add: less_eq_myprod_def)
-    apply force
-    done
-  subgoal
-    apply (rule bexI[where x=t])
-     apply (cases t; simp add: less_eq_myprod_def)
-    apply force
-    done
-  subgoal
-    apply (rule bexI[where x=t])
-     apply (cases t; simp add: less_eq_myprod_def)
-    apply force
-    done
-  subgoal
-    apply (rule bexI[where x=t])
-     apply (cases t; simp add: less_eq_myprod_def)
-    apply force
-    done
-  done
+proof -
+  have t_ocaps: \<open>t \<in> set (ocaps os (1 :: 2))\<close>
+    using IOC[unfolded input_ocaps_inv_def, rule_format, where p=0 and p'=1] zero input
+    by force
+  have shape: \<open>out cap = 1 \<and> myfst t \<le> myfst (capability.time cap) \<and> mysnd (capability.time cap) = mysnd t\<close>
+    using member
+    unfolding label_prop_input0_step_batch_def label_prop_edge_batch_def Let_def
+    by (auto split: if_splits)
+  then show ?thesis
+    using t_ocaps by (intro bexI[where x=t]) (auto simp add: less_eq_myprod_def)
+qed
 
 lemma input_ocaps_inv_label_prop_input0_step_stateI:
   assumes \<open>input_ocaps_inv os\<close>
@@ -8571,15 +8557,27 @@ lemma label_prop_edge_batch_all_vertices:
     \<open>batch = label_prop_edge_batch old_os updated_os event_t vertex new_label event_time\<close>
     \<open>en1 old_os = Inl\<close> \<open>de1 old_os = projl\<close> \<open>label_prop_upd_inv updated_os\<close> \<open>(d, cap) \<in> set batch\<close>
     \<open>t = myfst (capability.time cap)\<close> \<open>v = fst (de1 old_os d)\<close>
+    \<open>vertex = v1 \<or> vertex = v2\<close>
   shows \<open>v \<in> all_vertices updated_os t\<close>
 proof -
-  have \<open>v \<in> set (neighbors updated_os t vertex)\<close>
-    using assms(2-4,6,7,8) by (force simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def)
-  then obtain t' where t': \<open>t' \<in> set (timestamps updated_os)\<close> \<open>t' \<le> t\<close>
-    \<open>v \<in> set (graph updated_os t' vertex)\<close> unfolding neighbors_def by auto
-  hence \<open>v \<in> set (vertices updated_os t')\<close>
-    using label_prop_upd_inv_graph_edgeD[OF assms(5)] by blast
-  thus ?thesis unfolding all_vertices_def using t'(1,2) by blast
+  have t_in: \<open>t \<in> set (timestamps updated_os)\<close> \<open>event_t \<le> t\<close>
+    using assms(2,6,7) unfolding label_prop_edge_batch_def Let_def by auto
+  have \<open>v = vertex \<or> v \<in> set (neighbors updated_os t vertex)\<close>
+    using assms(2-4,6,7,8) by (auto simp add: label_prop_edge_batch_def Let_def split: if_splits)
+  then show ?thesis
+  proof
+    assume \<open>v = vertex\<close>
+    then show ?thesis
+      using assms(1,9) t_in unfolding all_vertices_def
+      by (force simp add: label_prop_edge_record_update_def input_tl_def)
+  next
+    assume \<open>v \<in> set (neighbors updated_os t vertex)\<close>
+    then obtain t' where t': \<open>t' \<in> set (timestamps updated_os)\<close> \<open>t' \<le> t\<close>
+      \<open>v \<in> set (graph updated_os t' vertex)\<close> unfolding neighbors_def by auto
+    then have \<open>v \<in> set (vertices updated_os t')\<close>
+      using label_prop_upd_inv_graph_edgeD[OF assms(5)] by blast
+    then show ?thesis unfolding all_vertices_def using t'(1,2) by blast
+  qed
 qed
 
 (* TODO: Move. *)
@@ -8611,48 +8609,153 @@ lemma reachable_subset:
   using converse_mono rtrancl_mono_mp sup_mono unfolding reachable_def
   by meson
 
+lemma fold_min_Min:
+  fixes a :: "'a::linorder"
+  shows "fold min xs a = Min (insert a (set xs))"
+  by (metis Min.set_eq_fold list.simps(15))
+
 (* TODO: Move. *)
 lemma label_prop_edge_batch_cc_of_all_edges:
-  assumes \<open>updated_os = label_prop_edge_record_update (input_tl old_os 0) (myfst (t :: _ :: {plus, order})) v1 v2 vertex new_label\<close>
-    \<open>batch = label_prop_edge_batch old_os updated_os (myfst t) vertex new_label t\<close>
-    \<open>en1 old_os = Inl\<close> \<open>de1 old_os = projl\<close> \<open>label_prop_upd_inv updated_os\<close> \<open>(d, cap) \<in> set batch\<close>
-    \<open>myfst (capability.time cap) \<le> t'\<close> \<open>(v, w) = de1 old_os d\<close>
-    \<open>(vertex, new_label) = (if min_label old_os (myfst t) v2 < min_label old_os (myfst t) v1
+  assumes UPD: \<open>updated_os = label_prop_edge_record_update (input_tl old_os 0) (myfst (t :: _ :: {plus, order})) v1 v2 vertex new_label\<close>
+    and BATCH: \<open>batch = label_prop_edge_batch old_os updated_os (myfst t) vertex new_label t\<close>
+    and EN1: \<open>en1 old_os = Inl\<close> and DE1: \<open>de1 old_os = projl\<close>
+    and INV_UPD: \<open>label_prop_upd_inv updated_os\<close>
+    and MEM: \<open>(d, cap) \<in> set batch\<close>
+    and T'_GE: \<open>myfst (capability.time cap) \<le> t'\<close>
+    and VW: \<open>(v, w) = de1 old_os d\<close>
+    and CHOICE: \<open>(vertex, new_label) = (if min_label old_os (myfst t) v2 < min_label old_os (myfst t) v1
       then (v1, min_label old_os (myfst t) v2)
       else (v2, min_label old_os (myfst t) v1))\<close>
-    \<open>\<forall>t. labels_inv (all_edges updated_os t) (min_label updated_os t)\<close>
+    and LABELS_OLD: \<open>\<forall>q. labels_inv (all_edges old_os q) (min_label old_os q)\<close>
+    and INV_OLD: \<open>label_prop_upd_inv old_os\<close>
   shows \<open>w \<in> cc_of (all_edges updated_os t') v\<close>
 proof -
   let ?t0 = \<open>myfst (capability.time cap)\<close>
-  have myfst_t_t': \<open>myfst t \<le> t'\<close> using assms(2-4,6,7)
-    by (force simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def)
-  have vertex_v1_v2: \<open>vertex = v1 \<or> vertex = v2\<close> using assms(9) by (simp split: if_splits)
-  have w_new_label: \<open>w = new_label\<close> using assms(2-4,6,8)
-    by (force simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def)
-  have \<open>v \<in> set (neighbors updated_os ?t0 vertex)\<close>
-    using assms(2-4,6,8) by (force simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def)
-  hence \<open>reachable (all_edges updated_os ?t0) vertex v\<close>
-    using neighbors_reachable[OF assms(5)] by blast
-  hence reachable_vertex_v: \<open>reachable (all_edges updated_os t') vertex v\<close>
-    using all_edges_mono[OF assms(7)] reachable_subset by metis
-  have new_label_le: \<open>new_label \<le> min_label old_os (myfst t) vertex\<close> using assms(9) by (simp split: if_splits)
-  hence \<open>min_label updated_os (myfst t) vertex = new_label\<close>
-  proof -
-    let ?A = \<open>(\<lambda>t'. label updated_os t' vertex) ` {t' \<in> set (timestamps updated_os). t' \<le> myfst t}\<close>
-    have \<open>\<forall>l \<in> ?A. new_label \<le> l\<close>
-      using new_label_le by (force simp add: assms(1) min_label_def label_prop_edge_record_update_def)
-    then show ?thesis using Min_insert2[where a=new_label and A=\<open>?A\<close>] unfolding min_label_def
-      by (force simp add: assms(1) label_prop_edge_record_update_def)
+  let ?E = \<open>all_edges updated_os ?t0\<close>
+  let ?ns = \<open>neighbors updated_os ?t0 vertex\<close>
+  have v_eq: \<open>v = fst (de1 old_os d)\<close> and w_eq': \<open>w = snd (de1 old_os d)\<close>
+    using VW by (metis fst_conv, metis VW snd_conv)
+  have t0_in: \<open>?t0 \<in> set (timestamps updated_os)\<close> and t0_ge: \<open>myfst t \<le> ?t0\<close>
+    using BATCH MEM unfolding label_prop_edge_batch_def Let_def by auto
+  have v_cases: \<open>v = vertex \<or> v \<in> set ?ns\<close>
+    using BATCH EN1 DE1 MEM v_eq
+    by (auto simp add: label_prop_edge_batch_def Let_def split: if_splits)
+  have w_eq: \<open>w = fold min (map (min_label old_os ?t0) ?ns) (min (min_label old_os ?t0 vertex) new_label)\<close>
+    using BATCH EN1 DE1 MEM w_eq'
+    by (auto simp add: label_prop_edge_batch_def Let_def split: if_splits)
+  have vx12: \<open>vertex = v1 \<or> vertex = v2\<close>
+    using CHOICE by (auto split: if_splits)
+  obtain vo where vo12: \<open>vo = v1 \<or> vo = v2\<close>
+    and nl_eq: \<open>new_label = min_label old_os (myfst t) vo\<close>
+    using CHOICE by (cases \<open>min_label old_os (myfst t) v2 < min_label old_os (myfst t) v1\<close>) auto
+  have mt_ts: \<open>myfst t \<in> set (timestamps updated_os)\<close>
+    using UPD by (simp add: label_prop_edge_record_update_def input_tl_def)
+  have v12_av: \<open>v1 \<in> all_vertices updated_os ?t0\<close> \<open>v2 \<in> all_vertices updated_os ?t0\<close>
+    using UPD mt_ts t0_ge unfolding all_vertices_def
+    by (force simp add: label_prop_edge_record_update_def input_tl_def)+
+  have v12_nb: \<open>v2 \<in> set (neighbors updated_os ?t0 v1)\<close> \<open>v1 \<in> set (neighbors updated_os ?t0 v2)\<close>
+    using UPD mt_ts t0_ge unfolding set_neighbors
+    by (force simp add: label_prop_edge_record_update_def input_tl_def)+
+  have edge_new: \<open>(v1, v2) \<in> ?E\<close> \<open>(v2, v1) \<in> ?E\<close>
+    using v12_av v12_nb unfolding all_edges_def by auto
+  have edges_sub: \<open>all_edges old_os q \<subseteq> all_edges updated_os q\<close> for q
+    using UPD unfolding all_edges_def all_vertices_def set_neighbors
+    by (fastforce simp add: label_prop_edge_record_update_def input_tl_def split: if_splits)
+  have vertex_ev: \<open>vertex \<in> edge_vertices ?E\<close>
+    using vx12 edge_new unfolding edge_vertices_def by (auto simp add: Field_def)
+  have nb_edge: \<open>x \<in> set ?ns \<Longrightarrow> (vertex, x) \<in> ?E\<close> for x
+    using label_prop_upd_inv_graph_edgeD[OF INV_UPD] vx12 v12_av
+    unfolding all_edges_def all_vertices_def set_neighbors by blast
+  have nb_ev: \<open>x \<in> set ?ns \<Longrightarrow> x \<in> edge_vertices ?E\<close> for x
+    using nb_edge unfolding edge_vertices_def by (auto simp add: Field_def)
+  have cand_x: \<open>min_label old_os ?t0 x \<in> cc_of ?E x\<close>
+    if x_ev: \<open>x \<in> edge_vertices ?E\<close> for x
+  proof (cases \<open>x \<in> all_vertices old_os ?t0\<close>)
+    case True
+    then have \<open>x \<in> edge_vertices (all_edges old_os ?t0)\<close>
+      using edge_vertices_all_edges[OF INV_OLD] by simp
+    then have \<open>min_label old_os ?t0 x \<in> cc_of (all_edges old_os ?t0) x\<close>
+      using LABELS_OLD unfolding labels_inv_def by blast
+    then show ?thesis
+      using cc_of_mono edges_sub by blast
+  next
+    case False
+    then have \<open>min_label old_os ?t0 x = x\<close>
+      using min_label_eq_self_if_not_all_vertices'[OF INV_OLD] by blast
+    then show ?thesis
+      using cc_of_self x_ev by fastforce
   qed
-  moreover have \<open>vertex \<in> edge_vertices (all_edges updated_os (myfst t))\<close>
-    using edge_vertices_all_edges[OF assms(5)] vertex_v1_v2
-    by (force simp add: assms(1) label_prop_edge_record_update_def all_vertices_def)
-  ultimately have \<open>new_label \<in> cc_of (all_edges updated_os (myfst t)) vertex\<close>
-    using assms(10) unfolding labels_inv_def by fast
-  moreover have \<open>all_edges updated_os (myfst t) \<subseteq> all_edges updated_os t'\<close>
-    by (rule all_edges_mono[OF myfst_t_t'])
-  ultimately have \<open>new_label \<in> cc_of (all_edges updated_os t') vertex\<close> using cc_of_mono by blast
-  thus ?thesis using w_new_label cc_of_eq_if_reachable[OF reachable_vertex_v] by blast
+  have cand_nl: \<open>new_label \<in> cc_of ?E vertex\<close>
+  proof -
+    have vo_ev: \<open>vo \<in> edge_vertices ?E\<close>
+      using vo12 edge_new unfolding edge_vertices_def by (auto simp add: Field_def)
+    have \<open>new_label \<in> cc_of ?E vo\<close>
+    proof (cases \<open>vo \<in> all_vertices old_os (myfst t)\<close>)
+      case True
+      then have \<open>new_label \<in> cc_of (all_edges old_os (myfst t)) vo\<close>
+        using LABELS_OLD nl_eq edge_vertices_all_edges[OF INV_OLD]
+        unfolding labels_inv_def by auto
+      then have \<open>new_label \<in> cc_of (all_edges updated_os (myfst t)) vo\<close>
+        using cc_of_mono edges_sub by blast
+      then show ?thesis
+        using cc_of_mono all_edges_mono[OF t0_ge] by blast
+    next
+      case False
+      then have \<open>new_label = vo\<close>
+        using min_label_eq_self_if_not_all_vertices'[OF INV_OLD] nl_eq by blast
+      then show ?thesis
+        using cc_of_self vo_ev by fastforce
+    qed
+    moreover have \<open>cc_of ?E vo = cc_of ?E vertex\<close>
+      using vx12 vo12 edge_new cc_of_eq_if_reachable
+      unfolding reachable_def by (metis UnCI r_into_rtrancl)
+    ultimately show ?thesis by simp
+  qed
+  have w_vertex: \<open>w \<in> cc_of ?E vertex\<close>
+  proof -
+    have \<open>w \<in> insert (min (min_label old_os ?t0 vertex) new_label)
+        (set (map (min_label old_os ?t0) ?ns))\<close>
+      unfolding w_eq fold_min_Min by (rule Min_in) auto
+    then consider (init) \<open>w = min (min_label old_os ?t0 vertex) new_label\<close>
+      | (nb) x where \<open>x \<in> set ?ns\<close> \<open>w = min_label old_os ?t0 x\<close>
+      by auto
+    then show ?thesis
+    proof cases
+      case init
+      then have \<open>w = min_label old_os ?t0 vertex \<or> w = new_label\<close>
+        by (simp add: min_def)
+      then show ?thesis
+        using cand_x[OF vertex_ev] cand_nl by auto
+    next
+      case nb
+      then have \<open>w \<in> cc_of ?E x\<close>
+        using cand_x[OF nb_ev] by blast
+      moreover have \<open>cc_of ?E x = cc_of ?E vertex\<close>
+        using nb_edge[OF nb(1)] cc_of_eq_if_reachable
+        unfolding reachable_def by (metis UnCI r_into_rtrancl)
+      ultimately show ?thesis by simp
+    qed
+  qed
+  have \<open>w \<in> cc_of (all_edges updated_os t') vertex\<close>
+    using w_vertex cc_of_mono all_edges_mono[OF T'_GE] by blast
+  moreover have \<open>cc_of (all_edges updated_os t') vertex = cc_of (all_edges updated_os t') v\<close>
+  proof -
+    have \<open>reachable (all_edges updated_os t') vertex v\<close>
+      using v_cases
+    proof
+      assume \<open>v = vertex\<close>
+      then show ?thesis by (simp add: reachable_refl)
+    next
+      assume \<open>v \<in> set ?ns\<close>
+      then have \<open>(vertex, v) \<in> ?E\<close> by (rule nb_edge)
+      then have \<open>(vertex, v) \<in> all_edges updated_os t'\<close>
+        using all_edges_mono[OF T'_GE] by blast
+      then show ?thesis
+        unfolding reachable_def by (metis UnCI r_into_rtrancl)
+    qed
+    then show ?thesis by (rule cc_of_eq_if_reachable)
+  qed
+  ultimately show ?thesis by simp
 qed
 
 lemma wf_label_prop_updates_label_prop_input0_step_state_output1_shiftI:
@@ -8797,8 +8900,10 @@ proof -
 
     have ts: \<open>myfst (capability.time cap) \<in> set (timestamps ?updated)\<close>
       by (rule label_prop_edge_batch_in_timestamps[OF batch_mem])
+    have vx: \<open>?v = ?v1 \<or> ?v = ?v2\<close>
+      by simp
     have vertex: \<open>fst (de1 os d') \<in> all_vertices ?updated (myfst (capability.time cap))\<close>
-      by (rule label_prop_edge_batch_all_vertices[OF refl refl EN1 DE1 updated_inv batch_mem refl refl])
+      by (rule label_prop_edge_batch_all_vertices[OF refl refl EN1 DE1 updated_inv batch_mem refl refl vx])
     have cc: \<open>snd (de1 os d') \<in> cc_of (all_edges ?updated q) (fst (de1 os d'))\<close>
       if le: \<open>myfst (capability.time cap) \<le> q\<close> for q
     proof -
@@ -8810,7 +8915,7 @@ proof -
         by simp
       show ?thesis
         by (rule label_prop_edge_batch_cc_of_all_edges
-            [OF refl refl EN1 DE1 updated_inv batch_mem le pair vertex_label updated_labels])
+            [OF refl refl EN1 DE1 updated_inv batch_mem le pair vertex_label LABELS INV])
     qed
     show \<open>case x of (d, t) \<Rightarrow> myfst t \<in> set (timestamps ?step) \<and>
       fst (de1 ?step d) \<in> all_vertices ?step (myfst t) \<and>
@@ -10957,7 +11062,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   by (simp add: operator_state.defs dataflow_tree_to_operator_def os_inv(1))
                 subgoal premises aux
                   using aux(1,2,3) apply -
-                  apply (simp  del: filter.simps add: label_prop_edge_batch_def label_prop_edge_record_update_def buffers_inv operator_state.defs os_inv(4) csets_inv(1))
+                  apply (simp  del: filter.simps add:  label_prop_edge_record_update_def buffers_inv operator_state.defs os_inv(4) csets_inv(1))
                   apply (rule arg_cong2[where f=set_spec_op])
                    apply (simp_all del: filter.simps)
                   apply (clarsimp simp del: filter.simps del: disjCI simp add: inputs_at_target_def BULK_BENQ_def operator_state.defs outputs_at_target_raw_summary subgraph_inv buffers_inv csets_inv(1) os_inv(4))
@@ -10984,11 +11089,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                           apply (drule bspec[where x=\<open>MyPair 0 0\<close>])
                            apply (simp add: raw_summary_def)
                           apply (simp add: MyPair_zero_zero_sum2)
-
-
                           done
-
-
                         apply (simp only: cfilter_cinsert)
                         apply (simp add: release_caps_def drop_caps_def add_caps_def trace_simp
                             list_diff_append_cancel_right)
@@ -11004,8 +11105,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                           subgoal
                             apply (simp add: insert_commute ccs_insert_symmetric)
                             apply (subst ccs_insert_swap)
-                            apply auto
-                            done
+                            by (rule refl)
                           subgoal
                             apply (subst (1 3) cUn_assoc)
                             apply (rule arg_cong2[where f=cUn])
@@ -11023,8 +11123,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                  apply (simp add:  csets_inv(2))
                                 apply (subst (2) cfilter_False)
                                 subgoal
-                                  unfolding label_prop_neighbor_batch_def
-                                  by auto
+                                  by (auto simp add: label_prop_edge_batch_def Let_def)
                                 subgoal
                                   apply simp
                                   apply (rule cimage_cong)
@@ -11034,9 +11133,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                     apply (cases "t \<le> t''")
                                     subgoal
                                       apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
-                                      subgoal using label_prop_inv(5)[unfolded os_inv(4) operator_state.defs] by simp
-                                      subgoal 
-                                        using myfst_mono by blast
+                                      subgoal using label_prop_inv(5)[unfolded os_inv(4) operator_state.defs] by simp                                      subgoal
+                                        by (rule myfst_mono, assumption)
                                       subgoal by simp
                                       subgoal
                                         apply (subst insert_commute)
@@ -11046,7 +11144,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                     subgoal
                                       apply (subst all_edges_eq_not_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
                                       subgoal
-                                        by (metis MyPair_mono bot_nat_0.extremum myprod.exhaust_sel)
+                                        by (cases t'') (auto simp add: less_eq_myprod_def)
                                       subgoal
                                         by simp
                                       subgoal

@@ -1445,8 +1445,13 @@ definition label_prop_neighbor_batch where
 
 definition label_prop_edge_batch where
   \<open>label_prop_edge_batch old_os updated_os event_t vertex new_label event_time =
-    label_prop_neighbor_batch old_os updated_os old_os
-      (filter ((\<le>) event_t) (timestamps updated_os)) vertex new_label event_time\<close>
+    concat (map (\<lambda>cur_t.
+      let vs = neighbors updated_os cur_t vertex;
+          m = fold min (map (min_label old_os cur_t) vs)
+                (min (min_label old_os cur_t vertex) new_label) in
+      map (\<lambda>v'. (en1 old_os (v', m), Cap (MyPair cur_t (mysnd event_time)) 1))
+        (filter (\<lambda>v'. m < min_label old_os cur_t v') (vertex # vs)))
+      (filter ((\<le>) event_t) (timestamps updated_os)))\<close>
 
 definition label_prop_label_batch where
   \<open>label_prop_label_batch old_os updated_os event_t vertex new_label event_time =
