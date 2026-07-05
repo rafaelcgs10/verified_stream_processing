@@ -44,6 +44,51 @@ lemma input_ocaps_inv_label_prop_label_record_updateI:
 
 
 
+lemma propagated_ifrontier_exit_scopeI:
+  assumes prop_all: \<open>propagate_all su c0 = Some c1\<close>
+    and topo: \<open>dataflow_topology su (-+-)\<close>
+    and reach: \<open>reachable_locations su = UNIV\<close>
+    and inv: \<open>propagation_inv su c0\<close>
+    and le: \<open>frontier_less_equal (ifrontier su (-+-) c0 loc) \<tau>\<close>
+  shows \<open>frontier_less_equal (exit_scope myfst (frontier (c_imp c1 loc))) (myfst \<tau>)\<close>
+proof -
+  have eq:
+    \<open>frontier (c_imp c1 loc) = ifrontier su (-+-) c0 loc\<close>
+    using Propagates.propagate_all_frontier_c_imp_correctness[OF prop_all topo reach] inv
+    unfolding propagation_inv_def
+    by blast
+  have \<open>frontier_less_equal (frontier (c_imp c1 loc)) \<tau>\<close>
+    using eq le by simp
+  then show ?thesis
+    using frontier_less_equal_exit_scope by blast
+qed
+
+lemma dataplane_tracker_inv_channel_ifrontierD:
+  assumes inv: \<open>dataplane_tracker_inv os cbufs sg\<close>
+    and msg: \<open>(d, \<tau>) \<in> set ((outputs_at_target (summ sg) os >> cbufs) (nid, p))\<close>
+  shows \<open>frontier_less_equal (ifrontier (summ sg) (-+-) (pt_tr sg) (Loc nid (Trg p))) \<tau>\<close>
+  using inv msg
+  unfolding dataplane_tracker_inv_def chnls_imp_front_inv_def
+  by fastforce
+
+lemma dataplane_tracker_inv_channel_propagated_exit_scopeI:
+  assumes prop_all: \<open>propagate_all (summ sg) (pt_tr sg) = Some c\<close>
+    and topo: \<open>dataflow_topology (summ sg) (-+-)\<close>
+    and reach: \<open>reachable_locations (summ sg) = UNIV\<close>
+    and inv: \<open>dataplane_tracker_inv os cbufs sg\<close>
+    and msg: \<open>(d, \<tau>) \<in> set ((outputs_at_target (summ sg) os >> cbufs) (nid, p))\<close>
+  shows \<open>frontier_less_equal (exit_scope myfst (frontier (c_imp c (Loc nid (Trg p))))) (myfst \<tau>)\<close>
+proof -
+  have prop_inv: \<open>propagation_inv (summ sg) (pt_tr sg)\<close>
+    using inv unfolding dataplane_tracker_inv_def by auto
+  have chn_front:
+    \<open>frontier_less_equal (ifrontier (summ sg) (-+-) (pt_tr sg) (Loc nid (Trg p))) \<tau>\<close>
+    by (rule dataplane_tracker_inv_channel_ifrontierD[OF inv msg])
+  show ?thesis
+    by (rule propagated_ifrontier_exit_scopeI[OF prop_all topo reach prop_inv chn_front])
+qed
+
+
 subsection \<open>Moving pending data through the loop\<close>
 
 lemma loop_move_all_data:
@@ -9034,6 +9079,22 @@ definition label_prop_covered_inv where
       \<not> min_label os t a \<le> min_label os t b \<longrightarrow>
       (\<exists> t' l'. (Inl (a, l'), MyPair t t') \<in> msgs \<and> l' \<le> min_label os t b))\<close>
 
+lemma label_prop_covered_inv_unstable_msgD:
+  assumes covered: \<open>label_prop_covered_inv os msgs\<close>
+    and t_in: \<open>t \<in> set (timestamps os)\<close>
+    and unstable: \<open>\<not> labels_stable (all_edges os t) (min_label os t)\<close>
+  shows \<open>\<exists>a l' t'. (Inl (a, l'), MyPair t t') \<in> msgs\<close>
+proof -
+  from unstable obtain a b where
+    edge: \<open>(a, b) \<in> all_edges os t \<union> (all_edges os t)\<inverse>\<close> and
+    not_le: \<open>\<not> min_label os t a \<le> min_label os t b\<close>
+    unfolding labels_stable_def by blast
+  from covered t_in edge not_le obtain t' l' where
+    \<open>(Inl (a, l'), MyPair t t') \<in> msgs\<close>
+    unfolding label_prop_covered_inv_def by blast
+  then show ?thesis by blast
+qed
+
 lemma label_prop_covered_inv_produces[simp]:
   "label_prop_covered_inv (produces os batch) M = label_prop_covered_inv os M"
   unfolding label_prop_covered_inv_def all_edges_def all_vertices_def neighbors_def min_label_def produces_def
@@ -9365,6 +9426,101 @@ qed
 
 
 
+
+lemma dataplane_tracker_inv_c_imp_frontier_le:
+  fixes sg :: "('nid::{enum,linorder}, 'pid::{enum,linorder}, 't::{order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) subgraph"
+    and os :: "'nid \<Rightarrow> ('pid, 'd, 't) operator_state"
+    and cbufs :: "'nid \<times> 'pid \<Rightarrow> ('d \<times> 't) buf"
+  assumes D: "dataflow_topology (summ sg) (-+-)"
+    and R: "reachable_locations (summ sg) = UNIV"
+    and P: "propagate_all (summ sg) (pt_tr sg) = Some c"
+    and DPI: "dataplane_tracker_inv os cbufs sg"
+  shows dataplane_tracker_inv_c_imp_frontier_le_chan:
+    "\<And>T nid p s L. T \<in> snd ` set ((outputs_at_target (summ sg) os >> cbufs) (nid, p)) \<Longrightarrow>
+      s \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) L \<Longrightarrow>
+      frontier_less_equal (frontier (c_imp c L)) (T -+- s)"
+    and dataplane_tracker_inv_c_imp_frontier_le_ocaps:
+    "\<And>T nid p s L. T \<in> set (ocaps (os nid) p) \<Longrightarrow>
+      s \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Src p)) L \<Longrightarrow>
+      frontier_less_equal (frontier (c_imp c L)) (T -+- s)"
+proof -
+  let ?su = "summ sg"
+  let ?c0 = "pt_tr sg"
+  let ?cgs = "extract_prog Enum.enum (nxt sg) os"
+  let ?c'' = "change_multiplicities ?su ?cgs ?c0"
+  let ?chns = "outputs_at_target ?su os >> cbufs"
+  obtain caps where
+    SC: "Src_caps_inv caps os" and
+    TC: "Trg_caps_inv caps ?chns" and
+    CP: "c_pts_inv ?c'' caps" and
+    CH: "chnls_imp_front_inv ?su ?c0 ?chns" and
+    PI: "propagation_inv ?su ?c0" and
+    EX: "extract_prog_changes_above_impl_inv ?su (nxt sg) ?c0 os"
+    using DPI unfolding dataplane_tracker_inv_def by blast
+  have FRONT: "frontier (c_imp c L') = ifrontier ?su (-+-) ?c0 L'" for L'
+    using Propagates.propagate_all_frontier_c_imp_correctness[OF P D R]
+      PI[unfolded propagation_inv_def] by blast
+  show "frontier_less_equal (frontier (c_imp c L)) (T -+- s)"
+    if T_in: "T \<in> snd ` set (?chns (nid, p))"
+      and s_in: "s \<in>\<^sub>A graph.path_weight ?su (Loc nid (Trg p)) L"
+    for T nid p s L
+  proof -
+    have "frontier_less_equal (ifrontier ?su (-+-) ?c0 (Loc nid (Trg p))) T"
+      using CH T_in unfolding chnls_imp_front_inv_def by blast
+    then have "frontier_less_equal (ifrontier ?su (-+-) ?c0 L) (T -+- s)"
+      by (rule frontier_less_equal_ifrontier_trans[OF D s_in])
+    then show ?thesis
+      unfolding FRONT .
+  qed
+  have cgs_above: "\<forall>(l, tc, m) \<in> set ?cgs. frontier_less_equal (ifrontier ?su (-+-) ?c0 l) tc"
+    using EX
+    unfolding extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def extract_prog_def
+    apply clarsimp
+    subgoal for y a aa b
+      apply (drule spec[of _ y])
+      apply (drule spec[of _ "[]"])
+      apply fastforce
+      done
+    done
+  show "frontier_less_equal (frontier (c_imp c L)) (T -+- s)"
+    if T_in: "T \<in> set (ocaps (os nid) p)"
+      and s_in: "s \<in>\<^sub>A graph.path_weight ?su (Loc nid (Src p)) L"
+    for T nid p s L
+  proof -
+    have "0 < zcount (to_zmset (ocaps (os nid) p)) T"
+      using T_in by (simp add: to_zmset_correct)
+    then have "0 < zcount (c_pts ?c'' (Loc nid (Src p))) T"
+      using SC CP unfolding Src_caps_inv_def c_pts_inv_def by simp
+    then have "frontier_less_equal (frontier (c_pts ?c'' (Loc nid (Src p)))) T"
+      by (rule frontier_less_equal_zcount_pos)
+    then have upper: "frontier_less_equal (ifrontier ?su (-+-) ?c'' L) (T -+- s)"
+      using frontier_less_equal_ifrontierI[OF D s_in] by blast
+    have "ifrontier ?su (-+-) ?c0 L \<le> ifrontier ?su (-+-) ?c'' L"
+      using frontier_less_equal_change_multiplicities[OF D cgs_above] by blast
+    then have "frontier_less_equal (ifrontier ?su (-+-) ?c0 L) (T -+- s)"
+      using upper by (rule frontier_less_equal_le_trans[rotated])
+    then show ?thesis
+      unfolding FRONT .
+  qed
+qed
+
+lemma not_labels_stable_covered_witnessE:
+  assumes "\<not> labels_stable (all_edges osl t) (min_label osl t)"
+    and "label_prop_covered_inv osl M"
+    and "t \<in> set (timestamps osl)"
+  obtains a t' l' where "(Inl (a, l'), MyPair t t') \<in> M"
+  using assms unfolding label_prop_covered_inv_def labels_stable_def by blast
+
+lemma frontier_less_equal_exit_scope_myfst_le:
+  assumes "frontier_less_equal A T"
+    and "myfst T \<le> t"
+  shows "frontier_less_equal (exit_scope myfst A) t"
+proof -
+  have "frontier_less_equal (exit_scope myfst A) (myfst T)"
+    using frontier_less_equal_exit_scope assms(1) by blast
+  then show ?thesis
+    using assms(2) by (rule frontier_less_equal_trans)
+qed
 
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
@@ -11807,14 +11963,67 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             apply simp
             apply (rule ccontr)
             using label_prop_inv(8) apply -
-
-
-
-
-
-
-end
-          sorry
+            apply (subgoal_tac "\<not> frontier_less_equal (exit_scope myfst (frontier (c_imp c (Loc 1 (Trg 1))))) t")
+             prefer 2
+            subgoal
+              by (metis exit_scope_plus_distrib frontier_less_equal_antichain_plusI2)
+            apply (erule not_labels_stable_covered_witnessE)
+              apply assumption
+             apply assumption
+            subgoal for a t' l'
+              apply (subgoal_tac "(Inl (a, l'), MyPair t t') \<in> set ((outputs_at_target (summ sg) os >> cbufs) (1, 1)) \<union> set (input (os 1) 1) \<union> set ((outputs_at_target (summ sg) os >> cbufs) (2, 1)) \<union> set (input (os 2) 1)")
+               prefer 2
+               subgoal using buffers_inv by (auto simp add: BULK_BENQ_def inputs_at_target_def)
+              apply (thin_tac "(Inl (a, l'), MyPair t t') \<in> set (chns (1, 1) @ chns (2, 1))")
+              apply (elim UnE)
+              subgoal
+                apply (drule imageI[where f=snd])
+                apply (drule dataplane_tracker_inv_c_imp_frontier_le_chan[OF D _ _ dataplane_inv, rotated 2, where s="0 :: (nat, nat) myprod" and L="Loc (1::3) (Trg (1::2))"])
+                  apply (rule graph.path_weight_refl)
+                  apply (rule dataflow_topology.axioms(1)[OF D])
+                 apply (simp add: subgraph_inv(1))
+                apply assumption
+                apply (drule frontier_less_equal_exit_scope_myfst_le[where t=t])
+                 apply simp
+                apply blast
+                done
+              subgoal
+                apply (subgoal_tac "MyPair t t' -+- MyPair 0 0 \<in> set (ocaps (os 1) 1)")
+                 prefer 2
+                 subgoal using label_prop_inv(6)[unfolded input_ocaps_inv_def] os_inv(7) by (fastforce simp add: raw_summary_def)
+                apply (drule dataplane_tracker_inv_c_imp_frontier_le_ocaps[OF D _ _ dataplane_inv, rotated 2, where s="MyPair 0 1" and L="Loc (1::3) (Trg (1::2))"])
+                  apply (simp add: subgraph_inv(1) in_antichain_singleton)
+                 apply (simp add: subgraph_inv(1))
+                apply assumption
+                apply (drule frontier_less_equal_exit_scope_myfst_le[where t=t])
+                 apply simp
+                apply blast
+                done
+              subgoal
+                apply (drule imageI[where f=snd])
+                apply (drule dataplane_tracker_inv_c_imp_frontier_le_chan[OF D _ _ dataplane_inv, rotated 2, where s="MyPair 0 1" and L="Loc (1::3) (Trg (1::2))"])
+                  apply (simp add: subgraph_inv(1) in_antichain_singleton)
+                 apply (simp add: subgraph_inv(1))
+                apply assumption
+                apply (drule frontier_less_equal_exit_scope_myfst_le[where t=t])
+                 apply simp
+                apply blast
+                done
+              subgoal
+                apply (subgoal_tac "MyPair t t' -+- MyPair 0 1 \<in> set (ocaps (os 2) 1)")
+                 prefer 2
+                 subgoal using os_inv(8)[unfolded input_ocaps_inv_def] os_inv(7) by (fastforce simp add: raw_summary_def)
+                apply (drule dataplane_tracker_inv_c_imp_frontier_le_ocaps[OF D _ _ dataplane_inv, rotated 2, where s="0 :: (nat, nat) myprod" and L="Loc (1::3) (Trg (1::2))"])
+                  apply (simp add: subgraph_inv(1) in_antichain_singleton)
+                 apply (simp add: subgraph_inv(1))
+                apply assumption
+                apply (drule frontier_less_equal_exit_scope_myfst_le[where t=t])
+                 apply simp
+                apply blast
+                done
+              done
+            done
+          done
         subgoal
           apply safe
           sorry
@@ -11824,8 +12033,6 @@ end
         using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def image_Un Un_assoc)
         subgoal sorry
         done
-
-end
       subgoal for d t xs
         apply (intro exI conjI)
          apply (rule rtranclp.rtrancl_refl)
