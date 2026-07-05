@@ -9024,6 +9024,348 @@ proof -
 qed
 
 
+lemma min_label_le_label: "min_label os t v \<le> label os t v"
+  unfolding min_label_def by (intro Min_le) auto
+
+definition label_prop_covered_inv where
+  \<open>label_prop_covered_inv os msgs \<longleftrightarrow>
+    (\<forall> t \<in> set (timestamps os). \<forall> a b.
+      (a, b) \<in> all_edges os t \<union> (all_edges os t)\<inverse> \<longrightarrow>
+      \<not> min_label os t a \<le> min_label os t b \<longrightarrow>
+      (\<exists> t' l'. (Inl (a, l'), MyPair t t') \<in> msgs \<and> l' \<le> min_label os t b))\<close>
+
+lemma label_prop_covered_inv_produces[simp]:
+  "label_prop_covered_inv (produces os batch) M = label_prop_covered_inv os M"
+  unfolding label_prop_covered_inv_def all_edges_def all_vertices_def neighbors_def min_label_def produces_def
+  by simp
+
+lemma label_prop_covered_inv_add_caps[simp]:
+  "label_prop_covered_inv (add_caps os caps) M = label_prop_covered_inv os M"
+  unfolding label_prop_covered_inv_def all_edges_def all_vertices_def neighbors_def min_label_def add_caps_def
+  by simp
+
+lemma label_prop_covered_inv_drop_caps[simp]:
+  "label_prop_covered_inv (drop_caps os caps) M = label_prop_covered_inv os M"
+  unfolding label_prop_covered_inv_def all_edges_def all_vertices_def neighbors_def min_label_def drop_caps_def
+  by simp
+
+lemma label_prop_covered_inv_release_caps[simp]:
+  "label_prop_covered_inv (release_caps os p) M = label_prop_covered_inv os M"
+  unfolding release_caps_def Let_def by simp
+
+lemma label_prop_covered_inv_input_tl[simp]:
+  "label_prop_covered_inv (input_tl os p) M = label_prop_covered_inv os M"
+  unfolding label_prop_covered_inv_def all_edges_def all_vertices_def neighbors_def min_label_def input_tl_def
+  by simp
+
+lemma label_prop_label_batch_out:
+  "(x, cap) \<in> set (label_prop_label_batch os os2 t1 v new_l et) \<Longrightarrow> out cap = 1"
+  by (auto simp add: label_prop_label_batch_def label_prop_neighbor_batch_def Let_def split: if_splits)
+
+lemma isl_projl_eq: "isl dd \<Longrightarrow> projl dd = p \<Longrightarrow> dd = Inl p"
+  by (cases dd) auto
+
+lemma min_label_record_update_le:
+  fixes t1 t' :: "'t::order"
+  assumes "t1 \<in> set (timestamps os)" "t1 \<le> t'"
+  shows "min_label (label_prop_label_record_update os t1 v new_l) t' v \<le> new_l"
+proof -
+  let ?upd = "label_prop_label_record_update os t1 v new_l"
+  have "new_l \<in> (\<lambda>s. label ?upd s v) ` {s \<in> set (timestamps ?upd). s \<le> t'}"
+    using assms by (force simp add: label_prop_label_record_update_def)
+  then show ?thesis
+    unfolding min_label_def by (intro Min_le) auto
+qed
+
+lemma violated_edge_label_record_updateD:
+  fixes t1 t' :: "'t::{order,plus}"
+  assumes viol: "\<not> min_label (label_prop_label_record_update os' t1 v new_l) t' a
+      \<le> min_label (label_prop_label_record_update os' t1 v new_l) t' b"
+    and edge: "(a, b) \<in> all_edges os' t' \<union> (all_edges os' t')\<inverse>"
+    and ts_eq: "timestamps os' = timestamps os"
+    and graph_eq: "graph os' = graph os"
+    and vertices_eq: "vertices os' = vertices os"
+    and label_eq: "label os' = label os"
+    and t'_ts: "t' \<in> set (timestamps os)"
+    and dec: "new_l \<le> label os t1 v"
+    and sym_graph: "\<And>s. sym {(x, y). y \<in> set (graph os s x)}"
+  shows "((a, b) \<in> all_edges os t' \<union> (all_edges os t')\<inverse> \<and>
+      \<not> min_label os t' a \<le> min_label os t' b \<and>
+      min_label (label_prop_label_record_update os' t1 v new_l) t' b = min_label os t' b)
+    \<or> ((en1 os (a, new_l), Cap (MyPair t' (mysnd et)) (1 :: 2))
+        \<in> set (label_prop_label_batch os (label_prop_label_record_update os' t1 v new_l) t1 v new_l et) \<and>
+      min_label (label_prop_label_record_update os' t1 v new_l) t' b = new_l)"
+proof -
+  let ?upd = "label_prop_label_record_update os' t1 v new_l"
+  let ?E = "all_edges os t'"
+  define A where "A = {s \<in> set (timestamps os). s \<le> t'}"
+  have finA: "finite A"
+    unfolding A_def by simp
+  have lab_u: "label ?upd = (label os)(t1 := (label os t1)(v := new_l))"
+    using label_eq by (simp add: label_prop_label_record_update_def)
+  have ts_u: "timestamps ?upd = timestamps os"
+    using ts_eq by (simp add: label_prop_label_record_update_def)
+  have all_vertices_eq: "all_vertices os' t' = all_vertices os t'"
+    unfolding all_vertices_def using ts_eq vertices_eq by simp
+  have neighbors_eq: "\<And>w. set (neighbors os' t' w) = set (neighbors os t' w)"
+    unfolding set_neighbors using ts_eq graph_eq by simp
+  have all_edges_eq: "all_edges os' t' = all_edges os t'"
+    unfolding all_edges_def using all_vertices_eq neighbors_eq by auto
+  have minl: "min_label os t' w = Min (insert (label os t' w) ((\<lambda>s. label os s w) ` A))" for w
+    by (simp add: min_label_def A_def)
+  have minl_u: "min_label ?upd t' w = Min (insert (label ?upd t' w) ((\<lambda>s. label ?upd s w) ` A))" for w
+    by (simp add: min_label_def A_def ts_u ts_eq)
+  have upd_other: "min_label ?upd t' w = min_label os t' w" if wv: "w \<noteq> v" for w
+  proof -
+    have "label ?upd s w = label os s w" for s
+      using wv by (simp add: lab_u)
+    then show ?thesis
+      by (simp add: minl minl_u)
+  qed
+  have upd_v_le: "min_label ?upd t' v \<le> min_label os t' v"
+  proof -
+    have "Min (insert (label os t' v) ((\<lambda>s. label os s v) ` A)) \<in> insert (label os t' v) ((\<lambda>s. label os s v) ` A)"
+      by (intro Min_in) (use finA in auto)
+    then consider "Min (insert (label os t' v) ((\<lambda>s. label os s v) ` A)) = label os t' v"
+      | s where "s \<in> A" "Min (insert (label os t' v) ((\<lambda>s. label os s v) ` A)) = label os s v"
+      by blast
+    then show ?thesis
+    proof cases
+      case 1
+      have "min_label ?upd t' v \<le> label ?upd t' v"
+        unfolding minl_u by (intro Min_le) (use finA in auto)
+      also have "label ?upd t' v \<le> label os t' v"
+        using dec by (auto simp add: lab_u)
+      finally show ?thesis
+        using 1 minl by simp
+    next
+      case (2 s)
+      have "min_label ?upd t' v \<le> label ?upd s v"
+        unfolding minl_u by (intro Min_le) (use finA 2 in auto)
+      also have "label ?upd s v \<le> label os s v"
+        using dec by (auto simp add: lab_u)
+      finally show ?thesis
+        using 2 minl by simp
+    qed
+  qed
+  have le_upd_v: "c \<le> min_label ?upd t' v" if c_new: "c \<le> new_l" and c_old: "c \<le> min_label os t' v" for c
+  proof -
+    have le_all: "c \<le> bb" if b_in: "bb \<in> insert (label ?upd t' v) ((\<lambda>s. label ?upd s v) ` A)" for bb
+    proof -
+      from b_in have "bb = new_l \<or> bb \<in> insert (label os t' v) ((\<lambda>s. label os s v) ` A)"
+        by (auto simp add: lab_u split: if_splits)
+      then show ?thesis
+      proof
+        assume "bb = new_l"
+        then show ?thesis using c_new by simp
+      next
+        assume "bb \<in> insert (label os t' v) ((\<lambda>s. label os s v) ` A)"
+        then have "min_label os t' v \<le> bb"
+          unfolding minl by (intro Min_le) (use finA in auto)
+        then show ?thesis using c_old by simp
+      qed
+    qed
+    show ?thesis
+      unfolding minl_u
+      by (auto simp add: finA intro: le_all)
+  qed
+  have upd_v_eq: "min_label ?upd t' v = min_label os t' v" if t1A: "t1 \<notin> A"
+  proof -
+    have t1t': "t' \<noteq> t1"
+      using t1A t'_ts unfolding A_def by auto
+    have "(\<lambda>s. label ?upd s v) ` A = (\<lambda>s. label os s v) ` A"
+      using t1A by (intro image_cong refl) (auto simp add: lab_u)
+    moreover have "label ?upd t' v = label os t' v"
+      using t1t' by (auto simp add: lab_u)
+    ultimately show ?thesis
+      by (simp add: minl minl_u)
+  qed
+  have upd_le_new: "min_label ?upd t' v \<le> new_l" if t1A: "t1 \<in> A"
+  proof -
+    have "new_l \<in> (\<lambda>s. label ?upd s v) ` A"
+      using t1A by (force simp add: lab_u)
+    then show ?thesis
+      unfolding minl_u by (intro Min_le) (use finA in auto)
+  qed
+  have upd_v_min: "min_label ?upd t' v = min new_l (min_label os t' v)" if t1A: "t1 \<in> A"
+  proof (rule antisym)
+    show "min_label ?upd t' v \<le> min new_l (min_label os t' v)"
+      using upd_le_new[OF t1A] upd_v_le by simp
+    show "min new_l (min_label os t' v) \<le> min_label ?upd t' v"
+      by (rule le_upd_v) simp_all
+  qed
+  have nb_sym: "x \<in> set (neighbors os t' y)" if "y \<in> set (neighbors os t' x)" for x y
+    using that sym_graph[unfolded sym_def] unfolding set_neighbors by fastforce
+  have E_sym: "(y, x) \<in> ?E" if "(x, y) \<in> ?E" for x y
+    using that nb_sym unfolding all_edges_def by auto
+  have edge_os: "(a, b) \<in> ?E \<union> ?E\<inverse>"
+    using edge all_edges_eq by simp
+  have ab: "a \<noteq> b"
+    using viol by auto
+  show ?thesis
+  proof (cases "b = v")
+    case False
+    then have b_eq: "min_label ?upd t' b = min_label os t' b"
+      by (rule upd_other)
+    have viol_os: "\<not> min_label os t' a \<le> min_label os t' b"
+    proof (cases "a = v")
+      case True
+      show ?thesis
+      proof
+        assume "min_label os t' a \<le> min_label os t' b"
+        then have "min_label ?upd t' a \<le> min_label os t' b"
+          using True upd_v_le by (metis order_trans)
+        then show False
+          using viol b_eq by simp
+      qed
+    next
+      case False
+      then show ?thesis
+        using viol b_eq upd_other[OF False] by simp
+    qed
+    show ?thesis
+      using edge_os viol_os b_eq by blast
+  next
+    case bv: True
+    then have av: "a \<noteq> v"
+      using ab by simp
+    have a_eq: "min_label ?upd t' a = min_label os t' a"
+      by (rule upd_other[OF av])
+    show ?thesis
+    proof (cases "t1 \<in> A")
+      case False
+      have b_eq: "min_label ?upd t' b = min_label os t' b"
+        using upd_v_eq[OF False] bv by simp
+      have viol_os: "\<not> min_label os t' a \<le> min_label os t' b"
+        using viol a_eq b_eq by simp
+      show ?thesis
+        using edge_os viol_os b_eq by blast
+    next
+      case t1A: True
+      then have v_min: "min_label ?upd t' v = min new_l (min_label os t' v)"
+        by (rule upd_v_min)
+      show ?thesis
+      proof (cases "min_label os t' v \<le> new_l")
+        case True
+        have b_eq: "min_label ?upd t' b = min_label os t' b"
+          using v_min True bv by (simp add: min.absorb2)
+        have viol_os: "\<not> min_label os t' a \<le> min_label os t' b"
+          using viol a_eq b_eq by simp
+        show ?thesis
+          using edge_os viol_os b_eq by blast
+      next
+        case False
+        then have nl_lt: "new_l < min_label os t' v"
+          by (simp add: not_le)
+        have b_new: "min_label ?upd t' b = new_l"
+          using v_min nl_lt bv by (simp add: min.absorb1)
+        have a_gt: "new_l < min_label os t' a"
+          using viol a_eq b_new by (simp add: not_le)
+        have t1_le: "t1 \<le> t'"
+          using t1A unfolding A_def by simp
+        have a_nb: "a \<in> set (neighbors os t' v)"
+        proof -
+          from edge_os bv have "(a, v) \<in> ?E \<or> (v, a) \<in> ?E"
+            by auto
+          then have "(v, a) \<in> ?E"
+            using E_sym by blast
+          then show ?thesis
+
+            unfolding all_edges_def by auto
+        qed
+        have upd_a_gt: "new_l < min_label ?upd t' a"
+          using a_gt a_eq by simp
+        have "(en1 os (a, new_l), Cap (MyPair t' (mysnd et)) (1 :: 2))
+            \<in> set (label_prop_label_batch os ?upd t1 v new_l et)"
+          unfolding label_prop_label_batch_def label_prop_neighbor_batch_def Let_def
+          using t'_ts t1_le nl_lt a_nb upd_a_gt by fastforce
+        then show ?thesis
+          using b_new by blast
+      qed
+    qed
+  qed
+qed
+
+lemma label_prop_covered_inv_label_batch_updateI:
+  fixes t1 :: "'t::{order,plus}"
+  assumes cov: "label_prop_covered_inv os M"
+    and ts_eq: "timestamps os' = timestamps os"
+    and graph_eq: "graph os' = graph os"
+    and vertices_eq: "vertices os' = vertices os"
+    and label_eq: "label os' = label os"
+    and upd: "label_prop_upd_inv os"
+    and en1_eq: "en1 os = Inl"
+    and nl: "new_l = min (min_label os t1 v) lh"
+    and head_t: "myfst et = t1"
+    and headM: "\<And>x. x \<in> M \<Longrightarrow> x = (Inl (v, lh), et) \<or> x \<in> M'"
+    and batchM: "\<And>x tm. (x, Cap tm (1 :: 2)) \<in> set (label_prop_label_batch os (label_prop_label_record_update os' t1 v new_l) t1 v new_l et)
+      \<Longrightarrow> (x, tm) \<in> M'"
+  shows "label_prop_covered_inv (label_prop_label_record_update os' t1 v new_l) M'"
+  unfolding label_prop_covered_inv_def
+proof (intro ballI allI impI)
+  let ?upd = "label_prop_label_record_update os' t1 v new_l"
+  fix t' a b
+  assume t'_in: "t' \<in> set (timestamps ?upd)"
+    and edge: "(a, b) \<in> all_edges ?upd t' \<union> (all_edges ?upd t')\<inverse>"
+    and viol: "\<not> min_label ?upd t' a \<le> min_label ?upd t' b"
+  have ts_upd: "timestamps ?upd = timestamps os"
+    by (simp add: label_prop_label_record_update_def ts_eq)
+  have t'_ts: "t' \<in> set (timestamps os)"
+    using t'_in ts_upd by simp
+  have edges_upd: "all_edges ?upd t' = all_edges os' t'"
+    unfolding all_edges_def all_vertices_def set_neighbors
+    by (simp add: label_prop_label_record_update_def)
+  have edge': "(a, b) \<in> all_edges os' t' \<union> (all_edges os' t')\<inverse>"
+    using edge edges_upd by simp
+  have dec: "new_l \<le> label os t1 v"
+    unfolding nl by (rule min.coboundedI1[OF min_label_le_label])
+  have sym_graph: "\<And>s. sym {(x, y). y \<in> set (graph os s x)}"
+    using upd unfolding label_prop_upd_inv_def by blast
+  from violated_edge_label_record_updateD[where et=et, OF viol edge' ts_eq graph_eq vertices_eq label_eq t'_ts dec sym_graph]
+  show "\<exists>t'' l'. (Inl (a, l'), MyPair t' t'') \<in> M' \<and> l' \<le> min_label ?upd t' b"
+  proof (elim disjE conjE)
+    assume edge_os: "(a, b) \<in> all_edges os t' \<union> (all_edges os t')\<inverse>"
+      and viol_os: "\<not> min_label os t' a \<le> min_label os t' b"
+      and b_eq: "min_label ?upd t' b = min_label os t' b"
+    obtain t'' l' where w: "(Inl (a, l'), MyPair t' t'') \<in> M"
+      and cover: "l' \<le> min_label os t' b"
+      using cov[unfolded label_prop_covered_inv_def] t'_ts edge_os viol_os by blast
+    from headM[OF w] show ?thesis
+    proof
+      assume head: "(Inl (a, l'), MyPair t' t'') = (Inl (v, lh), et)"
+      then have av: "a = v" and llh: "l' = lh" and tt: "et = MyPair t' t''"
+        by auto
+      have t1t': "t1 = t'"
+        using head_t tt by simp
+      have "min_label ?upd t' a \<le> new_l"
+        unfolding av
+        by (rule min_label_record_update_le) (simp_all add: ts_eq t'_ts t1t')
+      also have "new_l \<le> lh"
+        unfolding nl by (rule min.cobounded2)
+      also have "lh \<le> min_label ?upd t' b"
+        using cover llh b_eq by simp
+      finally have "min_label ?upd t' a \<le> min_label ?upd t' b" .
+      then show ?thesis
+        using viol by simp
+    next
+      assume "(Inl (a, l'), MyPair t' t'') \<in> M'"
+      then show ?thesis
+        using cover b_eq by auto
+    qed
+  next
+    assume elem: "(en1 os (a, new_l), Cap (MyPair t' (mysnd et)) (1 :: 2))
+        \<in> set (label_prop_label_batch os ?upd t1 v new_l et)"
+      and b_new: "min_label ?upd t' b = new_l"
+    have "(Inl (a, new_l), MyPair t' (mysnd et)) \<in> M'"
+      using batchM[OF elem[unfolded en1_eq]] by simp
+    then show ?thesis
+      using b_new by force
+  qed
+qed
+
+
+
+
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -9072,6 +9414,7 @@ lemma label_propagation_correctness:
     \<open>label_prop_upd_inv os_label_prop\<close>
     \<open>input_ocaps_inv (os 1)\<close>
     \<open>wf_label_prop_updates os_label_prop (set (chns (1, 1) @ map (\<lambda>(d, t). (d, t + MyPair 0 1)) (chns (2, 1))))\<close>
+    \<open>label_prop_covered_inv os_label_prop (set (chns (1, 1) @ chns (2, 1)))\<close>
   shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
          \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms
@@ -9177,6 +9520,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(5) apply (simp add: os_inv(4,7) operator_state.defs(3))
           apply (rule label_prop_inv(6))
         using label_prop_inv(7) apply (simp add: os_inv(4,7) buffers_inv BULK_BENQ_def BENQ_def outputs_at_target_raw_summary subgraph_inv(1) image_Un operator_state.defs(3) Un_assoc)
+        subgoal sorry
         apply (clarsimp simp add: dataflow_tree_to_operator_def intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
         apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
          apply (fastforce simp add: BENQ_def)
@@ -9294,6 +9638,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
            apply (subst label_prop_upd_inv_cong; simp add: BENQ_def)
           apply (rule inputs_ocaps_inv_consumes[OF label_prop_inv(6)])
         using label_prop_inv(7) apply (simp add: os_inv(4,7) operator_state.defs(3) buffers_inv)
+        subgoal sorry
         apply (clarsimp simp add: dataflow_tree_to_operator_def intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
         apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
          apply (simp add: BTL_def fun_eq_iff map_tl split: sum.splits)
@@ -9352,6 +9697,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
           using label_prop_inv(7) apply (simp add: os_inv(4) buffers_inv)
+        subgoal sorry
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         subgoal for lxs' t v w
@@ -9402,6 +9748,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
           using label_prop_inv(7) apply (simp add: os_inv(4) BENQ_def)
+        subgoal sorry
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         subgoal for lxs' t
@@ -9452,6 +9799,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
           using label_prop_inv(7) apply (simp add: os_inv(4) buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def inputs_at_target_def)
+        subgoal sorry
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         subgoal for lxs' t
@@ -9502,6 +9850,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
           using label_prop_inv(7) apply (simp add: os_inv(4) buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def inputs_at_target_def)
+        subgoal sorry
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         done
@@ -9576,6 +9925,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (subst wf_label_prop_updates_cong[where os'=os_label_prop
               and S'=\<open>set (chns (1, 1) @ map (\<lambda>(d, t). (d, t -+- MyPair 0 1)) (chns (2, 1)))\<close>])
         using label_prop_inv(7) apply (auto simp add: os_inv(4) operator_state.defs(3) buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def BENQ_def inputs_at_target_def image_Un)
+             subgoal sorry
         done
       subgoal for d t
         apply (intro exI conjI relcomppI)
@@ -9630,7 +9980,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(7)
         apply (subst wf_label_prop_updates_cong[OF refl refl refl refl _])
          defer
-         apply assumption
+          apply assumption
+        subgoal sorry
         apply (simp add: buffers_inv BULK_BENQ_def BTL_def BENQ_def BHD_def image_set map_consI(2) flip: set_append)
         done
       subgoal for os'
@@ -10323,6 +10674,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             apply (subst wf_label_prop_updates_cong)
             using label_prop_inv(7)
             by (auto simp add: produces_def buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def inputs_at_target_def label_prop_output_batch_def)
+        subgoal sorry
           done
         subgoal
           apply (simp  del: filter.simps split: list.splits)
@@ -10673,7 +11025,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
                       using label_prop_inv(7)
                       by (auto intro: wf_label_prop_updates_subset simp add: buffers_inv BULK_BENQ_def inputs_at_target_def operator_state.defs os_inv(4) input_tl_def release_caps_def drop_caps_def produces_def)
-                     apply (simp add: input_tl_def)
+                    apply (simp add: input_tl_def)
                     apply (rule impI)
                     apply (rule label_prop_edge_batch_cc_of_all_edges[OF refl refl])
                     using os_inv(4) apply (simp add: operator_state.defs(3))
@@ -10685,7 +11037,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
                       using label_prop_inv(7)
                       by (auto intro: wf_label_prop_updates_subset simp add: buffers_inv BULK_BENQ_def inputs_at_target_def operator_state.defs os_inv(4) input_tl_def release_caps_def drop_caps_def produces_def)
-                        apply (simp add: input_tl_def)
+                    apply (simp add: input_tl_def)
                        apply assumption
                       apply simp
                      apply (erule sym)
@@ -10710,6 +11062,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       done
                     done
                   done
+                           subgoal sorry
                 done
               done
             done
@@ -10966,6 +11319,31 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     apply (simp add: edge_vertices_all_edges[OF label_prop_inv(5)])
                     done
                   done
+                  subgoal
+                  apply (subgoal_tac "d = Inl (v, l)")
+                   prefer 2
+                   subgoal
+                     apply (rule isl_projl_eq)
+                      using os_inv(6)[unfolded label_prob_ty2_check_def, THEN conjunct1, rule_format, of _ 1] apply (fastforce simp add: os_inv(4) operator_state.defs)
+                     apply (simp add: os_inv(4) operator_state.defs)
+                     done
+                  apply (simp only: label_prop_covered_inv_release_caps label_prop_covered_inv_drop_caps
+                      label_prop_covered_inv_produces label_prop_covered_inv_add_caps)
+                  apply (rule label_prop_covered_inv_label_batch_updateI[where et=t and lh=l])
+                            apply (rule label_prop_inv(8))
+                           apply (simp add: input_tl_def)
+                          apply (simp add: input_tl_def)
+                         apply (simp add: input_tl_def)
+                        apply (simp add: input_tl_def)
+                       apply (rule label_prop_inv(5))
+                      apply (simp add: os_inv(4) operator_state.defs)
+                     apply (rule refl)
+                    apply (rule refl)
+                   subgoal for x
+                     by (force simp add: buffers_inv BULK_BENQ_def inputs_at_target_def outputs_at_target_raw_summary subgraph_inv(1) image_iff split_beta os_inv(4) operator_state.defs input_tl_def produces_def add_caps_def drop_caps_def release_caps_def Let_def)
+                  subgoal for x tm
+                    by (force simp add: buffers_inv BULK_BENQ_def inputs_at_target_def outputs_at_target_raw_summary subgraph_inv(1) image_iff split_beta os_inv(4) operator_state.defs input_tl_def produces_def add_caps_def drop_caps_def release_caps_def Let_def)
+                  done
                 done
               done
             done
@@ -11020,6 +11398,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
            apply (rule input_ocaps_inv_release_capsI)
           using label_prop_inv(6) os_inv(4) apply (simp add: operator_state.defs)
           using label_prop_inv(7) apply (simp add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def release_caps_def drop_caps_def)
+          subgoal sorry
           done
         done
       subgoal for os_incr'
@@ -11085,6 +11464,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule label_prop_inv(5))
         using label_prop_inv(6) apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def filter_True split_beta)
+        subgoal sorry
         done
       subgoal for _ d t
         apply (simp add: ran_loop_wire cUNIV_def cin_def)
@@ -11180,6 +11560,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           done
         using inputs_ocaps_inv_consumes[OF label_prop_inv(6)] apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv flip: BULK_BENQ_assoc)
+        subgoal sorry
         done
       subgoal for d t xs
         apply (intro exI conjI relcomppI)
@@ -11235,6 +11616,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule label_prop_inv(5))
         using label_prop_inv(6) apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def BENQ_def outputs_at_target_raw_summary subgraph_inv(1) image_Un Un_assoc)
+        subgoal sorry
         done
       subgoal for _ os_incr'
         apply (intro exI conjI relcomppI)
@@ -11279,6 +11661,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule label_prop_inv(5))
         using label_prop_inv(6) apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def obtain_progress_def image_Un Un_assoc)
+        subgoal sorry
         done
       subgoal for _ os_label_prop'
         apply (intro exI conjI relcomppI)
@@ -11323,6 +11706,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(5) apply (simp add: obtain_progress_def)
         using label_prop_inv(6) apply (simp add: obtain_progress_def input_ocaps_inv_def)
         using label_prop_inv(7) apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def obtain_progress_def image_Un Un_assoc)
+        subgoal sorry
         done
       subgoal
         apply (intro exI conjI relcomppI)
@@ -11367,6 +11751,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule label_prop_inv(5))
         using label_prop_inv(6) apply simp
         using label_prop_inv(7) apply (simp add: buffers_inv)
+        subgoal sorry
         done
       subgoal
         apply (insert dataplane_inv subgraph_inv(1))
@@ -11376,6 +11761,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule propagate_all_terminates[OF D, unfolded not_def, rule_format])
         by (auto simp add: raw_summary_def)
       subgoal 
+ (* here 2 *)
         sorry
       subgoal for d t xs
         apply (intro exI conjI)
@@ -11456,6 +11842,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (subst wf_label_prop_updates_cong[where os'=os_label_prop])
           using label_prop_inv(7)
           by (simp_all add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
+        subgoal sorry
         done
       done
   qed
@@ -14506,6 +14893,7 @@ next
             apply (subst wf_label_prop_updates_cong[where os'=os_label_prop])
             using label_prop_inv(7)
             by (simp_all add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) os_inv(4) operator_state.defs(3))
+          subgoal sorry
           done
         subgoal premises prems
           using timely_input_stream_advances_frontier[OF input_stream_inv, of t] apply -
@@ -17231,6 +17619,7 @@ subgoal
                   by (auto simp add: image_Un image_iff)
                 apply (rule wf_after_loop_updates_pending)
                 done
+              subgoal sorry
             done
           done
         done
