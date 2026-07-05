@@ -16360,7 +16360,23 @@ next
       labels_stable (all_edges (os_label_after_second_propa n) t)
         (min_label (os_label_after_second_propa n) t)\<close>
     for n t
-    sorry
+    apply (rule ccontr)
+    apply (erule not_labels_stable_covered_witnessE)
+      apply (rule label_prop_covered_inv_transportI[OF covered_after_loop_updates[of n], where M'=\<open>{}\<close>])
+          apply (simp add: os_label_after_second_propa_def os_label_after_label_progress_def
+            os_label_after_drop_caps_def drop_caps_def obtain_progress_def)
+         apply (simp add: os_label_after_second_propa_def os_label_after_label_progress_def
+            os_label_after_drop_caps_def drop_caps_def obtain_progress_def)
+        apply (simp add: os_label_after_second_propa_def os_label_after_label_progress_def
+            os_label_after_drop_caps_def drop_caps_def obtain_progress_def)
+       apply (simp add: os_label_after_second_propa_def os_label_after_label_progress_def
+            os_label_after_drop_caps_def drop_caps_def obtain_progress_def)
+      apply (simp add: outpu_1_after_loop_updates_empty
+          loop_updates_cbufs_cleared[OF step_loop[of n], of \<open>((1 :: 3), (1 :: 2))\<close>]
+          loop_updates_cbufs_cleared[OF step_loop[of n], of \<open>((2 :: 3), (1 :: 2))\<close>])
+     apply assumption
+    apply simp
+    done
 
 
   define final_output where
@@ -16638,7 +16654,13 @@ next
             apply (subst wf_label_prop_updates_cong[where os'=os_label_prop])
             using label_prop_inv(7)
             by (simp_all add: buffers_inv image_Un Un_assoc BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) os_inv(4) operator_state.defs(3))
-          subgoal sorry
+          subgoal
+            using label_prop_inv(8)
+            apply (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def os_inv(4) operator_state.defs(3))
+            apply (erule label_prop_covered_inv_transportI)
+                apply simp_all
+            apply blast
+            done
           done
         subgoal premises prems
           using timely_input_stream_advances_frontier[OF input_stream_inv, of t] apply -
