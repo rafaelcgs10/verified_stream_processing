@@ -12,6 +12,7 @@ imports
   "../Correctness/Progress"
   "../Correctness/OCapsReorder"
   "../Correctness/Consumes"
+  "../Correctness/Init"
   "HOL-ex.Sketch_and_Explore"
   "../../Isar_Explore"
   Dataplane.Timely_Dataflow_Op
@@ -19411,5 +19412,205 @@ subgoal
     done
   qed
 qed
+
+section \<open>Correctness\<close>
+
+abbreviation my_lp_sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close> where
+  \<open>my_lp_sg \<equiv> init_subgraph (antichain_from_list \<circ>\<circ> raw_summary)\<close>
+
+abbreviation init_lp_states :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close> where
+  \<open>init_lp_states \<equiv> (\<lambda> n. init_op_state
+     (if n = 0 then default_internal_summary
+      else if n = 1 then (\<lambda> p1 p2. if p1 = 0 then [0] else if p2 = 1 then [0] else [])
+      else increment_summary (MyPair 0 1))
+     (n \<noteq> 1))\<close>
+
+lemma dataplane_tracker_inv_init_op_state_pernode:
+  fixes su :: "('nid :: {enum,linorder, one,zero}, _) location \<Rightarrow> (_, _) location \<Rightarrow> ('t :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,order_ccompare,bots}) antichain"
+  assumes D: "dataflow_topology su (-+-)"
+    and SU: "\<forall> loc. su loc loc = {}\<^sub>A"
+    and R: "reachable_locations su = UNIV"
+  shows  "dataplane_tracker_inv (\<lambda> x. init_op_state (isu x) (i x)) (\<lambda>_. []) \<lparr>pt_tr =the (propagate_all su initial_conf), nxt = graph_to_nxt su, summ = su, upfro = upf\<rparr>"
+  unfolding dataplane_tracker_inv_def
+  apply clarsimp
+  apply (rule exI[of _ "\<lambda> l. case l of Loc nid (Trg p) \<Rightarrow> {#}\<^sub>z | Loc nid (Src p) \<Rightarrow> to_zmset bots"])
+  apply (cases "propagate_all su initial_conf")
+  subgoal
+    apply (rule FalseE)
+    using propagate_all_terminates propagation_inv_initial_conf[OF D, unfolded propagation_inv_def] assms(1,2,3) by fastforce
+  subgoal for c
+    apply (intro conjI)
+    subgoal
+      unfolding Src_caps_inv_def by auto
+    subgoal
+      unfolding Trg_caps_inv_def outputs_at_target_def by auto
+    subgoal
+      apply simp
+      unfolding c_pts_inv_def
+      apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
+      subgoal
+        apply (subst filter_False)
+        subgoal
+          unfolding extract_progress_def
+          apply auto
+          done
+        subgoal
+          apply simp
+          apply (drule propagate_all_preserves_c_pts)
+          apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
+          done
+        done
+      subgoal for nid p
+        apply (subst filter_False)
+        subgoal
+          unfolding extract_progress_def
+          apply auto
+          done
+        subgoal
+          apply simp
+          apply (drule propagate_all_preserves_c_pts)
+          apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
+          done
+        done
+      done
+    subgoal
+      unfolding front_inv_def
+      apply safe
+      subgoal for nid p
+      apply (drule propagate_all_frontier_c_imp_correctness[OF _ D R, where loc="Loc nid (Trg p)"])
+      using propagation_inv_initial_conf[OF D, unfolded propagation_inv_def] apply simp
+      using propagation_inv_initial_conf[OF D, unfolded propagation_inv_def] apply simp
+      using propagation_inv_initial_conf[OF D, unfolded propagation_inv_def] apply simp
+      apply simp
+      done
+    done
+  subgoal
+    unfolding imp_front_inv_def
+    apply safe
+    subgoal for l
+      apply (subgoal_tac \<open>dataflow_topology.inv_imps_work_sum su (-+-) (initial_conf :: (('nid, 'd) location, 't) configuration) \<and> dataflow_topology_from_tree.inv_implications_nonneg (initial_conf :: (('nid, 'd) location, 't) configuration) \<and> dataflow_topology_from_tree.inv_imp_plus_work_nonneg (initial_conf :: (('nid, 'd) location, 't) configuration)\<close>)
+      subgoal
+        apply clarsimp
+        apply (frule propagate_all_frontier_c_imp_correctness[OF _ D R, where loc=l])
+           apply (simp_all add: assms(1) propagate_all_preserves_ifrontier)
+        done
+      subgoal
+      using propagation_inv_initial_conf[OF D, unfolded propagation_inv_def] by simp
+    done
+  done
+  subgoal
+    unfolding chnls_imp_front_inv_def outputs_at_target_def
+    by clarsimp
+  subgoal
+    unfolding change_deltas_inv_def
+    by clarsimp
+  subgoal
+    using propagation_inv_initial_conf[OF D]
+    by (simp add: D propagate_all_preserves_inv propagation_inv_def)
+  subgoal
+    unfolding extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def obtain_progress_def extract_prog_def extract_progress_def
+    by auto
+  subgoal
+    unfolding produ_consu_inter_supported_def
+    by auto
+  done
+  done
+
+lemma dataflow_topology_raw_summary:
+  \<open>dataflow_topology (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list)) (-+-)\<close>
+  by (rule dataflow_topology_from_tree.dataflow_topology_axioms[of
+      \<open>G (initial_state_input LNil) initial_state_label_prop (initial_state_increment (MyPair 0 1))\<close>,
+      unfolded dataflow_tree_to_graph_raw_summary])
+
+lemma raw_summary_diag_empty:
+  \<open>\<forall> loc :: (3, 2) location. (antichain_from_list \<circ>\<circ> raw_summary) loc loc = {}\<^sub>A\<close>
+  apply (rule allI)
+  subgoal for loc
+    using loc_3_2_cases[of loc]
+    apply (elim disjE; hypsubst_thin)
+    apply (simp_all add: raw_summary_def)
+    done
+  done
+
+lemma intsum_init_lp_states:
+  \<open>\<forall> n. intsum (init_lp_states n) = (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
+  apply (rule allI)
+  subgoal for n
+    apply (rule ext)+
+    subgoal for p1 p2
+      apply (rule num3_cases[of n]; rule num2_cases[of p1]; rule num2_cases[of p2]; hypsubst_thin)
+      apply (simp_all add: raw_summary_def default_internal_summary_def zero_myprod_def)
+      done
+    done
+  done
+
+lemma correctness_aux:
+  fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
+  assumes T: \<open>timely_input_stream lxs (mset bots)\<close>
+    and TS: \<open>\<forall> t \<in> event.time ` lset lxs. mysnd t = 0\<close>
+  shows \<open>set_op {||} {||}
+    (dataflow_op my_lp_sg
+      (G_op (initial_state_input lxs) initial_state_label_prop (init_lp_states 2) (\<lambda>_. [])))
+    \<approx> set_spec_op
+      (cUn (cUn {||} {||})
+        (cimage (\<lambda>t. ((1, 0), (Inr (ccs
+             (set (icoll (map (\<lambda>(x, t'). Data t' (projl x))
+                 ((outputs_at_target (summ my_lp_sg) init_lp_states >> (\<lambda>_. []) >> inputs_at_target init_lp_states) (1, 0)) @@- lxs) t)
+             \<union> all_edges initial_state_label_prop (myfst t))), t)))
+          (cUn (cUn (ts lxs) (cset_from_list (map snd ((outputs_at_target (summ my_lp_sg) init_lp_states >> (\<lambda>_. []) >> inputs_at_target init_lp_states) (1, 0)))))
+            ((\<lambda> t. MyPair t 0) |`| (cfilter (\<lambda> t. t \<in> myfst ` set (ocaps (init_lp_states 1) 0)) (cset_from_list (timestamps initial_state_label_prop)))))))
+      {||}\<close>
+  apply (rule label_propagation_correctness[where S=\<open>{||}\<close> and SO=\<open>{||}\<close> and D=\<open>{||}\<close>
+      and lxs=lxs and os=init_lp_states and os_input=\<open>initial_state_input lxs\<close>
+      and os_label_prop=initial_state_label_prop and cbufs=\<open>\<lambda>_. []\<close>
+      and chns=\<open>outputs_at_target (summ my_lp_sg) init_lp_states >> (\<lambda>_. []) >> inputs_at_target init_lp_states\<close>
+      and sg=my_lp_sg and T=\<open>[]\<close> and G=\<open>\<lambda>_ _. []\<close> and V=\<open>\<lambda>_. []\<close> and L=\<open>\<lambda>_. id\<close>])
+                      apply (simp add: init_subgraph_def)
+                     apply (simp add: init_subgraph_def)
+                    apply (simp add: operator_state.defs)
+                   apply simp
+                  apply simp
+                 apply (simp add: operator_state.defs)
+                apply (simp add: ty1_check_def)
+               apply (simp add: label_prob_ty2_check_def)
+              apply (rule intsum_init_lp_states)
+             apply (simp add: input_ocaps_inv_def)
+            apply simp
+           apply simp
+          apply (rule refl)
+         apply (rule refl)
+        apply (simp only: init_subgraph_def)
+        apply (rule dataplane_tracker_inv_init_op_state_pernode)
+          apply (rule dataflow_topology_raw_summary)
+         apply (rule raw_summary_diag_empty)
+        apply simp
+       apply (rule refl)
+      apply simp
+     apply (simp add: T)
+    apply (simp add: labels_inv_def all_edges_def neighbors_def edge_vertices_def)
+       apply simp
+      apply simp
+     apply (simp add: init_subgraph_def outputs_at_target_raw_summary inputs_at_target_def
+      BULK_BENQ_def ball_Un TS bots_myprod_def bots_nat_def)
+    apply (simp add: label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def
+      edge_vertices_def sym_def)
+   apply (simp add: input_ocaps_inv_def)
+  apply (simp add: wf_label_prop_updates_def init_subgraph_def outputs_at_target_raw_summary
+      inputs_at_target_def BULK_BENQ_def)
+  apply (simp add: label_prop_covered_inv_def)
+  done
+
+lemma correctness:
+  fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
+  assumes T: \<open>timely_input_stream lxs (mset bots)\<close>
+    and TS: \<open>\<forall> t \<in> event.time ` lset lxs. mysnd t = 0\<close>
+  shows \<open>set_op {||} {||} (compiled lxs) \<approx>
+    set_spec_op (cimage (\<lambda>t. ((1, 0), (Inr (ccs (set (icoll lxs t)))), t)) (ts lxs)) {||}\<close>
+  using correctness_aux[OF T TS] apply -
+  unfolding compile_dataflow_def Let_def
+  apply (simp only: dataflow_tree_to_graph_raw_summary)
+  apply (simp add: init_subgraph_def outputs_at_target_raw_summary inputs_at_target_def
+      BULK_BENQ_def all_edges_def neighbors_def)
+  done
 
 end
