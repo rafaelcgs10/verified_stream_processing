@@ -482,59 +482,7 @@ subsection \<open>Folded consumption\<close>
 
 
 
-lemma intsum_CONSUMES[simp]:
-  \<open>intsum (CONSUMES p xs os) = intsum os\<close>
-  by (induct xs arbitrary: os) (auto split: prod.splits)
 
-lemma vertices_CONSUMES[simp]:
-  \<open>vertices (CONSUMES p xs os) = vertices os\<close>
-  unfolding fold_consumes by simp
-
-lemma label_CONSUMES[simp]:
-  \<open>label (CONSUMES p xs os) = label os\<close>
-  unfolding fold_consumes by simp
-
-lemma de1_CONSUMES[simp]:
-  \<open>de1 (CONSUMES p xs os) = de1 os\<close>
-  by simp
-
-
-
-lemma all_vertices_CONSUMES[simp]:
-  \<open>all_vertices (CONSUMES p xs os) = all_vertices os\<close>
-  unfolding all_vertices_def by simp
-
-lemma all_edges_CONSUMES[simp]:
-  \<open>all_edges (CONSUMES p xs os) = all_edges os\<close>
-  unfolding all_edges_def all_vertices_def neighbors_def by simp
-
-lemma min_label_CONSUMES[simp]:
-  \<open>min_label (CONSUMES p xs os) = min_label os\<close>
-  unfolding min_label_def by simp
-
-lemma timestamps_CONSUMES[simp]:
-  \<open>timestamps (CONSUMES p xs os) = timestamps os\<close>
-  unfolding fold_consumes by simp
-
-lemma graph_CONSUMES[simp]:
-  \<open>label_propagation_state.graph (CONSUMES p xs os) = label_propagation_state.graph os\<close>
-  unfolding fold_consumes by simp
-
-
-lemma label_prop_upd_inv_CONSUMES_port1I:
-  assumes inv: \<open>label_prop_upd_inv os\<close>
-    and wf_upd: \<open>wf_label_prop_updates os (set xs)\<close>
-  shows \<open>label_prop_upd_inv (CONSUMES (1 :: 2) xs os)\<close>
-proof -
-  let ?os' = \<open>CONSUMES (1 :: 2) xs os\<close>
-  have input_eq: \<open>set (input ?os' 1) = set (input os 1) \<union> set xs\<close>
-    by (simp add: input_CONSUMES)
-  show ?thesis
-    using inv wf_upd
-    unfolding label_prop_upd_inv_def wf_label_prop_updates_def
-    apply (auto simp add: input_eq)
-    done
-qed
 
 subsection \<open>One-step input-1 loop update\<close>
 
@@ -729,14 +677,6 @@ lemma all_edges_fst_label_prop_input1_batched[simp]:
 
 subsection \<open>Batch member and non-empty destructors\<close>
 
-lemma min_label_mono_time:
-  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-  assumes \<open>t \<in> set (timestamps os)\<close>
-    and \<open>t \<le> q\<close>
-  shows \<open>min_label os q v \<le> min_label os t v\<close>
-  using assms
-  unfolding min_label_def
-  by (intro Min.boundedI) auto
 
 
 lemma label_prop_neighbor_batch_nonemptyD:
@@ -1534,28 +1474,7 @@ proof -
     using msg_not_le time_le cap_eq by auto
 qed
 
-lemma all_edges_sym:
-  assumes inv: \<open>label_prop_upd_inv os\<close>
-  shows \<open>sym (all_edges os q)\<close>
-  unfolding sym_def
-proof (intro allI impI)
-  fix x y
-  assume xy: \<open>(x, y) \<in> all_edges os q\<close>
-  then have x_all: \<open>x \<in> all_vertices os q\<close>
-    and y_all: \<open>y \<in> all_vertices os q\<close>
-    and y_neigh: \<open>y \<in> set (neighbors os q x)\<close>
-    unfolding all_edges_def by auto
-  obtain t where t_in: \<open>t \<in> set (timestamps os)\<close>
-    and t_le: \<open>t \<le> q\<close>
-    and y_graph: \<open>y \<in> set (graph os t x)\<close>
-    using y_neigh unfolding set_neighbors by auto
-  have x_graph: \<open>x \<in> set (graph os t y)\<close>
-    using inv y_graph unfolding label_prop_upd_inv_def sym_def by blast
-  have x_neigh: \<open>x \<in> set (neighbors os q y)\<close>
-    using t_in t_le x_graph unfolding set_neighbors by auto
-  show \<open>(y, x) \<in> all_edges os q\<close>
-    using x_all y_all x_neigh unfolding all_edges_def by auto
-qed
+
 
 lemma label_prop_label_batch_empty_neighborD:
   fixes os updated_os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
@@ -2027,18 +1946,7 @@ lemma labels_measure_strict_decrease_if_pointwise_le_and_less_same_edges:
     edges_eq by simp
 
 
-lemma finite_all_vertices:
-  shows \<open>finite (all_vertices os t)\<close>
-  unfolding all_vertices_def by simp
 
-lemma finite_edge_vertices_all_edges:
-  shows \<open>finite (edge_vertices (all_edges os t))\<close>
-proof -
-  have \<open>edge_vertices (all_edges os t) \<subseteq> all_vertices os t\<close>
-    by (rule edge_vertices_all_edges_subset_all_vertices)
-  then show ?thesis
-    using finite_all_vertices[of os t] by (rule finite_subset)
-qed
 
 lemma labels_measure_le_if_pointwise_le_same_edges:
   fixes A A' :: \<open>(nat \<times> nat) set\<close>
@@ -7444,118 +7352,7 @@ lemma buff_sim_aux[simp]:
   done
 
 (* TODO: Move. *)
-lemma wf_label_prop_updates_consumes[simp]:
-  \<open>wf_label_prop_updates (consumes os p t d) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  by (simp add: wf_label_prop_updates_def consumes_def all_vertices_def all_edges_def neighbors_def)
 
-lemma wf_label_prop_updates_CONSUMES[simp]:
-  \<open>wf_label_prop_updates (CONSUMES p ys os) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  by (induct ys arbitrary: os) clarsimp+
-
-lemma wf_label_prop_updates_intsum_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>intsum := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_consu_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>consu := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_inter_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>inter := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_produ_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>produ := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_input_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>input := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_outpu_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>outpu := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_front_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>front := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_ocaps_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>ocaps := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_initia_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>initia := b\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_en1_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>en1 := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_is_en1_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>is_en1 := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_en2_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>en2 := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_de2_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>de2 := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_is_en2_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>is_en2 := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_label_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>label := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-(* TODO: Move. *)
-lemma wf_label_prop_updates_cong:
-  \<open>de1 os = de1 os' \<Longrightarrow> timestamps os = timestamps os' \<Longrightarrow> graph os = graph os' \<Longrightarrow>
-  vertices os = vertices os' \<Longrightarrow> S = S' \<Longrightarrow>
-  wf_label_prop_updates os S \<longleftrightarrow> wf_label_prop_updates os' S'\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-(* TODO: Move. *)
-lemma wf_label_prop_updates_subset:
-  \<open>wf_label_prop_updates os S \<Longrightarrow> S' \<subseteq> S \<Longrightarrow> wf_label_prop_updates os S'\<close>
-  unfolding wf_label_prop_updates_def by fast
-
-(* TODO: Move. *)
-lemma wf_label_prop_updates_Un:
-  \<open>S'' = S \<union> S' \<Longrightarrow> wf_label_prop_updates os S'' \<longleftrightarrow> wf_label_prop_updates os S \<and> wf_label_prop_updates os S'\<close>
-  unfolding wf_label_prop_updates_def by force
-
-(* TODO: Move. *)
-lemma wf_label_prop_updates_os_mono:
-  assumes \<open>wf_label_prop_updates os S\<close> \<open>de1 os = de1 os'\<close> \<open>set (timestamps os) \<subseteq> set (timestamps os')\<close>
-    \<open>\<forall>t. set (vertices os t) \<subseteq> set (vertices os' t) \<and> (\<forall>v. set (graph os t v) \<subseteq> set (graph os' t v))\<close>
-    \<open>S = S'\<close>
-  shows \<open>wf_label_prop_updates os' S'\<close>
-proof -
-  { fix d t
-    assume d_t: \<open>(d, t) \<in> S\<close>
-    let ?t0 = \<open>myfst t\<close>
-    have t0: \<open>?t0 \<in> set (timestamps os')\<close> (is ?A)
-      using assms(1,3) d_t unfolding wf_label_prop_updates_def by fast
-    have all_vertices_subset: \<open>\<forall>t'. all_vertices os t' \<subseteq> all_vertices os' t'\<close>
-      using assms(3,4) d_t unfolding wf_label_prop_updates_def all_vertices_def by blast
-    hence fst_de1: \<open>fst (de1 os d) \<in> all_vertices os' ?t0\<close> (is ?B)
-      using assms(1) d_t unfolding wf_label_prop_updates_def by fast
-    have \<open>\<forall>t' \<ge> ?t0. \<forall>v. set (neighbors os t' v) \<subseteq> set (neighbors os' t' v)\<close>
-      unfolding neighbors_def using assms(3,4) by force
-    hence \<open>\<forall>t' \<ge> ?t0. all_edges os t' \<subseteq> all_edges os' t'\<close>
-      unfolding all_edges_def using all_vertices_subset by fast
-    hence \<open>\<forall>t' \<ge> ?t0. snd (de1 os d) \<in> cc_of (all_edges os' t') (fst (de1 os d))\<close> (is ?C)
-      using assms(1) d_t cc_of_mono prod.simps(2) unfolding wf_label_prop_updates_def
-      by (metis (mono_tags, lifting))
-    hence \<open>?A \<and> ?B \<and> ?C\<close> using t0 fst_de1 by blast
-  }
-  thus ?thesis unfolding wf_label_prop_updates_def assms(5) using assms(2) by force
-qed
 
 lemma wf_label_prop_updates_label_prop_input0_step_state_monoI:
   assumes H: \<open>wf_label_prop_updates os S\<close>
@@ -7869,21 +7666,6 @@ qed
 
 
 (* TODO: Move. *)
-lemma label_prop_edge_batch_in_timestamps:
-  \<open>(d, cap) \<in> set (label_prop_edge_batch old_os updated_os event_t vertex new_label event_time)
-  \<Longrightarrow> myfst (capability.time cap) \<in> set (timestamps updated_os)\<close>
-  unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def by force
-
-(* TODO: Move. *)
-lemma label_prop_label_batch_in_timestamps:
-  \<open>(d, cap) \<in> set (label_prop_label_batch old_os updated_os event_t vertex new_label event_time)
-  \<Longrightarrow> myfst (capability.time cap) \<in> set (timestamps old_os)\<close>
-  unfolding label_prop_label_batch_def label_prop_neighbor_batch_def by force
-
-(* TODO: Move. *)
-lemma all_vertices_add_caps[simp]:
-  \<open>all_vertices (add_caps os caps) = all_vertices os\<close>
-  unfolding all_vertices_def by simp
 
 (* TODO: Move. *)
 lemma label_prop_edge_batch_all_vertices:
@@ -7933,10 +7715,6 @@ proof -
 qed
 
 (* TODO: Move. *)
-lemma neighbors_reachable:
-  \<open>label_prop_upd_inv os \<Longrightarrow> w \<in> set (neighbors os t v) \<Longrightarrow> reachable (all_edges os t) v w\<close>
-  unfolding all_edges_def reachable_def using label_prop_upd_inv_neighborsD by blast
-
 
 (* TODO: Move. *)
 lemma label_prop_edge_batch_cc_of_all_edges:
@@ -8320,117 +8098,6 @@ qed
 (* FIXME: move me to AntichainOrder.thy *)
 
 
-lemma exit_scope_ifrontier_L1T0_le_L1T1_empty_loop:
-  fixes c :: \<open>((3, 2) location, (nat, nat) myprod) configuration\<close>
-  assumes D: \<open>dataflow_topology
-    (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list))
-    (((-+-) :: (nat, nat) myprod \<Rightarrow> (nat, nat) myprod \<Rightarrow> (nat, nat) myprod))\<close>
-
-and empty_L1S1:
-\<open>c_pts c (Loc (1 :: 3) (Src (1 :: 2))) = {#}\<^sub>z\<close>
-and empty_L2T1:
-\<open>c_pts c (Loc (2 :: 3) (Trg (1 :: 2))) = {#}\<^sub>z\<close>
-and empty_L2S1:
-\<open>c_pts c (Loc (2 :: 3) (Src (1 :: 2))) = {#}\<^sub>z\<close>
-and empty_L1T1:
-\<open>c_pts c (Loc (1 :: 3) (Trg (1 :: 2))) = {#}\<^sub>z\<close>
-shows \<open>exit_scope myfst (ifrontier
-      (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list))
-      (-+-) c (Loc 1 (Trg 0)))
-    \<le> exit_scope myfst (ifrontier
-      (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list))
-      (-+-) c (Loc 1 (Trg 1)))\<close>
-
-proof -
-  let ?su = \<open>antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list)\<close>
-
-  let ?L0T0 = \<open>Loc (0 :: 3) (Trg (0 :: 2))\<close>
-  let ?L0S0 = \<open>Loc (0 :: 3) (Src (0 :: 2))\<close>
-  let ?L1T0 = \<open>Loc (1 :: 3) (Trg (0 :: 2))\<close>
-  let ?L1S1 = \<open>Loc (1 :: 3) (Src (1 :: 2))\<close>
-  let ?L2T1 = \<open>Loc (2 :: 3) (Trg (1 :: 2))\<close>
-  let ?L2S1 = \<open>Loc (2 :: 3) (Src (1 :: 2))\<close>
-  let ?L1T1 = \<open>Loc (1 :: 3) (Trg (1 :: 2))\<close>
-
-  have rhs_member_to_lhs_fle:
-    \<open>frontier_less_equal (exit_scope myfst (ifrontier ?su (-+-) c ?L1T0)) y\<close>
-    if y_in: \<open>y \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T1)\<close> for y :: nat
-  proof -
-    obtain a :: \<open>(nat, nat) myprod\<close> where
-      a_in: \<open>a \<in>\<^sub>A ifrontier ?su (-+-) c ?L1T1\<close> and y_eq: \<open>myfst a = y\<close>
-      using y_in by (rule exit_scope_memberE)
-    have rhs_fle: \<open>frontier_less_equal (ifrontier ?su (-+-) c ?L1T1) a\<close>
-      using a_in unfolding frontier_less_equal_iff2 by blast
-    have decomp:
-      \<open>\<exists>l s t. s \<in>\<^sub>A graph.path_weight ?su l ?L1T1 \<and>
-        frontier_less_equal (frontier (c_pts c l)) t \<and> a = t -+- s\<close>
-      apply (rule frontier_less_equal_ifrontierE[where su = ?su and c = c and l' = ?L1T1 and t = a])
-      apply (rule rhs_fle)
-      apply (rule D)
-      done
-    obtain l :: \<open>(3, 2) location\<close> and s :: \<open>(nat, nat) myprod\<close> and t :: \<open>(nat, nat) myprod\<close> where
-      s_in: \<open>s \<in>\<^sub>A graph.path_weight ?su l ?L1T1\<close>
-      and source_fle: \<open>frontier_less_equal (frontier (c_pts c l)) t\<close>
-      and a_eq: \<open>a = t -+- s\<close>
-      using decomp by blast
-
-
-
-    have loc_cases:
-      \<open>l = ?L0T0 \<or> l = ?L0S0 \<or> l = ?L1T0 \<or>
-       l = ?L1S1 \<or> l = ?L2T1 \<or> l = ?L2S1 \<or> l = ?L1T1\<close>
-      using loc_3_2_cases[of l] s_in by auto
-    consider (base) \<open>l = ?L0T0 \<or> l = ?L0S0 \<or> l = ?L1T0\<close> |
-      (empty) \<open>l = ?L1S1 \<or> l = ?L2T1 \<or> l = ?L2S1 \<or> l = ?L1T1\<close>
-      using loc_cases by blast
-    then show ?thesis
-    proof cases
-      case base
-      have zero_in: \<open>(0 :: (nat, nat) myprod) \<in>\<^sub>A graph.path_weight ?su l ?L1T0\<close>
-        using base by auto
-      have lhs_fle0: \<open>frontier_less_equal (ifrontier ?su (-+-) c ?L1T0) (t -+- 0)\<close>
-        using frontier_less_equal_ifrontierI[where su = ?su and c = c and l = l
-            and l' = ?L1T0 and t = t and t' = \<open>0 :: (nat, nat) myprod\<close>]
-          D zero_in source_fle
-        by blast
-      have lhs_fle: \<open>frontier_less_equal (ifrontier ?su (-+-) c ?L1T0) t\<close>
-        using lhs_fle0 by simp
-      obtain b :: \<open>(nat, nat) myprod\<close> where
-        b_in: \<open>b \<in>\<^sub>A ifrontier ?su (-+-) c ?L1T0\<close> and b_le: \<open>b \<le> t\<close>
-        using lhs_fle unfolding frontier_less_equal_iff2 by blast
-      have s_eq: \<open>s = MyPair 0 1\<close>
-        using base s_in by (auto simp add: member_antichain.rep_eq)
-      have myfst_b_le_y: \<open>myfst b \<le> y\<close>
-        using myfst_mono[OF b_le] a_eq y_eq s_eq by simp
-      have \<open>frontier_less_equal (exit_scope myfst (ifrontier ?su (-+-) c ?L1T0)) (myfst b)\<close>
-        using b_in by (rule frontier_less_equal_exit_scopeI)
-      then show ?thesis
-        using myfst_b_le_y by (rule frontier_less_equal_trans)
-    next
-      case empty
-      then have False
-        using source_fle empty_L1S1 empty_L2T1 empty_L2S1 empty_L1T1 by auto
-      then show ?thesis by simp
-    qed
-  qed
-  show ?thesis
-    unfolding less_eq_antichain_def
-  proof safe
-    fix y :: nat
-    assume y_in: \<open>y \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T1)\<close>
-    obtain x :: nat where x_in: \<open>x \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T0)\<close>
-      and x_le: \<open>x \<le> y\<close>
-      using rhs_member_to_lhs_fle[OF y_in] unfolding frontier_less_equal_iff2 by blast
-    show \<open>\<exists>x. x \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T0) \<and> x \<le> y\<close>
-      using x_in x_le by blast
-  qed
-qed
-
-
-
-
-
-
 
 
 lemma wf_label_prop_updates_clean_image[simp]:
@@ -8484,8 +8151,6 @@ qed
 (* FIXME: move me to Timely_Operator_State.thy. *)
 
 
-lemma min_label_le_label: "min_label os t v \<le> label os t v"
-  unfolding min_label_def by (intro Min_le) auto
 
 definition label_prop_covered_inv where
   \<open>label_prop_covered_inv os msgs \<longleftrightarrow>

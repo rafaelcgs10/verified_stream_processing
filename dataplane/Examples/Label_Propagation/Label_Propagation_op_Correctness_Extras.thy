@@ -1121,4 +1121,108 @@ qed
 
 
 
+
+lemma exit_scope_ifrontier_L1T0_le_L1T1_empty_loop:
+  fixes c :: \<open>((3, 2) location, (nat, nat) myprod) configuration\<close>
+  assumes D: \<open>dataflow_topology
+    (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list))
+    (((-+-) :: (nat, nat) myprod \<Rightarrow> (nat, nat) myprod \<Rightarrow> (nat, nat) myprod))\<close>
+
+and empty_L1S1:
+\<open>c_pts c (Loc (1 :: 3) (Src (1 :: 2))) = {#}\<^sub>z\<close>
+and empty_L2T1:
+\<open>c_pts c (Loc (2 :: 3) (Trg (1 :: 2))) = {#}\<^sub>z\<close>
+and empty_L2S1:
+\<open>c_pts c (Loc (2 :: 3) (Src (1 :: 2))) = {#}\<^sub>z\<close>
+and empty_L1T1:
+\<open>c_pts c (Loc (1 :: 3) (Trg (1 :: 2))) = {#}\<^sub>z\<close>
+shows \<open>exit_scope myfst (ifrontier
+      (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list))
+      (-+-) c (Loc 1 (Trg 0)))
+    \<le> exit_scope myfst (ifrontier
+      (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list))
+      (-+-) c (Loc 1 (Trg 1)))\<close>
+
+proof -
+  let ?su = \<open>antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list)\<close>
+
+  let ?L0T0 = \<open>Loc (0 :: 3) (Trg (0 :: 2))\<close>
+  let ?L0S0 = \<open>Loc (0 :: 3) (Src (0 :: 2))\<close>
+  let ?L1T0 = \<open>Loc (1 :: 3) (Trg (0 :: 2))\<close>
+  let ?L1S1 = \<open>Loc (1 :: 3) (Src (1 :: 2))\<close>
+  let ?L2T1 = \<open>Loc (2 :: 3) (Trg (1 :: 2))\<close>
+  let ?L2S1 = \<open>Loc (2 :: 3) (Src (1 :: 2))\<close>
+  let ?L1T1 = \<open>Loc (1 :: 3) (Trg (1 :: 2))\<close>
+
+  have rhs_member_to_lhs_fle:
+    \<open>frontier_less_equal (exit_scope myfst (ifrontier ?su (-+-) c ?L1T0)) y\<close>
+    if y_in: \<open>y \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T1)\<close> for y :: nat
+  proof -
+    obtain a :: \<open>(nat, nat) myprod\<close> where
+      a_in: \<open>a \<in>\<^sub>A ifrontier ?su (-+-) c ?L1T1\<close> and y_eq: \<open>myfst a = y\<close>
+      using y_in by (rule exit_scope_memberE)
+    have rhs_fle: \<open>frontier_less_equal (ifrontier ?su (-+-) c ?L1T1) a\<close>
+      using a_in unfolding frontier_less_equal_iff2 by blast
+    have decomp:
+      \<open>\<exists>l s t. s \<in>\<^sub>A graph.path_weight ?su l ?L1T1 \<and>
+        frontier_less_equal (frontier (c_pts c l)) t \<and> a = t -+- s\<close>
+      apply (rule frontier_less_equal_ifrontierE[where su = ?su and c = c and l' = ?L1T1 and t = a])
+      apply (rule rhs_fle)
+      apply (rule D)
+      done
+    obtain l :: \<open>(3, 2) location\<close> and s :: \<open>(nat, nat) myprod\<close> and t :: \<open>(nat, nat) myprod\<close> where
+      s_in: \<open>s \<in>\<^sub>A graph.path_weight ?su l ?L1T1\<close>
+      and source_fle: \<open>frontier_less_equal (frontier (c_pts c l)) t\<close>
+      and a_eq: \<open>a = t -+- s\<close>
+      using decomp by blast
+
+    have loc_cases:
+      \<open>l = ?L0T0 \<or> l = ?L0S0 \<or> l = ?L1T0 \<or>
+       l = ?L1S1 \<or> l = ?L2T1 \<or> l = ?L2S1 \<or> l = ?L1T1\<close>
+      using loc_3_2_cases[of l] s_in by auto
+    consider (base) \<open>l = ?L0T0 \<or> l = ?L0S0 \<or> l = ?L1T0\<close> |
+      (empty) \<open>l = ?L1S1 \<or> l = ?L2T1 \<or> l = ?L2S1 \<or> l = ?L1T1\<close>
+      using loc_cases by blast
+    then show ?thesis
+    proof cases
+      case base
+      have zero_in: \<open>(0 :: (nat, nat) myprod) \<in>\<^sub>A graph.path_weight ?su l ?L1T0\<close>
+        using base by auto
+      have lhs_fle0: \<open>frontier_less_equal (ifrontier ?su (-+-) c ?L1T0) (t -+- 0)\<close>
+        using frontier_less_equal_ifrontierI[where su = ?su and c = c and l = l
+            and l' = ?L1T0 and t = t and t' = \<open>0 :: (nat, nat) myprod\<close>]
+          D zero_in source_fle
+        by blast
+      have lhs_fle: \<open>frontier_less_equal (ifrontier ?su (-+-) c ?L1T0) t\<close>
+        using lhs_fle0 by simp
+      obtain b :: \<open>(nat, nat) myprod\<close> where
+        b_in: \<open>b \<in>\<^sub>A ifrontier ?su (-+-) c ?L1T0\<close> and b_le: \<open>b \<le> t\<close>
+        using lhs_fle unfolding frontier_less_equal_iff2 by blast
+      have s_eq: \<open>s = MyPair 0 1\<close>
+        using base s_in by (auto simp add: member_antichain.rep_eq)
+      have myfst_b_le_y: \<open>myfst b \<le> y\<close>
+        using myfst_mono[OF b_le] a_eq y_eq s_eq by simp
+      have \<open>frontier_less_equal (exit_scope myfst (ifrontier ?su (-+-) c ?L1T0)) (myfst b)\<close>
+        using b_in by (rule frontier_less_equal_exit_scopeI)
+      then show ?thesis
+        using myfst_b_le_y by (rule frontier_less_equal_trans)
+    next
+      case empty
+      then have False
+        using source_fle empty_L1S1 empty_L2T1 empty_L2S1 empty_L1T1 by auto
+      then show ?thesis by simp
+    qed
+  qed
+  show ?thesis
+    unfolding less_eq_antichain_def
+  proof safe
+    fix y :: nat
+    assume y_in: \<open>y \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T1)\<close>
+    obtain x :: nat where x_in: \<open>x \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T0)\<close>
+      and x_le: \<open>x \<le> y\<close>
+      using rhs_member_to_lhs_fle[OF y_in] unfolding frontier_less_equal_iff2 by blast
+    show \<open>\<exists>x. x \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T0) \<and> x \<le> y\<close>
+      using x_in x_le by blast
+  qed
+qed
 end
