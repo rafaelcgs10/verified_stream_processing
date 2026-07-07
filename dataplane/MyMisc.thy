@@ -285,4 +285,20 @@ proof -
   thus ?thesis using ys_zs append.right_neutral append.simps(1) concat_append map_append by metis
 qed
 
+
+lemma lfinite_lfilter_mono:
+  assumes finite: \<open>lfinite (lfilter Q xs)\<close>
+    and mono: \<open>\<And>x. x \<in> lset xs \<Longrightarrow> P x \<Longrightarrow> Q x\<close>
+  shows \<open>lfinite (lfilter P xs)\<close>
+proof -
+  have \<open>lfilter P xs = lfilter P (lfilter Q xs)\<close>
+    apply (subst lfilter_lfilter)
+    apply (rule lfilter_cong[OF refl])
+    using mono by auto
+  then show ?thesis
+    using finite by simp
+qed
+
+lemma isl_projl_eq: "isl dd \<Longrightarrow> projl dd = p \<Longrightarrow> dd = Inl p"
+  by (cases dd) auto
 end

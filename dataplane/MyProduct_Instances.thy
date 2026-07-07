@@ -515,4 +515,34 @@ instance
   done
 end
 
+
+lemma myprod_le_iff_myfst_le_if_mysnd_zero:
+  fixes s t :: \<open>('a::ord, 'b::{zero, order}) myprod\<close>
+  assumes \<open>mysnd s = 0\<close>
+    and \<open>mysnd t = 0\<close>
+  shows \<open>s \<le> t \<longleftrightarrow> myfst s \<le> myfst t\<close>
+  using assms
+  apply (cases s; cases t)
+  apply auto
+  done
+
+lemma myfst_le_if_myprod_le_mysnd_zero:
+  fixes s t :: \<open>('a::ord, 'b::{zero, order}) myprod\<close>
+  assumes \<open>s \<le> t\<close>
+    and \<open>mysnd s = 0\<close>
+    and \<open>mysnd t = 0\<close>
+  shows \<open>myfst s \<le> myfst t\<close>
+  using assms
+  apply (simp add: myprod_le_iff_myfst_le_if_mysnd_zero)
+  done
+
+lemma myprod_le_if_myfst_le_mysnd_zero:
+  fixes s t :: \<open>('a::ord, 'b::{zero, order}) myprod\<close>
+  assumes \<open>myfst s \<le> myfst t\<close>
+    and \<open>mysnd s = 0\<close>
+    and \<open>mysnd t = 0\<close>
+  shows \<open>s \<le> t\<close>
+  using assms
+  apply (simp add: myprod_le_iff_myfst_le_if_mysnd_zero)
+  done
 end

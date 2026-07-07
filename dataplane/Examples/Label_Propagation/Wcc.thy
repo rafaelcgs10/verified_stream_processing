@@ -566,4 +566,39 @@ lemma components_from_labels_empty[simp]:
   by simp
 
 
+
+lemma reachable_subset:
+  \<open>A \<subseteq> B \<Longrightarrow> reachable A x y \<Longrightarrow> reachable B x y\<close>
+  unfolding reachable_def
+  by (meson converse_mono rtrancl_mono set_mp sup_mono)
+
+lemma Field_Un_converse[simp]:
+  \<open>Field (A \<union> A\<inverse>) = Field A\<close>
+  apply auto
+  done
+
+lemma ccs_eq_if_undirected_Field:
+  assumes \<open>A \<union> A\<inverse> = B \<union> B\<inverse>\<close>
+    and \<open>Field A = Field B\<close>
+  shows \<open>ccs A = ccs B\<close>
+  using assms
+  unfolding Wcc.is_cc_def Wcc.is_subcc_def Wcc.reachable_def Wcc.edge_vertices_def
+  apply simp
+  done
+
+lemma ccs_eq_if_undirected:
+  assumes \<open>A \<union> A\<inverse> = B \<union> B\<inverse>\<close>
+  shows \<open>ccs A = ccs B\<close>
+  apply (rule ccs_eq_if_undirected_Field)
+  apply (rule assms)
+  using assms
+  apply (metis Field_Un_converse)
+  done
+
+lemma ccs_Un_symmetric_edge_image:
+  fixes A :: \<open>('a::order \<times> 'a) set\<close>
+  shows \<open>ccs (A \<union> f ` X) = ccs (A \<union> (\<Union>x\<in>X. {f x, (snd (f x), fst (f x))}))\<close>
+  apply (rule ccs_eq_if_undirected)
+  apply force
+  done
 end

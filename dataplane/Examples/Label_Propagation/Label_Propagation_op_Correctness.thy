@@ -2184,53 +2184,6 @@ proof -
 qed
 
 
-lemma sum_list_strict_mono_ex1:
-  fixes xs :: \<open>'a list\<close>
-    and f g :: \<open>'a \<Rightarrow> nat\<close>
-  assumes le: \<open>\<And>x. x \<in> set xs \<Longrightarrow> f x \<le> g x\<close>
-    and strict: \<open>\<exists>x\<in>set xs. f x < g x\<close>
-  shows \<open>sum_list (map f xs) < sum_list (map g xs)\<close>
-  using assms
-proof (induct xs)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a xs)
-  have le_a: \<open>f a \<le> g a\<close>
-    using Cons.prems(1) by simp
-  have le_tail: \<open>\<And>x. x \<in> set xs \<Longrightarrow> f x \<le> g x\<close>
-    using Cons.prems(1) by simp
-  have tail_le: \<open>sum_list (map f xs) \<le> sum_list (map g xs)\<close>
-    using le_tail
-  proof (induct xs)
-    case Nil
-    then show ?case by simp
-  next
-    case (Cons b ys)
-    have head_le: \<open>f b \<le> g b\<close>
-      using Cons.prems by simp
-    have tail_le': \<open>sum_list (map f ys) \<le> sum_list (map g ys)\<close>
-      using Cons.hyps Cons.prems by simp
-    show ?case
-      using head_le tail_le' by simp
-  qed
-
-  from Cons.prems(2) consider (head) \<open>f a < g a\<close> | (tail) \<open>\<exists>x\<in>set xs. f x < g x\<close>
-    by auto
-  then show ?case
-  proof cases
-    case head
-    then show ?thesis
-      using tail_le by simp
-  next
-    case tail
-    have tail_strict: \<open>sum_list (map f xs) < sum_list (map g xs)\<close>
-      using Cons.hyps[OF le_tail tail] .
-    then show ?thesis
-      using le_a by simp
-  qed
-qed
-
 
 lemma labels_measure_sum_fst_label_prop_input1_batched_decreases_if_output_nonempty:
   fixes os os' :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
@@ -6729,18 +6682,6 @@ lemma set_icoll_lshift:
   apply (simp add: icoll_lshift)
   done
 
-lemma lfinite_lfilter_mono:
-  assumes finite: \<open>lfinite (lfilter Q xs)\<close>
-    and mono: \<open>\<And>x. x \<in> lset xs \<Longrightarrow> P x \<Longrightarrow> Q x\<close>
-  shows \<open>lfinite (lfilter P xs)\<close>
-proof -
-  have \<open>lfilter P xs = lfilter P (lfilter Q xs)\<close>
-    apply (subst lfilter_lfilter)
-    apply (rule lfilter_cong[OF refl])
-    using mono by auto
-  then show ?thesis
-    using finite by simp
-qed
 
 lemma set_icoll_lsetI:
   assumes finite: \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) lxs)\<close>
@@ -6837,68 +6778,6 @@ lemma timely_input_stream_ldropn_no_data_le_if_not_frontier_less_equal:
   using timely_input_stream_ldrop[OF n_le stream]
   apply (simp add: timely_input_stream_def)
   done
-
-lemma Field_Un_converse[simp]:
-  \<open>Field (A \<union> A\<inverse>) = Field A\<close>
-  apply auto
-  done
-
-lemma ccs_eq_if_undirected_Field:
-  assumes \<open>A \<union> A\<inverse> = B \<union> B\<inverse>\<close>
-    and \<open>Field A = Field B\<close>
-  shows \<open>ccs A = ccs B\<close>
-  using assms
-  unfolding Wcc.is_cc_def Wcc.is_subcc_def Wcc.reachable_def Wcc.edge_vertices_def
-  apply simp
-  done
-
-lemma ccs_eq_if_undirected:
-  assumes \<open>A \<union> A\<inverse> = B \<union> B\<inverse>\<close>
-  shows \<open>ccs A = ccs B\<close>
-  apply (rule ccs_eq_if_undirected_Field)
-  apply (rule assms)
-  using assms
-  apply (metis Field_Un_converse)
-  done
-
-lemma ccs_Un_symmetric_edge_image:
-  fixes A :: \<open>('a::order \<times> 'a) set\<close>
-  shows \<open>ccs (A \<union> f ` X) = ccs (A \<union> (\<Union>x\<in>X. {f x, (snd (f x), fst (f x))}))\<close>
-  apply (rule ccs_eq_if_undirected)
-  apply force
-  done
-
-lemma myprod_le_iff_myfst_le_if_mysnd_zero:
-  fixes s t :: \<open>('a::ord, 'b::{zero, order}) myprod\<close>
-  assumes \<open>mysnd s = 0\<close>
-    and \<open>mysnd t = 0\<close>
-  shows \<open>s \<le> t \<longleftrightarrow> myfst s \<le> myfst t\<close>
-  using assms
-  apply (cases s; cases t)
-  apply auto
-  done
-
-lemma myfst_le_if_myprod_le_mysnd_zero:
-  fixes s t :: \<open>('a::ord, 'b::{zero, order}) myprod\<close>
-  assumes \<open>s \<le> t\<close>
-    and \<open>mysnd s = 0\<close>
-    and \<open>mysnd t = 0\<close>
-  shows \<open>myfst s \<le> myfst t\<close>
-  using assms
-  apply (simp add: myprod_le_iff_myfst_le_if_mysnd_zero)
-  done
-
-lemma myprod_le_if_myfst_le_mysnd_zero:
-  fixes s t :: \<open>('a::ord, 'b::{zero, order}) myprod\<close>
-  assumes \<open>myfst s \<le> myfst t\<close>
-    and \<open>mysnd s = 0\<close>
-    and \<open>mysnd t = 0\<close>
-  shows \<open>s \<le> t\<close>
-  using assms
-  apply (simp add: myprod_le_iff_myfst_le_if_mysnd_zero)
-  done
-
-
 
 
 lemma label_prop_collected_edge_payloads_image_eq:
@@ -7801,9 +7680,6 @@ proof -
     by (simp add: cons_empty inte_empty prod_eq)
 qed
 
-lemma map_filter_append:
-  "List.map_filter f (xs @ ys) = List.map_filter f xs @ List.map_filter f ys"
-  by (induct xs) (auto simp: List.map_filter_def split: option.splits)
 
 lemma dataplane_tracker_inv_buffer_balance_aux:
   fixes os :: "3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state"
@@ -8603,16 +8479,6 @@ lemma neighbors_reachable:
   \<open>label_prop_upd_inv os \<Longrightarrow> w \<in> set (neighbors os t v) \<Longrightarrow> reachable (all_edges os t) v w\<close>
   unfolding all_edges_def reachable_def using label_prop_upd_inv_neighborsD by blast
 
-(* TODO: Move. *)
-lemma reachable_subset:
-  \<open>A \<subseteq> B \<Longrightarrow> reachable A x y \<Longrightarrow> reachable B x y\<close>
-  using converse_mono rtrancl_mono_mp sup_mono unfolding reachable_def
-  by meson
-
-lemma fold_min_Min:
-  fixes a :: "'a::linorder"
-  shows "fold min xs a = Min (insert a (set xs))"
-  by (metis Min.set_eq_fold list.simps(15))
 
 (* TODO: Move. *)
 lemma label_prop_edge_batch_cc_of_all_edges:
@@ -9262,8 +9128,6 @@ lemma label_prop_label_batch_out:
   "(x, cap) \<in> set (label_prop_label_batch os os2 t1 v new_l et) \<Longrightarrow> out cap = 1"
   by (auto simp add: label_prop_label_batch_def label_prop_neighbor_batch_def Let_def split: if_splits)
 
-lemma isl_projl_eq: "isl dd \<Longrightarrow> projl dd = p \<Longrightarrow> dd = Inl p"
-  by (cases dd) auto
 
 lemma min_label_record_update_le:
   fixes t1 t' :: "'t::order"
@@ -9941,16 +9805,6 @@ proof -
     unfolding all_edges_def av_eq nb_eq ..
 qed
 
-lemma fold_min_le_base:
-  fixes a :: "'a::linorder"
-  shows "fold min xs a \<le> a"
-  unfolding fold_min_Min by (intro Min_le) auto
-
-lemma fold_min_le_mem:
-  fixes a :: "'a::linorder"
-  assumes "b \<in> set xs"
-  shows "fold min xs a \<le> b"
-  unfolding fold_min_Min using assms by (intro Min_le) auto
 
 lemma violated_edge_edge_record_updateD:
   fixes t1 t' :: nat

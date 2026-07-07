@@ -288,4 +288,71 @@ lemma filter_if_const[simp]:
    filter (\<lambda>x. p = fst x \<and> P p) xs"
   by auto
 
+
+lemma sum_list_strict_mono_ex1:
+  fixes xs :: \<open>'a list\<close>
+    and f g :: \<open>'a \<Rightarrow> nat\<close>
+  assumes le: \<open>\<And>x. x \<in> set xs \<Longrightarrow> f x \<le> g x\<close>
+    and strict: \<open>\<exists>x\<in>set xs. f x < g x\<close>
+  shows \<open>sum_list (map f xs) < sum_list (map g xs)\<close>
+  using assms
+proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  have le_a: \<open>f a \<le> g a\<close>
+    using Cons.prems(1) by simp
+  have le_tail: \<open>\<And>x. x \<in> set xs \<Longrightarrow> f x \<le> g x\<close>
+    using Cons.prems(1) by simp
+  have tail_le: \<open>sum_list (map f xs) \<le> sum_list (map g xs)\<close>
+    using le_tail
+  proof (induct xs)
+    case Nil
+    then show ?case by simp
+  next
+    case (Cons b ys)
+    have head_le: \<open>f b \<le> g b\<close>
+      using Cons.prems by simp
+    have tail_le': \<open>sum_list (map f ys) \<le> sum_list (map g ys)\<close>
+      using Cons.hyps Cons.prems by simp
+    show ?case
+      using head_le tail_le' by simp
+  qed
+
+  from Cons.prems(2) consider (head) \<open>f a < g a\<close> | (tail) \<open>\<exists>x\<in>set xs. f x < g x\<close>
+    by auto
+  then show ?case
+  proof cases
+    case head
+    then show ?thesis
+      using tail_le by simp
+  next
+    case tail
+    have tail_strict: \<open>sum_list (map f xs) < sum_list (map g xs)\<close>
+      using Cons.hyps[OF le_tail tail] .
+    then show ?thesis
+      using le_a by simp
+  qed
+qed
+
+lemma map_filter_append:
+  "List.map_filter f (xs @ ys) = List.map_filter f xs @ List.map_filter f ys"
+  by (induct xs) (auto simp: List.map_filter_def split: option.splits)
+
+lemma fold_min_Min:
+  fixes a :: "'a::linorder"
+  shows "fold min xs a = Min (insert a (set xs))"
+  by (metis Min.set_eq_fold list.simps(15))
+
+lemma fold_min_le_base:
+  fixes a :: "'a::linorder"
+  shows "fold min xs a \<le> a"
+  unfolding fold_min_Min by (intro Min_le) auto
+
+lemma fold_min_le_mem:
+  fixes a :: "'a::linorder"
+  assumes "b \<in> set xs"
+  shows "fold min xs a \<le> b"
+  unfolding fold_min_Min using assms by (intro Min_le) auto
 end
