@@ -6,6 +6,14 @@ imports
   Wcc
 begin
 
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del] 
+  neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
+declare if_cong[cong]
+declare list_emb_Nil2[simp del] BULK_BENQ_right_empty[simp del] BULK_BENQ_left_empty[simp del]
+  filter_True[simp del] filter_False[simp del]
+declare cin.rep_eq[simp del]
+declare cin.rep_eq[symmetric, simp]
+
 
 record ('d, 'v :: linorder, 't1, 't2) label_propagation_state =
   \<open>(2, 'd, 'v \<times> 'v, 'v set set, ('t1, 't2) myprod) operator_state_ty2\<close> +
@@ -3074,7 +3082,7 @@ lemma step_label_propagation_op_Read_Some[intro]:
   assumes \<open>io = Inp (Some p) (Inr (d, t))\<close>
     and \<open>op = label_propagation_op (consumes os p t d)\<close>
   shows \<open>step io (label_propagation_op os) op\<close>
-  using assms unfolding label_propagation_op_def by auto
+  using assms unfolding label_propagation_op_def by (auto simp add: filter_True filter_False BULK_BENQ_right_empty BULK_BENQ_left_empty list_emb_Nil2 in_filter_zmset_in_zmset pos_filter_zmset_pos_zmset neg_filter_zmset_neg_zmset set_antichain1 set_antichain2 mset_set.infinite cin.rep_eq simp del: cin.rep_eq[symmetric] cong del: if_cong)
 
 lemma step_label_propagation_op_Write_None[intro]:
   assumes \<open>io = Out None (Inl (Inl st))\<close>
@@ -3094,20 +3102,20 @@ lemma step_label_propagation_op_Write_Some[intro]:
     and \<open>outpu os p = x # xs\<close>
     and \<open>op = label_propagation_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>)\<close>
   shows \<open>step io (label_propagation_op os) op\<close>
-  using assms unfolding label_propagation_op_def by auto
+  using assms unfolding label_propagation_op_def by (auto simp add: filter_True filter_False BULK_BENQ_right_empty BULK_BENQ_left_empty list_emb_Nil2 in_filter_zmset_in_zmset pos_filter_zmset_pos_zmset neg_filter_zmset_neg_zmset set_antichain1 set_antichain2 mset_set.infinite cin.rep_eq simp del: cin.rep_eq[symmetric] cong del: if_cong)
 
 lemma steps_label_propagation_op_Write_Some[intro]:
   assumes \<open>outpu os p = xs @ ys\<close>
     and \<open>op = label_propagation_op (os\<lparr>outpu := (outpu os)(p := ys)\<rparr>)\<close>
     and \<open>zs = map (\<lambda>x. Out (Some p) (Inr x)) xs\<close>
   shows \<open>steps zs (label_propagation_op os) op\<close>
-  using assms unfolding label_propagation_op_def by auto
+  using assms unfolding label_propagation_op_def by (auto simp add: filter_True filter_False BULK_BENQ_right_empty BULK_BENQ_left_empty list_emb_Nil2 in_filter_zmset_in_zmset pos_filter_zmset_pos_zmset neg_filter_zmset_neg_zmset set_antichain1 set_antichain2 mset_set.infinite cin.rep_eq simp del: cin.rep_eq[symmetric] cong del: if_cong)
 
 lemma steps_label_propagation_op_Read_Some[intro]:
   assumes \<open>op = label_propagation_op (fold (\<lambda>(d, t) os. consumes os p t d) xs os)\<close>
   and \<open>ys = (map (\<lambda>x. Inp (Some p) (Inr x)) xs)\<close>
   shows \<open>steps ys (label_propagation_op os) op\<close>
-  using assms unfolding label_propagation_op_def by auto
+  using assms unfolding label_propagation_op_def by (auto simp add: filter_True filter_False BULK_BENQ_right_empty BULK_BENQ_left_empty list_emb_Nil2 in_filter_zmset_in_zmset pos_filter_zmset_pos_zmset neg_filter_zmset_neg_zmset set_antichain1 set_antichain2 mset_set.infinite cin.rep_eq simp del: cin.rep_eq[symmetric] cong del: if_cong)
 
 lemma step_label_propagation_op_Silent[intro]:
   assumes \<open>io = Tau\<close>
