@@ -44,50 +44,6 @@ lemma input_ocaps_inv_label_prop_label_record_updateI:
 
 
 
-lemma propagated_ifrontier_exit_scopeI:
-  assumes prop_all: \<open>propagate_all su c0 = Some c1\<close>
-    and topo: \<open>dataflow_topology su (-+-)\<close>
-    and reach: \<open>reachable_locations su = UNIV\<close>
-    and inv: \<open>propagation_inv su c0\<close>
-    and le: \<open>frontier_less_equal (ifrontier su (-+-) c0 loc) \<tau>\<close>
-  shows \<open>frontier_less_equal (exit_scope myfst (frontier (c_imp c1 loc))) (myfst \<tau>)\<close>
-proof -
-  have eq:
-    \<open>frontier (c_imp c1 loc) = ifrontier su (-+-) c0 loc\<close>
-    using Propagates.propagate_all_frontier_c_imp_correctness[OF prop_all topo reach] inv
-    unfolding propagation_inv_def
-    by blast
-  have \<open>frontier_less_equal (frontier (c_imp c1 loc)) \<tau>\<close>
-    using eq le by simp
-  then show ?thesis
-    using frontier_less_equal_exit_scope by blast
-qed
-
-lemma dataplane_tracker_inv_channel_ifrontierD:
-  assumes inv: \<open>dataplane_tracker_inv os cbufs sg\<close>
-    and msg: \<open>(d, \<tau>) \<in> set ((outputs_at_target (summ sg) os >> cbufs) (nid, p))\<close>
-  shows \<open>frontier_less_equal (ifrontier (summ sg) (-+-) (pt_tr sg) (Loc nid (Trg p))) \<tau>\<close>
-  using inv msg
-  unfolding dataplane_tracker_inv_def chnls_imp_front_inv_def
-  by fastforce
-
-lemma dataplane_tracker_inv_channel_propagated_exit_scopeI:
-  assumes prop_all: \<open>propagate_all (summ sg) (pt_tr sg) = Some c\<close>
-    and topo: \<open>dataflow_topology (summ sg) (-+-)\<close>
-    and reach: \<open>reachable_locations (summ sg) = UNIV\<close>
-    and inv: \<open>dataplane_tracker_inv os cbufs sg\<close>
-    and msg: \<open>(d, \<tau>) \<in> set ((outputs_at_target (summ sg) os >> cbufs) (nid, p))\<close>
-  shows \<open>frontier_less_equal (exit_scope myfst (frontier (c_imp c (Loc nid (Trg p))))) (myfst \<tau>)\<close>
-proof -
-  have prop_inv: \<open>propagation_inv (summ sg) (pt_tr sg)\<close>
-    using inv unfolding dataplane_tracker_inv_def by auto
-  have chn_front:
-    \<open>frontier_less_equal (ifrontier (summ sg) (-+-) (pt_tr sg) (Loc nid (Trg p))) \<tau>\<close>
-    by (rule dataplane_tracker_inv_channel_ifrontierD[OF inv msg])
-  show ?thesis
-    by (rule propagated_ifrontier_exit_scopeI[OF prop_all topo reach prop_inv chn_front])
-qed
-
 
 subsection \<open>Moving pending data through the loop\<close>
 
@@ -524,13 +480,6 @@ section \<open>label_prop_input1_loop_updates\<close>
 
 subsection \<open>Folded consumption\<close>
 
-abbreviation "CONSUMES p \<equiv> fold (\<lambda>(d, t) os. consumes os p t d)"
-
-lemma CONSUMES_CONSUMES:
-  "CONSUMES p xs (CONSUMES p ys os) =
-   CONSUMES p (ys @ xs) os"
-  unfolding fold_consumes
-  by simp
 
 
 lemma intsum_CONSUMES[simp]:
@@ -549,9 +498,6 @@ lemma de1_CONSUMES[simp]:
   \<open>de1 (CONSUMES p xs os) = de1 os\<close>
   by simp
 
-lemma input_CONSUMES:
-  \<open>input (CONSUMES p xs os) = (input os)(p := input os p @ xs)\<close>
-  unfolding fold_consumes by simp
 
 
 lemma all_vertices_CONSUMES[simp]:
@@ -2604,22 +2550,7 @@ proof -
 qed
 
 
-lemma ocaps_release_caps_empty_inputs:
-  assumes empty: \<open>\<And>p' s. s \<in> set (intsum os p' p) \<Longrightarrow> input os p' = []\<close>
-  shows \<open>ocaps (release_caps os p) p = []\<close>
-proof -
-  have justifications_empty:
-    \<open>concat (map (\<lambda>(p', s). map (((+) s) \<circ> snd) (input os p'))
-      (concat (map (\<lambda>p'. map (\<lambda>s. (p', s)) (intsum os p' p)) enum_class.enum))) = []\<close>
-    using empty
-    by (auto simp: concat_eq_Nil_conv)
-  have cap_times:
-    \<open>map time (filter (\<lambda>cap. out cap = p) (map (\<lambda>t. Cap t p) xs)) = xs\<close> for xs
-    by (induct xs) simp_all
-  show ?thesis
-    unfolding release_caps_def drop_caps_def Let_def
-    by (simp add: justifications_empty cap_times)
-qed
+
 
 lemma ocaps_1_label_prop_input1_step_state_empty:
   assumes input0_empty: \<open>input os (0 :: 2) = []\<close>
@@ -3370,86 +3301,6 @@ qed
 
 section \<open>Base-state projection\<close>
 
-definition op_state_base where
-  \<open>op_state_base os = \<lparr>
-    intsum = intsum os,
-    consu = consu os,
-    inter = inter os,
-    produ = produ os,
-    input = input os,
-    outpu = outpu os,
-    front = front os,
-    ocaps = ocaps os,
-    initia = initia os\<rparr>\<close>
-
-lemma op_state_base_add_caps[simp]:
-  \<open>op_state_base (add_caps os caps) = add_caps (op_state_base os) caps\<close>
-  unfolding op_state_base_def add_caps_def
-  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
-
-lemma op_state_base_produces[simp]:
-  \<open>op_state_base (produces os batch) = produces (op_state_base os) batch\<close>
-  unfolding op_state_base_def produces_def
-  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
-
-lemma op_state_base_drop_caps[simp]:
-  \<open>op_state_base (drop_caps os caps) = drop_caps (op_state_base os) caps\<close>
-  unfolding op_state_base_def drop_caps_def
-  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
-
-lemma op_state_base_release_caps[simp]:
-  \<open>op_state_base (release_caps os p) = release_caps (op_state_base os) p\<close>
-  unfolding op_state_base_def release_caps_def drop_caps_def Let_def
-  by (rule operator_state_eqI) (simp_all add: trace_simp fun_eq_iff)
-
-lemma op_state_base_outpu_update[simp]:
-  \<open>op_state_base (os\<lparr>outpu := outs\<rparr>) = (op_state_base os)\<lparr>outpu := outs\<rparr>\<close>
-  unfolding op_state_base_def
-  by (rule operator_state_eqI) simp_all
-
-lemma op_state_base_CONSUMES[simp]:
-  \<open>op_state_base (CONSUMES p xs os) = CONSUMES p xs (op_state_base os)\<close>
-  unfolding op_state_base_def fold_consumes
-  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
-
-lemma op_state_base_obtain_progress:
-  \<open>op_state_base (fst (obtain_progress os)) = fst (obtain_progress (op_state_base os))\<close>
-  unfolding op_state_base_def obtain_progress_def
-  by (rule operator_state_eqI) simp_all
-
-lemma op_state_base_front_initia_update[simp]:
-
-\<open>op_state_base (os\<lparr>front := F, initia := I\<rparr>) = (op_state_base os)\<lparr>front := F, initia := I\<rparr>\<close>
-  unfolding op_state_base_def
-  by (rule operator_state_eqI) simp_all
-
-section \<open>Capability bookkeeping for produced batches\<close>
-
-lemma cap_times_filter_single_port_subset:
-  assumes "mset xs \<subseteq># mset (ocaps os p)"
-  shows "\<forall>p'. mset (map capability.time (filter (\<lambda>c. out c = p') (map (\<lambda>t. Cap t p) xs))) \<subseteq># mset (ocaps os p')"
-proof (intro allI)
-  fix p'
-  have filt_eq:
-    "map capability.time (filter (\<lambda>c. out c = p') (map (\<lambda>t. Cap t p) xs)) =
-      (if p' = p then xs else [])"
-    by (induct xs) auto
-  show "mset (map capability.time (filter (\<lambda>c. out c = p') (map (\<lambda>t. Cap t p) xs))) \<subseteq># mset (ocaps os p')"
-    using assms filt_eq by auto
-qed
-
-lemma produced_oputs_caps_from_produs:
-  assumes "\<forall>(p, t, m) \<in> set (map (\<lambda>(x, cap). (out cap, capability.time cap, 1 :: int)) batch).
-    m > 0 \<and> t \<in> set (ocaps os p)"
-  shows "\<forall>p. snd ` set (map (\<lambda>(x, cap). (x, capability.time cap)) (filter (\<lambda>(x, cap). out cap = p) batch)) \<subseteq> set (ocaps os p)"
-  using assms
-  by (auto split: prod.splits)
-
-lemma produced_oputs_produs_zmset:
-  "\<forall>p. to_zmset (map snd (map (\<lambda>(x, cap). (x, capability.time cap)) (filter (\<lambda>(x, cap). out cap = p) batch))) =
-    zmset (map snd (filter (\<lambda>x. p = fst x) (map (\<lambda>(x, cap). (out cap, capability.time cap, 1 :: int)) batch)))"
-  by (induct batch) (auto simp add: split_beta zmset_map_one update_zmultiset_one add.commute split: prod.splits capability.splits)
-
 
 subsection \<open>Input capability preservation for input-1 batches\<close>
 
@@ -3504,52 +3355,6 @@ next
 
 qed
 
-lemma input_ocaps_inv_CONSUMES:
-  assumes \<open>input_ocaps_inv os\<close>
-  shows \<open>input_ocaps_inv (CONSUMES p xs os)\<close>
-  using assms
-  by (induct xs arbitrary: os) (auto simp add: inputs_ocaps_inv_consumes split: prod.splits)
-
-lemma ocaps_CONSUMES_other_port:
-  fixes os :: \<open>('p :: enum, 'd, 't :: plus) operator_state\<close>
-  assumes \<open>intsum os p p' = []\<close>
-  shows \<open>ocaps (CONSUMES p xs os) p' = ocaps os p'\<close>
-  using assms
-proof (induct xs arbitrary: os)
-  case Nil
-  thus ?case unfolding fold_consumes by simp
-next
-  case (Cons x xs)
-  obtain d t where x_eq: \<open>x = (d, t)\<close> by (cases x)
-  let ?os' = \<open>consumes os p t d\<close>
-  have intsum_step: \<open>intsum ?os' p p' = intsum os p p'\<close>
-    unfolding consumes_def add_caps_def by simp
-  have empty_filter: \<open>\<And>p''. filter (\<lambda>cap. out cap = p')
-        (map (\<lambda>t'. Cap (t + t') p'') (intsum os p p'')) = []\<close>
-  proof -
-    fix p''
-    show \<open>filter (\<lambda>cap. out cap = p')
-              (map (\<lambda>t'. Cap (t + t') p'') (intsum os p p'')) = []\<close>
-    proof (cases \<open>p'' = p'\<close>)
-      case True
-      thus ?thesis using Cons.prems by (simp add: filter_map comp_def filter_True)
-    next
-      case False
-      thus ?thesis by (simp add: filter_map comp_def filter_False)
-    qed
-  qed
-  have ocaps_step: \<open>ocaps ?os' p' = ocaps os p'\<close>
-    unfolding consumes_def add_caps_def
-    using empty_filter
-    by (simp add: enum_class.enum_UNIV filter_concat)
-  have \<open>ocaps (CONSUMES p (x # xs) os) p' = ocaps (CONSUMES p xs ?os') p'\<close>
-    unfolding fold_consumes x_eq by simp
-  also have \<open>... = ocaps ?os' p'\<close>
-    using Cons.hyps Cons.prems intsum_step by simp
-  also have \<open>... = ocaps os p'\<close>
-    using ocaps_step .
-  finally show ?case .
-qed
 
 
 subsection \<open>Dataplane preservation for input-1 batches\<close>
@@ -5151,10 +4956,7 @@ proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' k rule
   qed
 qed
 
-lemma input_ocaps_inv_empty_inputsI:
-  assumes \<open>\<forall>p. input os p = []\<close>
-  shows \<open>input_ocaps_inv os\<close>
-  using assms unfolding input_ocaps_inv_def by simp
+
 lemma loop_updates_msgs_invI:
   fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -6663,121 +6465,6 @@ lemma all_edges_fst_label_prop_input0_batched_input_eq:
   by (rule all_edges_fst_label_prop_input0_batched_prefix_eq[where rest=Nil])
     (use assms in simp_all)
 
-lemma set_icoll_llist_of:
-  \<open>set (icoll (llist_of xs) t) = {d. \<exists>t'. Data t' d \<in> set xs \<and> t' \<le> t}\<close>
-  apply (induction xs)
-  apply (simp add: icoll_def)
-  apply (auto simp: icoll_def split: event.splits)
-  done
-
-lemma set_icoll_llist_of_map_Data_pair:
-  \<open>set (icoll (llist_of (map (\<lambda>(x, t'). Data t' (f x)) xs)) t) =
-    (\<lambda>x. f (fst x)) ` {x \<in> set xs. snd x \<le> t}\<close>
-  apply (auto simp: set_icoll_llist_of split_beta)
-  done
-
-lemma set_icoll_lshift:
-  \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) lxs) \<Longrightarrow>
-    set (icoll (xs @@- lxs) t) = set (icoll (llist_of xs) t) \<union> set (icoll lxs t)\<close>
-  apply (simp add: icoll_lshift)
-  done
-
-
-lemma set_icoll_lsetI:
-  assumes finite: \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) lxs)\<close>
-    and data: \<open>Data t' d \<in> lset lxs\<close>
-    and le: \<open>t' \<le> t\<close>
-  shows \<open>d \<in> set (icoll lxs t)\<close>
-  unfolding icoll_def
-  apply (subst set_list_of)
-  apply (simp add: lfinite_lmap)
-  apply (rule lfinite_lfilter_mono[OF finite])
-  apply (auto split: event.splits)
-  apply (rule image_eqI[where x=\<open>Data t' d\<close>])
-  apply simp
-  using data le by (simp add: lset_lmap lset_lfilter)
-
-lemma ts_lsetE:
-  assumes \<open>t |\<in>| ts lxs\<close>
-  obtains d where \<open>Data t d \<in> lset lxs\<close>
-proof -
-  from assms obtain e where e_in: \<open>e |\<in>| cset_of_llist lxs\<close>
-    and data: \<open>is_Data e\<close>
-    and t_eq: \<open>t = (case e of Data t d \<Rightarrow> t)\<close>
-    unfolding ts_def
-    by (subst (asm) cin_cimage_cfilter) auto
-  then show ?thesis
-    by (cases e) (auto intro: that simp add: cin.rep_eq cset_of_llist.rep_eq)
-qed
-
-lemma ts_lsetI:
-  assumes \<open>Data t d \<in> lset lxs\<close>
-  shows \<open>t |\<in>| ts lxs\<close>
-  unfolding ts_def
-  apply (subst cimage_iff)
-  apply (rule_tac x=\<open>Data t d\<close> in cBexI)
-  apply simp
-  using assms by (simp add: cin.rep_eq cset_of_llist.rep_eq)
-
-lemma ts_ldropnD:
-  assumes \<open>t |\<in>| ts (ldropn n lxs)\<close>
-  shows \<open>t |\<in>| ts lxs\<close>
-proof -
-  from assms obtain d where data: \<open>Data t d \<in> lset (ldropn n lxs)\<close>
-    by (rule ts_lsetE)
-  then have \<open>Data t d \<in> lset lxs\<close>
-    by (rule in_lset_ldropnD)
-  then show ?thesis
-    by (rule ts_lsetI)
-qed
-
-
-lemma icoll_empty_if_no_data_le:
-  assumes \<open>\<And>t' d. t' \<le> t \<Longrightarrow> Data t' d \<notin> lset lxs\<close>
-  shows \<open>icoll lxs t = []\<close>
-  unfolding icoll_def
-  apply (subst lfilter_False)
-  apply (use assms in \<open>auto split: event.splits\<close>)
-  done
-
-lemma set_icoll_ltaken_ldropn:
-  assumes \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) (ldropn n lxs))\<close>
-  shows \<open>set (icoll lxs t) =
-    {d. \<exists>t'. Data t' d \<in> set (ltaken n lxs) \<and> t' \<le> t} \<union> set (icoll (ldropn n lxs) t)\<close>
-  apply (subst ltaken_lshift_ldropn[symmetric, of lxs n])
-  apply (subst set_icoll_lshift)
-  apply (rule assms)
-  apply (simp add: set_icoll_llist_of)
-  done
-
-lemma set_icoll_ltaken_if_no_ldropn_data_le:
-  assumes finite: \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) (ldropn n lxs))\<close>
-    and no_data: \<open>\<And>t' d. t' \<le> t \<Longrightarrow> Data t' d \<notin> lset (ldropn n lxs)\<close>
-  shows \<open>set (icoll lxs t) = {d. \<exists>t'. Data t' d \<in> set (ltaken n lxs) \<and> t' \<le> t}\<close>
-  apply (subst (1) ltaken_lshift_ldropn[symmetric, of lxs n])
-  apply (subst icoll_lshift)
-  using finite apply blast
-  apply (simp add: icoll_empty_if_no_data_le[OF no_data] set_icoll_llist_of)
-  done
-
-lemma timely_input_stream_ldropn_no_data_le_if_not_frontier_less_equal:
-  assumes stream: \<open>timely_input_stream lxs C\<close>
-    and n_le: \<open>enat n \<le> llength lxs\<close>
-    and not_frontier: \<open>\<not> frontier_less_equal
-      (frontier (zmset_of (C + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) -
-        event.time `# filter_mset is_Drop (mset (ltaken n lxs))))) t\<close>
-    and u_le: \<open>u \<le> t\<close>
-  shows \<open>Data u d \<notin> lset (ldropn n lxs)\<close>
-  apply (rule notI)
-  apply (rule vacant_monotone_not_in_lset[where e=\<open>Data u d\<close> and t=t and
-        C=\<open>C + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) -
-          event.time `# filter_mset is_Drop (mset (ltaken n lxs))\<close> and lxs=\<open>ldropn n lxs\<close>])
-  apply assumption
-  apply (simp add: u_le)
-  apply (rule not_frontier_less_equal_vacant[OF not_frontier])
-  using timely_input_stream_ldrop[OF n_le stream]
-  apply (simp add: timely_input_stream_def)
-  done
 
 
 lemma label_prop_collected_edge_payloads_image_eq:
@@ -7522,163 +7209,8 @@ proof -
 
 qed
 
-lemma zmset_filter_eq_if_c_pts_change_multiplicities_eq:
-  assumes \<open>c_pts (change_multiplicities su xs c) l =
-    c_pts (change_multiplicities su ys c) l\<close>
-  shows \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) =
-    zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys))\<close>
-  using assms
-  by (simp add: c_pts_change_multiplicities)
-
-lemma extract_prog_two_12:
-  shows \<open>extract_progress (1 :: 3) eds (snd (obtain_progress os1)) @
-    extract_progress (2 :: 3) eds (snd (obtain_progress os2)) =
-    extract_prog [1 :: 3, 2] eds (\<lambda>nid. if nid = 1 then os1 else os2)\<close>
-  by (simp add: extract_prog_def)
-
-lemma produces_Nil[simp]:
-  "produces os [] = os"
-  unfolding produces_def
-  by simp
-
-lemma CM_equiv_empty_filter_notin:
-  assumes \<open>l \<notin> fst ` set xs\<close>
-  shows \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) = {#}\<^sub>z\<close>
-  using assms by (induct xs) auto
-
-lemma CM_equiv_trans:
-  assumes \<open>CM_equiv xs ys\<close> and \<open>CM_equiv ys zs\<close>
-  shows \<open>CM_equiv xs zs\<close>
-proof -
-  have step: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) =
-      zmset (map snd (filter (\<lambda>(l', _, _). l = l') zs))\<close>
-    if \<open>l \<in> fst ` set xs \<union> fst ` set zs\<close> for l
-  proof -
-    have xy: \<open>l \<in> fst ` set xs \<union> fst ` set ys \<Longrightarrow>
-      zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) =
-      zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys))\<close>
-      using assms(1) unfolding CM_equiv_def by blast
-    have yz: \<open>l \<in> fst ` set ys \<union> fst ` set zs \<Longrightarrow>
-      zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys)) =
-      zmset (map snd (filter (\<lambda>(l', _, _). l = l') zs))\<close>
-      using assms(2) unfolding CM_equiv_def by blast
-    show ?thesis
-    proof (cases \<open>l \<in> fst ` set xs\<close>)
-      case True
-      have xs_ys: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) =
-        zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys))\<close>
-        using True xy by simp
-      show ?thesis
-      proof (cases \<open>l \<in> fst ` set ys \<union> fst ` set zs\<close>)
-        case True
-        then show ?thesis
-          using xs_ys yz by simp
-      next
-        case False
-        then have ys_empty: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys)) = {#}\<^sub>z\<close>
-          by (intro CM_equiv_empty_filter_notin) auto
-        have zs_empty: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') zs)) = {#}\<^sub>z\<close>
-          using False by (intro CM_equiv_empty_filter_notin) auto
-        show ?thesis
-          using xs_ys ys_empty zs_empty by simp
-      qed
-    next
-      case False_xs: False
-      have xs_empty: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) = {#}\<^sub>z\<close>
-        by (rule CM_equiv_empty_filter_notin[OF False_xs])
-      have z_in: \<open>l \<in> fst ` set zs\<close>
-        using that False_xs by simp
-      have ys_zs: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys)) =
-        zmset (map snd (filter (\<lambda>(l', _, _). l = l') zs))\<close>
-        using z_in yz by simp
-      show ?thesis
-      proof (cases \<open>l \<in> fst ` set ys\<close>)
-        case True
-        have xs_ys: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') xs)) =
-          zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys))\<close>
-          using True xy by simp
-        show ?thesis
-          using xs_ys ys_zs by simp
-      next
-        case False
-        have ys_empty: \<open>zmset (map snd (filter (\<lambda>(l', _, _). l = l') ys)) = {#}\<^sub>z\<close>
-          by (rule CM_equiv_empty_filter_notin[OF False])
-        show ?thesis
-          using xs_empty ys_empty ys_zs by simp
-      qed
-    qed
-  qed
-  show ?thesis
-    unfolding CM_equiv_def
-    using step by blast
-qed
 
 
-
-lemma CM_equiv_append:
-  assumes ac: "CM_equiv a c" and bd: "CM_equiv b d"
-  shows "CM_equiv (a @ b) (c @ d)"
-proof (unfold CM_equiv_def, intro ballI)
-  fix l
-  assume "l \<in> fst ` set (a @ b) \<union> fst ` set (c @ d)"
-  let ?F = "\<lambda>xs. filter (\<lambda>(l', _, _). l = l') xs"
-  have part_a: "zmset (map snd (?F a)) = zmset (map snd (?F c))"
-  proof (cases "l \<in> fst ` set a \<union> fst ` set c")
-    case True
-    with ac show ?thesis unfolding CM_equiv_def by blast
-  next
-    case False
-    hence "?F a = []" "?F c = []"
-      by (force simp: filter_empty_conv image_iff split: prod.splits)+
-    thus ?thesis by simp
-  qed
-  have part_b: "zmset (map snd (?F b)) = zmset (map snd (?F d))"
-  proof (cases "l \<in> fst ` set b \<union> fst ` set d")
-    case True
-    with bd show ?thesis unfolding CM_equiv_def by blast
-  next
-    case False
-    hence "?F b = []" "?F d = []"
-      by (force simp: filter_empty_conv image_iff split: prod.splits)+
-    thus ?thesis by simp
-  qed
-  show "zmset (map snd (?F (a @ b))) = zmset (map snd (?F (c @ d)))"
-    by (simp add: part_a part_b)
-qed
-
-lemma filter_extract_progress_outside:
-  assumes "node l \<noteq> nid"
-  shows "filter (\<lambda>(l', _, _). l = l') (extract_progress nid nt st) =
-    List.map_filter
-      (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None
-         | Some (nid', p') \<Rightarrow>
-             if l = Loc nid' (Trg p') then Some (Loc nid' (Trg p'), t, m) else None)
-      (prod st)"
-proof -
-  have cons_empty:
-    "filter (\<lambda>(l', _, _). l = l')
-       (map (\<lambda>(p, t, m). (Loc nid (Trg p), t, -m)) xs) = []" for xs
-    by (induct xs) (use assms in \<open>auto split: prod.splits\<close>)
-  have inte_empty:
-    "filter (\<lambda>(l', _, _). l = l')
-       (map (\<lambda>(p, y). (Loc nid (Src p), y)) xs) = []" for xs
-    by (induct xs) (use assms in \<open>auto split: prod.splits\<close>)
-  have prod_eq:
-    "filter (\<lambda>(l', _, _). l = l')
-       (List.map_filter
-          (\<lambda>(p, t, m). case_option None (\<lambda>(nid', p'). Some (Loc nid' (Trg p'), t, m))
-                          (nt (nid, p)))
-          xs)
-     = List.map_filter
-        (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None
-           | Some (nid', p') \<Rightarrow>
-               if l = Loc nid' (Trg p') then Some (Loc nid' (Trg p'), t, m) else None)
-        xs" for xs
-    by (induct xs) (auto simp: List.map_filter_def split: option.splits prod.splits)
-  show ?thesis
-    unfolding extract_progress_def
-    by (simp add: cons_empty inte_empty prod_eq)
-qed
 
 
 lemma dataplane_tracker_inv_buffer_balance_aux:
@@ -7896,81 +7428,7 @@ proof -
     using caps_simp c_pts_eq by simp
 qed
 
-lemma filter_extract_progress_Trg:
-  shows "filter (\<lambda>(l', _, _). Loc nid (Trg p) = l') (extract_progress nid' nt st) =
-    (if nid = nid' then
-       map (\<lambda>(p', t, m). (Loc nid (Trg p), t, -m))
-         (filter (\<lambda>(p', _, _). p' = p) (cons st))
-     else []) @
-    List.map_filter (\<lambda>(p_in, t, m).
-      case nt (nid', p_in) of None \<Rightarrow> None
-      | Some (nid'', p''') \<Rightarrow>
-          if nid = nid'' \<and> p = p''' then Some (Loc nid (Trg p), t, m) else None)
-    (prod st)"
-proof -
-  have cons_simp:
-    "filter (\<lambda>(l', _, _). Loc nid (Trg p) = l')
-       (map (\<lambda>(p'', t, m). (Loc nid' (Trg p''), t, -m)) xs) =
-     (if nid = nid' then
-        map (\<lambda>(p'', t, m). (Loc nid (Trg p), t, -m))
-          (filter (\<lambda>(p'', _, _). p'' = p) xs)
-      else [])" for xs
-    by (induct xs) (auto split: prod.splits)
-  have inter_empty:
-    "filter (\<lambda>(l', _, _). Loc nid (Trg p) = l')
-       (map (\<lambda>(p'', y). (Loc nid' (Src p''), y)) xs) = []" for xs
-    by (induct xs) (auto split: prod.splits)
-  have prod_simp:
-    "filter (\<lambda>(l', _, _). Loc nid (Trg p) = l')
-       (List.map_filter (\<lambda>(p_in, t, m). case_option None (\<lambda>(nid'', p''').
-          Some (Loc nid'' (Trg p'''), t, m)) (nt (nid', p_in))) xs) =
-     List.map_filter (\<lambda>(p_in, t, m).
-       case nt (nid', p_in) of None \<Rightarrow> None
-       | Some (nid'', p''') \<Rightarrow>
-           if nid = nid'' \<and> p = p''' then Some (Loc nid (Trg p), t, m) else None)
-     xs" for xs
-    by (induct xs) (auto simp: List.map_filter_def split: option.splits prod.splits)
-  show ?thesis
-    unfolding extract_progress_def
-    by (simp add: cons_simp inter_empty prod_simp split_beta)
-qed
 
-lemma filter_extract_progress_Src:
-  shows "filter (\<lambda>(l', _, _). Loc nid (Src p) = l') (extract_progress nid' nt st) =
-    (if nid = nid' then
-      map (\<lambda>(p', y). (Loc nid (Src p), y))
-        (filter (\<lambda>(p', _). p' = p) (inte st))
-    else [])"
-proof -
-  have cons_empty:
-    "filter (\<lambda>(l', _, _). Loc nid (Src p) = l')
-       (map (\<lambda>(p'', t, m). (Loc nid' (Trg p''), t, -m)) xs) = []" for xs
-    by (induct xs) (auto split: prod.splits)
-  have inter_simp:
-    "filter (\<lambda>(l', _, _). Loc nid (Src p) = l')
-       (map (\<lambda>(p'', y). (Loc nid' (Src p''), y)) xs) =
-     (if nid = nid' then
-        map (\<lambda>(p'', y). (Loc nid (Src p), y))
-          (filter (\<lambda>(p'', _). p'' = p) xs)
-      else [])" for xs
-    by (induct xs) (auto split: prod.splits)
-  have prod_empty:
-    "filter (\<lambda>(l', _, _). Loc nid (Src p) = l')
-       (List.map_filter (\<lambda>(p'', t, m). case_option None (\<lambda>(nid'', p'''). 
-          Some (Loc nid'' (Trg p'''), t, m)) (nt (nid', p''))) xs) = []" for xs
-    by (induct xs) (auto simp: List.map_filter_def split: option.splits prod.splits)
-  show ?thesis
-    unfolding extract_progress_def
-    by (simp add: cons_empty inter_simp prod_empty split_beta)
-qed
-
-
-lemma extract_prog_three_fold:
-  shows  \<open>extract_progress 0 eds (snd (obtain_progress os0)) @
-   extract_progress 1 eds (snd (obtain_progress os1)) @
-   extract_progress 2 eds (snd (obtain_progress os2)) =
-   extract_prog [0 :: 3, 1, 2] eds (\<lambda> nid. if nid = 0 then os0 else if nid = 1 then os1 else os2)\<close>
-  by (simp add: extract_prog_def)
 lemma buff_sim_aux[simp]:
   "(\<lambda>p'. if Inr (1, 0) = p'
                     then drop (length (cbufs (1, 0)) -+- length (outpu (os 0) 0) -+- length (filter is_Data (ltaken n lxs)))
@@ -8860,9 +8318,7 @@ qed
 
 
 (* FIXME: move me to AntichainOrder.thy *)
-lemma  frontier_less_equal_pluss_le:
-  \<open>frontier_less_equal (A + B) t \<Longrightarrow> A \<le> B \<Longrightarrow> frontier_less_equal A t\<close>
-  by (meson frontier_less_equal_iff2 frontier_less_equal_le_trans in_sum_antichainD)
+
 
 lemma exit_scope_ifrontier_L1T0_le_L1T1_empty_loop:
   fixes c :: \<open>((3, 2) location, (nat, nat) myprod) configuration\<close>
@@ -9026,18 +8482,6 @@ proof -
 qed
 
 (* FIXME: move me to Timely_Operator_State.thy. *)
-lemma ocaps_drop_caps_port_disjoint[simp]:
-  fixes os :: "('p, 'd, 't :: plus, 'more) operator_state_scheme"
-    and caps :: "('p, 't) capability list"
-
-assumes "\<And>cap. cap \<in> set caps \<Longrightarrow> out cap \<noteq> p"
-shows "ocaps (drop_caps os caps) p = ocaps os p"
-proof -
-  have "filter (\<lambda>cap. out cap = p) caps = []"
-    using assms by (induction caps) auto
-  then show ?thesis
-    unfolding drop_caps_def by simp
-qed
 
 
 lemma min_label_le_label: "min_label os t v \<le> label os t v"
@@ -9518,16 +8962,7 @@ lemma not_labels_stable_covered_witnessE:
   obtains a s t' l' where "(Inl (a, l'), MyPair s t') \<in> M" and "s \<le> t"
   using assms unfolding label_prop_covered_inv_def labels_stable_def by fast
 
-lemma frontier_less_equal_exit_scope_myfst_le:
-  assumes "frontier_less_equal A T"
-    and "myfst T \<le> t"
-  shows "frontier_less_equal (exit_scope myfst A) t"
-proof -
-  have "frontier_less_equal (exit_scope myfst A) (myfst T)"
-    using frontier_less_equal_exit_scope assms(1) by blast
-  then show ?thesis
-    using assms(2) by (rule frontier_less_equal_trans)
-qed
+
 
 (* Auxiliary lemmas for label_prop_covered_inv preservation under edge insertion. *)
 

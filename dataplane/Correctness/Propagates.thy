@@ -291,4 +291,48 @@ lemma dataplane_tracker_inv_front_update:
   done
 
 
+
+lemma propagated_ifrontier_exit_scopeI:
+  assumes prop_all: \<open>propagate_all su c0 = Some c1\<close>
+    and topo: \<open>dataflow_topology su (-+-)\<close>
+    and reach: \<open>reachable_locations su = UNIV\<close>
+    and inv: \<open>propagation_inv su c0\<close>
+    and le: \<open>frontier_less_equal (ifrontier su (-+-) c0 loc) \<tau>\<close>
+  shows \<open>frontier_less_equal (exit_scope myfst (frontier (c_imp c1 loc))) (myfst \<tau>)\<close>
+proof -
+  have eq:
+    \<open>frontier (c_imp c1 loc) = ifrontier su (-+-) c0 loc\<close>
+    using Propagates.propagate_all_frontier_c_imp_correctness[OF prop_all topo reach] inv
+    unfolding propagation_inv_def
+    by blast
+  have \<open>frontier_less_equal (frontier (c_imp c1 loc)) \<tau>\<close>
+    using eq le by simp
+  then show ?thesis
+    using frontier_less_equal_exit_scope by blast
+qed
+
+lemma dataplane_tracker_inv_channel_ifrontierD:
+  assumes inv: \<open>dataplane_tracker_inv os cbufs sg\<close>
+    and msg: \<open>(d, \<tau>) \<in> set ((outputs_at_target (summ sg) os >> cbufs) (nid, p))\<close>
+  shows \<open>frontier_less_equal (ifrontier (summ sg) (-+-) (pt_tr sg) (Loc nid (Trg p))) \<tau>\<close>
+  using inv msg
+  unfolding dataplane_tracker_inv_def chnls_imp_front_inv_def
+  by fastforce
+
+lemma dataplane_tracker_inv_channel_propagated_exit_scopeI:
+  assumes prop_all: \<open>propagate_all (summ sg) (pt_tr sg) = Some c\<close>
+    and topo: \<open>dataflow_topology (summ sg) (-+-)\<close>
+    and reach: \<open>reachable_locations (summ sg) = UNIV\<close>
+    and inv: \<open>dataplane_tracker_inv os cbufs sg\<close>
+    and msg: \<open>(d, \<tau>) \<in> set ((outputs_at_target (summ sg) os >> cbufs) (nid, p))\<close>
+  shows \<open>frontier_less_equal (exit_scope myfst (frontier (c_imp c (Loc nid (Trg p))))) (myfst \<tau>)\<close>
+proof -
+  have prop_inv: \<open>propagation_inv (summ sg) (pt_tr sg)\<close>
+    using inv unfolding dataplane_tracker_inv_def by auto
+  have chn_front:
+    \<open>frontier_less_equal (ifrontier (summ sg) (-+-) (pt_tr sg) (Loc nid (Trg p))) \<tau>\<close>
+    by (rule dataplane_tracker_inv_channel_ifrontierD[OF inv msg])
+  show ?thesis
+    by (rule propagated_ifrontier_exit_scopeI[OF prop_all topo reach prop_inv chn_front])
+qed
 end

@@ -1208,4 +1208,70 @@ proof (intro allI ballI)
 qed
 
 
+
+lemma input_ocaps_inv_CONSUMES:
+  assumes \<open>input_ocaps_inv os\<close>
+  shows \<open>input_ocaps_inv (CONSUMES p xs os)\<close>
+  using assms
+  by (induct xs arbitrary: os) (auto simp add: inputs_ocaps_inv_consumes split: prod.splits)
+
+lemma ocaps_CONSUMES_other_port:
+  fixes os :: \<open>('p :: enum, 'd, 't :: plus) operator_state\<close>
+  assumes \<open>intsum os p p' = []\<close>
+  shows \<open>ocaps (CONSUMES p xs os) p' = ocaps os p'\<close>
+  using assms
+proof (induct xs arbitrary: os)
+  case Nil
+  thus ?case unfolding fold_consumes by simp
+next
+  case (Cons x xs)
+  obtain d t where x_eq: \<open>x = (d, t)\<close> by (cases x)
+  let ?os' = \<open>consumes os p t d\<close>
+  have intsum_step: \<open>intsum ?os' p p' = intsum os p p'\<close>
+    unfolding consumes_def add_caps_def by simp
+  have empty_filter: \<open>\<And>p''. filter (\<lambda>cap. out cap = p')
+        (map (\<lambda>t'. Cap (t + t') p'') (intsum os p p'')) = []\<close>
+  proof -
+    fix p''
+    show \<open>filter (\<lambda>cap. out cap = p')
+              (map (\<lambda>t'. Cap (t + t') p'') (intsum os p p'')) = []\<close>
+    proof (cases \<open>p'' = p'\<close>)
+      case True
+      thus ?thesis using Cons.prems by (simp add: filter_map comp_def filter_True)
+    next
+      case False
+      thus ?thesis by (simp add: filter_map comp_def filter_False)
+    qed
+  qed
+  have ocaps_step: \<open>ocaps ?os' p' = ocaps os p'\<close>
+    unfolding consumes_def add_caps_def
+    using empty_filter
+    by (simp add: enum_class.enum_UNIV filter_concat)
+  have \<open>ocaps (CONSUMES p (x # xs) os) p' = ocaps (CONSUMES p xs ?os') p'\<close>
+    unfolding fold_consumes x_eq by simp
+  also have \<open>... = ocaps ?os' p'\<close>
+    using Cons.hyps Cons.prems intsum_step by simp
+  also have \<open>... = ocaps os p'\<close>
+    using ocaps_step .
+  finally show ?case .
+qed
+
+lemma input_ocaps_inv_empty_inputsI:
+  assumes \<open>\<forall>p. input os p = []\<close>
+  shows \<open>input_ocaps_inv os\<close>
+  using assms unfolding input_ocaps_inv_def by simp
+
+lemma extract_prog_two_12:
+  shows \<open>extract_progress (1 :: 3) eds (snd (obtain_progress os1)) @
+    extract_progress (2 :: 3) eds (snd (obtain_progress os2)) =
+    extract_prog [1 :: 3, 2] eds (\<lambda>nid. if nid = 1 then os1 else os2)\<close>
+  by (simp add: extract_prog_def)
+
+lemma extract_prog_three_fold:
+  shows  \<open>extract_progress 0 eds (snd (obtain_progress os0)) @
+   extract_progress 1 eds (snd (obtain_progress os1)) @
+   extract_progress 2 eds (snd (obtain_progress os2)) =
+   extract_prog [0 :: 3, 1, 2] eds (\<lambda> nid. if nid = 0 then os0 else if nid = 1 then os1 else os2)\<close>
+  by (simp add: extract_prog_def)
+
 end

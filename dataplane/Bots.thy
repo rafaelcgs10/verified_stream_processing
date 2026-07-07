@@ -84,4 +84,25 @@ lemma set_antichain_antichain_set_bots[simp]:
 
 
 
+
+definition exit_scope where
+  "exit_scope f A = frontier ((zmset_of o mset_set) (f ` set_antichain A))"
+
+lemma frontier_less_equal_exit_scope:
+  "\<not> frontier_less_equal (exit_scope myfst A) (myfst t) \<Longrightarrow>
+   \<not> frontier_less_equal A t"
+proof
+  assume not_projected: "\<not> frontier_less_equal (exit_scope myfst A) (myfst t)"
+  assume "frontier_less_equal A t"
+  then obtain t' where t'_in: "t' \<in>\<^sub>A A" and t'_le: "t' \<le> t"
+    unfolding frontier_less_equal_iff2 by blast
+  have zcount_pos: "0 < zcount (zmset_of (mset_set (myfst ` set_antichain A))) (myfst t')"
+    using t'_in by (simp add: member_antichain.rep_eq)
+  have "frontier_less_equal (exit_scope myfst A) (myfst t')"
+    unfolding exit_scope_def o_def using zcount_pos by (rule frontier_less_equal_zcount_pos)
+  then have "frontier_less_equal (exit_scope myfst A) (myfst t)"
+    using myfst_mono[OF t'_le] by (rule frontier_less_equal_trans)
+  then show False
+    using not_projected by contradiction
+qed
 end

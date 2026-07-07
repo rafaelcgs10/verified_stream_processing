@@ -486,4 +486,118 @@ qed simp
 
 
 
+
+lemma set_icoll_llist_of:
+  \<open>set (icoll (llist_of xs) t) = {d. \<exists>t'. Data t' d \<in> set xs \<and> t' \<le> t}\<close>
+  apply (induction xs)
+  apply (simp add: icoll_def)
+  apply (auto simp: icoll_def split: event.splits)
+  done
+
+lemma set_icoll_llist_of_map_Data_pair:
+  \<open>set (icoll (llist_of (map (\<lambda>(x, t'). Data t' (f x)) xs)) t) =
+    (\<lambda>x. f (fst x)) ` {x \<in> set xs. snd x \<le> t}\<close>
+  apply (auto simp: set_icoll_llist_of split_beta)
+  done
+
+lemma set_icoll_lshift:
+  \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) lxs) \<Longrightarrow>
+    set (icoll (xs @@- lxs) t) = set (icoll (llist_of xs) t) \<union> set (icoll lxs t)\<close>
+  apply (simp add: icoll_lshift)
+  done
+
+lemma set_icoll_lsetI:
+  assumes finite: \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) lxs)\<close>
+    and data: \<open>Data t' d \<in> lset lxs\<close>
+    and le: \<open>t' \<le> t\<close>
+  shows \<open>d \<in> set (icoll lxs t)\<close>
+  unfolding icoll_def
+  apply (subst set_list_of)
+  apply (simp add: lfinite_lmap)
+  apply (rule lfinite_lfilter_mono[OF finite])
+  apply (auto split: event.splits)
+  apply (rule image_eqI[where x=\<open>Data t' d\<close>])
+  apply simp
+  using data le by (simp add: lset_lmap lset_lfilter)
+
+lemma ts_lsetE:
+  assumes \<open>t |\<in>| ts lxs\<close>
+  obtains d where \<open>Data t d \<in> lset lxs\<close>
+proof -
+  from assms obtain e where e_in: \<open>e |\<in>| cset_of_llist lxs\<close>
+    and data: \<open>is_Data e\<close>
+    and t_eq: \<open>t = (case e of Data t d \<Rightarrow> t)\<close>
+    unfolding ts_def
+    by (subst (asm) cin_cimage_cfilter) auto
+  then show ?thesis
+    by (cases e) (auto intro: that simp add: cin.rep_eq cset_of_llist.rep_eq)
+qed
+
+lemma ts_lsetI:
+  assumes \<open>Data t d \<in> lset lxs\<close>
+  shows \<open>t |\<in>| ts lxs\<close>
+  unfolding ts_def
+  apply (subst cimage_iff)
+  apply (rule_tac x=\<open>Data t d\<close> in cBexI)
+  apply simp
+  using assms by (simp add: cin.rep_eq cset_of_llist.rep_eq)
+
+lemma ts_ldropnD:
+  assumes \<open>t |\<in>| ts (ldropn n lxs)\<close>
+  shows \<open>t |\<in>| ts lxs\<close>
+proof -
+  from assms obtain d where data: \<open>Data t d \<in> lset (ldropn n lxs)\<close>
+    by (rule ts_lsetE)
+  then have \<open>Data t d \<in> lset lxs\<close>
+    by (rule in_lset_ldropnD)
+  then show ?thesis
+    by (rule ts_lsetI)
+qed
+
+lemma icoll_empty_if_no_data_le:
+  assumes \<open>\<And>t' d. t' \<le> t \<Longrightarrow> Data t' d \<notin> lset lxs\<close>
+  shows \<open>icoll lxs t = []\<close>
+  unfolding icoll_def
+  apply (subst lfilter_False)
+  apply (use assms in \<open>auto split: event.splits\<close>)
+  done
+
+lemma set_icoll_ltaken_ldropn:
+  assumes \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) (ldropn n lxs))\<close>
+  shows \<open>set (icoll lxs t) =
+    {d. \<exists>t'. Data t' d \<in> set (ltaken n lxs) \<and> t' \<le> t} \<union> set (icoll (ldropn n lxs) t)\<close>
+  apply (subst ltaken_lshift_ldropn[symmetric, of lxs n])
+  apply (subst set_icoll_lshift)
+  apply (rule assms)
+  apply (simp add: set_icoll_llist_of)
+  done
+
+lemma set_icoll_ltaken_if_no_ldropn_data_le:
+  assumes finite: \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) (ldropn n lxs))\<close>
+    and no_data: \<open>\<And>t' d. t' \<le> t \<Longrightarrow> Data t' d \<notin> lset (ldropn n lxs)\<close>
+  shows \<open>set (icoll lxs t) = {d. \<exists>t'. Data t' d \<in> set (ltaken n lxs) \<and> t' \<le> t}\<close>
+  apply (subst (1) ltaken_lshift_ldropn[symmetric, of lxs n])
+  apply (subst icoll_lshift)
+  using finite apply blast
+  apply (simp add: icoll_empty_if_no_data_le[OF no_data] set_icoll_llist_of)
+  done
+
+lemma timely_input_stream_ldropn_no_data_le_if_not_frontier_less_equal:
+  assumes stream: \<open>timely_input_stream lxs C\<close>
+    and n_le: \<open>enat n \<le> llength lxs\<close>
+    and not_frontier: \<open>\<not> frontier_less_equal
+      (frontier (zmset_of (C + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) -
+        event.time `# filter_mset is_Drop (mset (ltaken n lxs))))) t\<close>
+    and u_le: \<open>u \<le> t\<close>
+  shows \<open>Data u d \<notin> lset (ldropn n lxs)\<close>
+  apply (rule notI)
+  apply (rule vacant_monotone_not_in_lset[where e=\<open>Data u d\<close> and t=t and
+        C=\<open>C + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) -
+          event.time `# filter_mset is_Drop (mset (ltaken n lxs))\<close> and lxs=\<open>ldropn n lxs\<close>])
+  apply assumption
+  apply (simp add: u_le)
+  apply (rule not_frontier_less_equal_vacant[OF not_frontier])
+  using timely_input_stream_ldrop[OF n_le stream]
+  apply (simp add: timely_input_stream_def)
+  done
 end

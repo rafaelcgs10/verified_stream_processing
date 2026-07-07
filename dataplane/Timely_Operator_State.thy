@@ -790,4 +790,129 @@ lemma delay_cset_code[code]:
 
 
 
+
+abbreviation "CONSUMES p \<equiv> fold (\<lambda>(d, t) os. consumes os p t d)"
+
+lemma CONSUMES_CONSUMES:
+  "CONSUMES p xs (CONSUMES p ys os) =
+   CONSUMES p (ys @ xs) os"
+  unfolding fold_consumes
+  by simp
+
+lemma input_CONSUMES:
+  \<open>input (CONSUMES p xs os) = (input os)(p := input os p @ xs)\<close>
+  unfolding fold_consumes by simp
+
+lemma ocaps_release_caps_empty_inputs:
+  assumes empty: \<open>\<And>p' s. s \<in> set (intsum os p' p) \<Longrightarrow> input os p' = []\<close>
+  shows \<open>ocaps (release_caps os p) p = []\<close>
+proof -
+  have justifications_empty:
+    \<open>concat (map (\<lambda>(p', s). map (((+) s) \<circ> snd) (input os p'))
+      (concat (map (\<lambda>p'. map (\<lambda>s. (p', s)) (intsum os p' p)) enum_class.enum))) = []\<close>
+    using empty
+    by (auto simp: concat_eq_Nil_conv)
+  have cap_times:
+    \<open>map time (filter (\<lambda>cap. out cap = p) (map (\<lambda>t. Cap t p) xs)) = xs\<close> for xs
+    by (induct xs) simp_all
+  show ?thesis
+    unfolding release_caps_def drop_caps_def Let_def
+    by (simp add: justifications_empty cap_times del: filter_True)
+qed
+
+definition op_state_base where
+  \<open>op_state_base os = \<lparr>
+    intsum = intsum os,
+    consu = consu os,
+    inter = inter os,
+    produ = produ os,
+    input = input os,
+    outpu = outpu os,
+    front = front os,
+    ocaps = ocaps os,
+    initia = initia os\<rparr>\<close>
+
+lemma op_state_base_add_caps[simp]:
+  \<open>op_state_base (add_caps os caps) = add_caps (op_state_base os) caps\<close>
+  unfolding op_state_base_def add_caps_def
+  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
+
+lemma op_state_base_produces[simp]:
+  \<open>op_state_base (produces os batch) = produces (op_state_base os) batch\<close>
+  unfolding op_state_base_def produces_def
+  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
+
+lemma op_state_base_drop_caps[simp]:
+  \<open>op_state_base (drop_caps os caps) = drop_caps (op_state_base os) caps\<close>
+  unfolding op_state_base_def drop_caps_def
+  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
+
+lemma op_state_base_release_caps[simp]:
+  \<open>op_state_base (release_caps os p) = release_caps (op_state_base os) p\<close>
+  unfolding op_state_base_def release_caps_def drop_caps_def Let_def
+  by (rule operator_state_eqI) (simp_all add: trace_simp fun_eq_iff)
+
+lemma op_state_base_outpu_update[simp]:
+  \<open>op_state_base (os\<lparr>outpu := outs\<rparr>) = (op_state_base os)\<lparr>outpu := outs\<rparr>\<close>
+  unfolding op_state_base_def
+  by (rule operator_state_eqI) simp_all
+
+lemma op_state_base_CONSUMES[simp]:
+  \<open>op_state_base (CONSUMES p xs os) = CONSUMES p xs (op_state_base os)\<close>
+  unfolding op_state_base_def fold_consumes
+  by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
+
+lemma op_state_base_obtain_progress:
+  \<open>op_state_base (fst (obtain_progress os)) = fst (obtain_progress (op_state_base os))\<close>
+  unfolding op_state_base_def obtain_progress_def
+  by (rule operator_state_eqI) simp_all
+
+lemma op_state_base_front_initia_update[simp]:
+
+\<open>op_state_base (os\<lparr>front := F, initia := I\<rparr>) = (op_state_base os)\<lparr>front := F, initia := I\<rparr>\<close>
+  unfolding op_state_base_def
+  by (rule operator_state_eqI) simp_all
+
+lemma cap_times_filter_single_port_subset:
+  assumes "mset xs \<subseteq># mset (ocaps os p)"
+  shows "\<forall>p'. mset (map capability.time (filter (\<lambda>c. out c = p') (map (\<lambda>t. Cap t p) xs))) \<subseteq># mset (ocaps os p')"
+proof (intro allI)
+  fix p'
+  have filt_eq:
+    "map capability.time (filter (\<lambda>c. out c = p') (map (\<lambda>t. Cap t p) xs)) =
+      (if p' = p then xs else [])"
+    by (induct xs) auto
+  show "mset (map capability.time (filter (\<lambda>c. out c = p') (map (\<lambda>t. Cap t p) xs))) \<subseteq># mset (ocaps os p')"
+    using assms filt_eq by auto
+qed
+
+lemma produced_oputs_caps_from_produs:
+  assumes "\<forall>(p, t, m) \<in> set (map (\<lambda>(x, cap). (out cap, capability.time cap, 1 :: int)) batch).
+    m > 0 \<and> t \<in> set (ocaps os p)"
+  shows "\<forall>p. snd ` set (map (\<lambda>(x, cap). (x, capability.time cap)) (filter (\<lambda>(x, cap). out cap = p) batch)) \<subseteq> set (ocaps os p)"
+  using assms
+  by (auto split: prod.splits)
+
+lemma produced_oputs_produs_zmset:
+  "\<forall>p. to_zmset (map snd (map (\<lambda>(x, cap). (x, capability.time cap)) (filter (\<lambda>(x, cap). out cap = p) batch))) =
+    zmset (map snd (filter (\<lambda>x. p = fst x) (map (\<lambda>(x, cap). (out cap, capability.time cap, 1 :: int)) batch)))"
+  by (induct batch) (auto simp add: split_beta zmset_map_one update_zmultiset_one add.commute split: prod.splits capability.splits)
+
+lemma produces_Nil[simp]:
+  "produces os [] = os"
+  unfolding produces_def
+  by simp
+
+lemma ocaps_drop_caps_port_disjoint[simp]:
+  fixes os :: "('p, 'd, 't :: plus, 'more) operator_state_scheme"
+    and caps :: "('p, 't) capability list"
+
+assumes "\<And>cap. cap \<in> set caps \<Longrightarrow> out cap \<noteq> p"
+shows "ocaps (drop_caps os caps) p = ocaps os p"
+proof -
+  have "filter (\<lambda>cap. out cap = p) caps = []"
+    using assms by (induction caps) auto
+  then show ?thesis
+    unfolding drop_caps_def by simp
+qed
 end
