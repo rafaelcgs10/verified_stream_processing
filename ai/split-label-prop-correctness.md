@@ -1,5 +1,20 @@
 # Plan: split Label_Propagation_op_Correctness.thy for parallel checking
 
+## STATUS: COMPLETED 2026-07-07 (commits d0c7f04..992f63f)
+
+Final layout in `dataplane/Examples/Label_Propagation/`:
+`Input1.thy` (4299) → {`Loop.thy` (2564) ∥ `Input0.thy` (578)} →
+{`Dataplane_Inv.thy` (619) ∥ `Labels.thy` (1730)} → main file (9060 lines,
+only `label_propagation_correctness` + final Correctness section).
+`Label_Propagation_op.thy`, `Wcc.thy`, `…_Extras.thy` also live in this folder.
+Deviations from the plan below: Input0 imports Input1 (its proofs rely on
+Input1's [simp] frame lemmas, e.g. graph_produces); the three
+`label_prop_{edge,label}_batch_all_vertices` / `…_cc_of_all_edges` lemmas live in
+Input1 (used by Input0 and Labels). GOTCHA: a theory importing
+`HOL-ex.Sketch_and_Explore` (or any theory outside the Extras chain) must repeat
+the header `declare … [simp del]` block — the theory-merge resurrects simp rules
+deleted in only one parent. The split-assembly tooling is `ai/lp-split-assemble.py`.
+
 Goal: `Label_Propagation_op_Correctness.thy` is 19,616 lines and checks sequentially.
 The main lemma `label_propagation_correctness` starts at line **10573** and its proof runs
 to ~19415 (~8.8k lines); the final `Correctness` section (19416–19616) derives the
