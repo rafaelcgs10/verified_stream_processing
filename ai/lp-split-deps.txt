@@ -1,0 +1,13 @@
+total top-level commands: 352
+named definitions: 352
+
+lines per planned file:
+  Main            9044
+  Input1          4021
+  Loop            2434
+  Labels          1667
+  PhaseA          1193
+  Dataplane_Inv   665
+  Input0          552
+
+partition violations (0): (source-file lemma) uses (target-file name) not in imports
