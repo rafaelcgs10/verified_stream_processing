@@ -2,22 +2,21 @@ theory Label_Propagation_op_Correctness
 
 imports
   Label_Propagation_op
-  Ooo_Input_op
-  Increment_op
-  Set_op
-  "../Correctness/Outputs"
-  "../Correctness/Produces"
-  "../Correctness/Mints"
-  "../Correctness/Propagates"
-  "../Correctness/Progress"
-  "../Correctness/OCapsReorder"
-  "../Correctness/Consumes"
-  "../Correctness/Init"
+  "../Ooo_Input_op"
+  "../Increment_op"
+  "../Set_op"
+  "../../Correctness/Outputs"
+  "../../Correctness/Produces"
+  "../../Correctness/Mints"
+  "../../Correctness/Propagates"
+  "../../Correctness/Progress"
+  "../../Correctness/OCapsReorder"
+  "../../Correctness/Consumes"
+  "../../Correctness/Init"
   "HOL-ex.Sketch_and_Explore"
-  "../../Isar_Explore"
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
-  "../Correctness/Timely_Collections"
+  "../../Correctness/Timely_Collections"
   Dataplane.Propagation_Properties
   Dataplane.SimulationProofMethods
   Label_Propagation_op_Correctness_Extras
