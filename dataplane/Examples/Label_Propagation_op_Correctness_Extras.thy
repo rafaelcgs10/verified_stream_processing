@@ -1335,7 +1335,7 @@ proof (coinduction arbitrary: buf buf' op rule: op.coinduct_upto)
     ultimately show \<open>\<exists>op''. op'' |\<in>| un_Choice (loop_op wire buf op) \<and> op.congclp R op'' op'\<close>
       by blast
   qed
-  ultimately show ?case by (fastforce simp add: rel_set_def R_def)
+  ultimately show ?case by (force simp add: rel_set_def R_def Ball_def)
 qed
 
 (* FIXME: move me *)
