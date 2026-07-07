@@ -759,4 +759,233 @@ lemma steps_comp_op_R_Inp:
    apply force+
   done
 
+
+section \<open>Buffer congruence for composition and loop operators\<close>
+
+lemma comp_op_not_Silent[simp]:
+  \<open>\<not> is_Silent (comp_op wire buf op1 op2)\<close>
+  by (subst comp_op_code) simp
+
+(* Note: this is basically lemma comp_op_chns_invar from dataplane_dis:dataplane/Comp_Reasoning.thy *)
+lemma comp_op_buf_cong:
+  assumes \<open>wire' = wire\<close> \<open>op1' = op1\<close> \<open>op2' = op2\<close> \<open>\<forall>p \<in> inputs op2 \<inter> ran wire. buf' p = buf p\<close>
+  shows \<open>(comp_op wire buf op1 op2 :: ('i1 + 'i2, 'o1 + 'o2, 'd) op) = comp_op wire' buf' op1' op2'\<close>
+  unfolding assms(1-3) using assms(4)
+proof (coinduction arbitrary: buf buf' op1 op2 rule: op.coinduct_upto)
+  case Eq_op
+  define R where \<open>R = (\<lambda>op op'. \<exists>buf buf' op1 op2.
+  (op :: ('i1 + 'i2, 'o1 + 'o2, 'd) op) = comp_op wire buf op1 op2 \<and> op' = comp_op wire buf' op1 op2
+  \<and> (\<forall>p \<in> inputs op2 \<inter> ran wire. buf' p = buf p))\<close>
+  let ?comp_op_1 = \<open>\<lambda>buf op. case op of
+  Read p f \<Rightarrow> Read (Inl p) (\<lambda>x. comp_op wire buf (f x) op2)
+| Write op p x \<Rightarrow> (case wire p of
+    None \<Rightarrow> Write (comp_op wire buf op op2) (Inl p) x
+  | Some q \<Rightarrow> Silent (comp_op wire (BENQ q x buf) op op2))
+| Silent op \<Rightarrow> Silent (comp_op wire buf op op2)\<close>
+  { fix p f
+    assume \<open>Read p f |\<in>| choices op1\<close>
+    hence \<open>rel_fun (=) (op.congclp R) (\<lambda>x. comp_op wire buf (f x) op2) (\<lambda>x. comp_op wire buf' (f x) op2)\<close>
+      using Eq_op Read_choices_inputs by (fastforce simp add: rel_fun_def R_def intro: op.cong_base)
+  }
+  moreover {
+    fix op p x
+    assume \<open>Write op p x |\<in>| choices op1\<close> \<open>wire p = None\<close>
+    hence \<open>op.congclp R (comp_op wire buf op op2) (comp_op wire buf' op op2)\<close>
+      using Eq_op unfolding R_def by (blast intro: op.cong_base)
+  }
+  moreover {
+    fix op p x q
+    assume \<open>Write op p x |\<in>| choices op1\<close> \<open>wire p = Some q\<close>
+    have \<open>op.congclp R (comp_op wire (BENQ q x buf) op op2) (comp_op wire (BENQ q x buf') op op2)\<close>
+      using Eq_op unfolding R_def BENQ_def by (fastforce intro: op.cong_base)
+  }
+  moreover {
+    fix op
+    assume \<open>Silent op |\<in>| choices op1\<close>
+    hence \<open>op.congclp R (comp_op wire buf op op2) (comp_op wire buf' op op2)\<close>
+      using Eq_op unfolding R_def by (blast intro: op.cong_base)
+  }
+  ultimately have \<open>\<forall>op. op |\<in>| choices op1 \<longrightarrow> op.congclp R (?comp_op_1 buf op) (?comp_op_1 buf' op)\<close>
+    by (auto split: op.splits option.splits dest: no_Choice_in_choices[simplified]
+        intro!: op.cong_Read op.cong_Write op.cong_Silent)
+  hence rel_fun_choices_op1: \<open>rel_fun (eq_onp (\<lambda>op. op |\<in>| choices op1)) (op.congclp R)
+  (?comp_op_1 buf) (?comp_op_1 buf')\<close> unfolding rel_fun_def eq_onp_def by blast
+  have rel_set_choices_op1: \<open>rel_set (eq_onp (\<lambda>op. op |\<in>| choices op1))
+  (rcset (choices op1)) (rcset (choices op1))\<close> unfolding rel_set_def eq_onp_def by fastforce
+  let ?comp_op_2 = \<open>\<lambda>buf op. case op of
+  Read p f \<Rightarrow> if p \<in> ran wire
+    then Silent (comp_op wire (BTL p buf) op1 (f (BHD p buf)))
+    else Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))
+| Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x
+| Silent op \<Rightarrow> Silent (comp_op wire buf op1 op)\<close>
+  { fix p f
+    assume p_f: \<open>Read p f |\<in>| choices op2\<close> \<open>p \<in> ran wire\<close> \<open>buf p \<noteq> []\<close>
+    let ?x = \<open>BHD p buf\<close>
+    let ?y = \<open>BHD p buf'\<close>
+    have \<open>inputs (f ?x) \<subseteq> inputs op2\<close> using p_f(1) inputs_after_choices[OF p_f(1)] op.set(1) by auto
+    hence \<open>\<forall>p' \<in> inputs (f ?x) \<inter> ran wire. (BTL p buf') p' = (BTL p buf) p'\<close>
+      using Eq_op unfolding BTL_def by auto
+    moreover have \<open>?x = ?y\<close> using Eq_op p_f Read_choices_inputs unfolding BHD_def by fastforce
+    ultimately have \<open>op.congclp R (comp_op wire (BTL p buf) op1 (f ?x))
+  (comp_op wire (BTL p buf') op1 (f ?y))\<close> unfolding R_def by (force intro: op.cong_base) 
+  }
+  moreover {
+    fix p f
+    assume p_f: \<open>Read p f |\<in>| choices op2\<close> \<open>p \<notin> ran wire\<close>
+    have \<open>\<forall>x. inputs (f x) \<subseteq> inputs op2\<close>
+      using p_f(1) inputs_after_choices[OF p_f(1)] op.set(1) by auto
+    hence \<open>rel_fun (=) (op.congclp R) (\<lambda>x. comp_op wire buf op1 (f x)) (\<lambda>x. comp_op wire buf' op1 (f x))\<close>
+      using Eq_op unfolding rel_fun_def R_def by (fastforce intro: op.cong_base)
+  }
+  moreover {
+    fix op p x
+    assume op_p: \<open>Write op p x |\<in>| choices op2\<close>
+    have \<open>op.congclp R (comp_op wire buf op1 op) (comp_op wire buf' op1 op)\<close>
+      using Eq_op inputs_after_choices[OF op_p] op.set(2) unfolding R_def
+      by (force intro: op.cong_base)
+  }
+  moreover {
+    fix op
+    assume op: \<open>Silent op |\<in>| choices op2\<close>
+    have \<open>op.congclp R (comp_op wire buf op1 op) (comp_op wire buf' op1 op)\<close>
+      using Eq_op inputs_after_choices[OF op] op.set(4) unfolding R_def
+      by (force intro: op.cong_base)
+  }
+  ultimately have \<open>\<forall>op. op |\<in>| sound_reads wire buf (choices op2) \<longrightarrow>
+  op.congclp R (?comp_op_2 buf op) (?comp_op_2 buf' op)\<close>
+    by (auto split: op.splits option.splits dest: no_Choice_in_choices[simplified]
+        intro!: op.cong_Read op.cong_Write op.cong_Silent)
+  hence rel_fun_choices_op2: \<open>rel_fun (eq_onp (\<lambda>op. op |\<in>| sound_reads wire buf (choices op2))) (op.congclp R)
+  (?comp_op_2 buf) (?comp_op_2 buf')\<close> unfolding rel_fun_def eq_onp_def by blast
+  have rel_set_choices_op2: \<open>rel_set (eq_onp (\<lambda>op. op |\<in>| sound_reads wire buf (choices op2)))
+  {op. op |\<in>| choices op2 \<and> (case op of Read p f \<Rightarrow> p \<in> ran wire \<longrightarrow> buf p \<noteq> [] | _ \<Rightarrow> True)}
+  {op. op |\<in>| choices op2 \<and> (case op of Read p f \<Rightarrow> p \<in> ran wire \<longrightarrow> buf' p \<noteq> [] | _ \<Rightarrow> True)}\<close>
+    using Eq_op Read_choices_inputs by (fastforce simp add: rel_set_def eq_onp_def split: op.splits)
+  have \<open>rel_set (op.congclp R)
+  (rcset (un_Choice (comp_op wire buf op1 op2))) (rcset (un_Choice (comp_op wire buf' op1 op2)))\<close>
+    using union_transfer[THEN rel_funD, THEN rel_funD,
+        OF image_transfer[THEN rel_funD, THEN rel_funD, OF rel_fun_choices_op1 rel_set_choices_op1]
+           image_transfer[THEN rel_funD, THEN rel_funD, OF rel_fun_choices_op2 rel_set_choices_op2]]
+    by (subst (1 2) comp_op_code) simp
+  thus ?case unfolding R_def by simp
+qed
+
+lemma un_Choice_loop_op_buf_cong:
+  fixes wire
+  defines \<open>R \<equiv> (\<lambda>op1 op2. \<exists>buf buf' op. op1 = loop_op wire buf op \<and> op2 = loop_op wire buf' op
+  \<and> (\<forall>p. p \<in> inputs (op :: ('i, 'o, 'd) op) \<and> p \<in> ran wire \<longrightarrow> buf' p = buf p))\<close>
+  assumes bufs_eq: \<open>\<forall>p \<in> inputs (op :: ('i, 'o, 'd) op) \<inter> ran wire. buf' p = buf p\<close>
+    and op': \<open>op' |\<in>| un_Choice (loop_op wire buf op)\<close>
+  obtains op'' where \<open>op'' |\<in>| un_Choice (loop_op wire buf' op)\<close> \<open>op.congclp R op' op''\<close>
+proof atomize_elim
+  consider (read_outside) p f where \<open>op' = Read p (\<lambda>x. loop_op wire buf (f x))\<close>
+    \<open>Read p f |\<in>| choices op\<close> \<open>p \<notin> ran wire\<close>
+  | (read_inside) p f where \<open>op' = Silent (loop_op wire (BTL p buf) (f (BHD p buf)))\<close>
+    \<open>Read p f |\<in>| choices op\<close> \<open>p \<in> ran wire\<close> \<open>buf p \<noteq> []\<close>
+  | (write_outside) op'' p x where \<open>op' = Write (loop_op wire buf op'') p x\<close>
+    \<open>Write op'' p x |\<in>| choices op\<close> \<open>wire p = None\<close>
+  | (write_inside) op'' p x q where \<open>op' = Silent (loop_op wire (BENQ q x buf) op'')\<close>
+    \<open>Write op'' p x |\<in>| choices op\<close> \<open>wire p = Some q\<close>
+  | (silent) op'' where \<open>op' = Silent (loop_op wire buf op'')\<close>
+    \<open>Silent op'' |\<in>| choices op\<close>
+    using op' by (subst (asm) (6) loop_op.code)
+      (auto split: op.splits option.splits if_splits dest: no_Choice_in_choices[simplified])
+  thus \<open>\<exists>op''. op'' |\<in>| un_Choice (loop_op wire buf' op) \<and> op.congclp R op' op''\<close>
+  proof cases
+    case read_outside
+    let ?op'' = \<open>Read p (\<lambda>x. loop_op wire buf' (f x))\<close>
+    have \<open>R (loop_op wire buf (f x)) (loop_op wire buf' (f x))\<close> for x unfolding R_def
+      using bufs_eq read_outside inputs_after_choices inputs_sub_op_Read mem_simps(4)
+        sub_op.intros(2) sub_op_Read_inputs by metis
+    hence \<open>op.congclp R op' ?op''\<close>
+      using op.cong_base op.cong_Read[OF refl] unfolding rel_fun_def read_outside(1) by metis
+    moreover have \<open>?op'' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+      using read_outside(2-) by (subst (2) loop_op.code) force
+    ultimately show ?thesis by blast
+  next
+    case read_inside
+    let ?x = \<open>BHD p buf\<close>
+    let ?y = \<open>BHD p buf'\<close>
+    let ?op'' = \<open>Silent (loop_op wire (BTL p buf') (f ?y))\<close>
+    have \<open>?x = ?y\<close>
+      using bufs_eq read_inside(2,3) Read_choices_inputs mem_simps(4) BHD_def by metis
+    moreover have \<open>\<forall>p' \<in> inputs (f ?x) \<inter> ran wire. BTL p buf' p' = BTL p buf p'\<close>
+      using bufs_eq read_inside(2) inputs_after_choices inputs_sub_op_Read mem_simps(4)
+        sub_op.intros(2) sub_op_Read_inputs BTL_access BTL_diff_access by metis
+    ultimately have \<open>R (loop_op wire (BTL p buf) (f ?x)) (loop_op wire (BTL p buf') (f ?y))\<close>
+      unfolding R_def by auto
+    hence \<open>op.congclp R op' ?op''\<close> using op.cong_Silent[OF op.cong_base]
+      unfolding read_inside(1) by metis
+    moreover have \<open>?op'' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+      using read_inside(2-) bufs_eq Read_choices_inputs by (subst (2) loop_op.code) force
+    ultimately show ?thesis by blast
+  next
+    case write_outside
+    let ?op'' = \<open>Write (loop_op wire buf' op'') p x\<close>
+    have \<open>R (loop_op wire buf op'') (loop_op wire buf' op'')\<close> unfolding R_def
+      using bufs_eq write_outside(2) inputs_after_choices mem_simps(4) op.set(2) by metis
+    hence \<open>op.congclp R op' ?op''\<close> using op.cong_Write[OF op.cong_base refl refl]
+      unfolding write_outside(1) by metis
+    moreover have \<open>?op'' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+      using write_outside(2-) by (subst (2) loop_op.code) force
+    ultimately show ?thesis by blast
+  next
+    case write_inside
+    let ?op'' = \<open>Silent (loop_op wire (BENQ q x buf') op'')\<close>
+    have \<open>R (loop_op wire (BENQ q x buf) op'') (loop_op wire (BENQ q x buf') op'')\<close>
+      using bufs_eq write_inside(2) inputs_after_choices mem_simps(4) op.set(2)
+      unfolding R_def BENQ_def by force
+    hence \<open>op.congclp R op' ?op''\<close> using op.cong_Silent[OF op.cong_base]
+      unfolding write_inside(1) by metis
+    moreover have \<open>?op'' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+      using write_inside(2-) by (subst (2) loop_op.code) force
+    ultimately show ?thesis by blast
+  next
+    case silent
+    let ?op'' = \<open>Silent (loop_op wire buf' op'')\<close>
+    have \<open>R (loop_op wire buf op'') (loop_op wire buf' op'')\<close>
+      using bufs_eq silent inputs_after_choices mem_simps(4) op.set(4) unfolding R_def by metis
+    hence \<open>op.congclp R op' ?op''\<close> using op.cong_Silent[OF op.cong_base]
+      unfolding silent(1) by metis
+    moreover have \<open>?op'' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+      using silent(2-) by (subst (2) loop_op.code) force
+    ultimately show ?thesis by blast
+  qed
+qed
+
+lemma loop_op_buf_cong:
+  assumes \<open>wire' = wire\<close> \<open>(op' :: ('i, 'o, 'd) op) = op\<close> \<open>\<forall>p \<in> inputs op \<inter> ran wire. buf' p = buf p\<close>
+  shows \<open>loop_op wire buf op = loop_op wire' buf' op'\<close>
+  unfolding assms(1,2) using assms(3)
+proof (coinduction arbitrary: buf buf' op rule: op.coinduct_upto)
+  case (Eq_op buf buf' op)
+  define R :: \<open>('i, 'o, 'd) op \<Rightarrow> ('i, 'o, 'd) op \<Rightarrow> bool\<close> where
+    \<open>R = (\<lambda>op1 op2. \<exists>buf buf' op. op1 = loop_op wire buf op \<and> op2 = loop_op wire buf' op
+  \<and> (\<forall>p. p \<in> inputs op \<and> p \<in> ran wire \<longrightarrow> buf' p = buf p))\<close>
+  have \<open>\<forall>op'. op' |\<in>| un_Choice (loop_op wire buf op) \<longrightarrow> (\<exists>op''.
+  op'' |\<in>| un_Choice (loop_op wire buf' op) \<and> op.congclp R op' op'')\<close>
+    using un_Choice_loop_op_buf_cong[where op=op] Eq_op unfolding R_def by (metis (lifting))
+  moreover have \<open>\<forall>op'. op' |\<in>| un_Choice (loop_op wire buf' op) \<longrightarrow> (\<exists>op''.
+  op'' |\<in>| un_Choice (loop_op wire buf op) \<and> op.congclp R op'' op')\<close>
+  proof (intro allI impI)
+    fix op'
+    assume op': \<open>op' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+    obtain op'' where op'': \<open>op'' |\<in>| un_Choice (loop_op wire buf op)\<close> \<open>op.congclp R op' op''\<close>
+      using un_Choice_loop_op_buf_cong[OF _ op', where buf'=buf] Eq_op unfolding R_def by auto
+    moreover have \<open>op.congclp R op'' op'\<close> by (rule op.cong_sym[OF op''(2)])
+    ultimately show \<open>\<exists>op''. op'' |\<in>| un_Choice (loop_op wire buf op) \<and> op.congclp R op'' op'\<close>
+      by blast
+  qed
+  ultimately have \<open>rel_set (op.congclp R)
+  (rcset (un_Choice (loop_op wire buf op))) (rcset (un_Choice (loop_op wire buf' op)))\<close>
+    unfolding rel_set_def by auto
+  moreover have \<open>R = (\<lambda>op1 op2. \<exists>buf buf' op. op1 = loop_op wire buf op \<and> op2 = loop_op wire buf' op
+  \<and> (\<forall>p\<in>inputs op \<inter> ran wire. buf' p = buf p))\<close>
+    unfolding R_def fun_eq_iff by auto
+  ultimately show ?case by simp
+qed
+
+lemma step_Tau_pow_eqI:
+  "op = op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op op'"
+  by auto
 end
