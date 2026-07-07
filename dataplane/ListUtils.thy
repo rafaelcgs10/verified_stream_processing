@@ -355,4 +355,89 @@ lemma fold_min_le_mem:
   assumes "b \<in> set xs"
   shows "fold min xs a \<le> b"
   unfolding fold_min_Min using assms by (intro Min_le) auto
+
+definition union_with where
+  \<open>union_with f g h x = f (g x) (h x)\<close>
+
+fun unions_with where
+  \<open>unions_with f [] = undefined\<close>
+| \<open>unions_with f (g # gs) = foldl (union_with f) g gs\<close>
+
+primrec list_span where
+  \<open>list_span _ [] = ([], [])\<close>
+| \<open>list_span P (x # xs) =
+    (if P x then let (ys, zs) = list_span P xs in (x # ys, zs) else ([], x # xs))\<close>
+
+lemma list_span_length_le:
+  \<open>(ys, zs) = list_span P xs \<Longrightarrow> length ys \<le> length xs\<close>
+  \<open>(ys, zs) = list_span P xs \<Longrightarrow> length zs \<le> length xs\<close>
+  by (induction xs arbitrary: ys zs) (auto split: if_splits prod.splits)
+
+function group_by where
+  \<open>group_by _ [] = []\<close>
+| \<open>group_by f (x # xs) = (let (ys, zs) = list_span (f x) xs in (x # ys) # group_by f zs)\<close>
+  by pat_completeness auto
+termination by (lexicographic_order simp add: list_span_length_le)
+
+definition insort_union where
+  \<open>insort_union = fold insort_insert\<close>
+
+lemma set_insort_union[simp]:
+  \<open>set (insort_union xs ys) = set xs \<union> set ys\<close>
+  by (induction xs arbitrary: ys) (simp_all add: insort_union_def set_insort_insert)
+
+lemma distinct_insort_union[simp]:
+  \<open>distinct (insort_union xs ys) \<longleftrightarrow> distinct ys\<close>
+  by (induction xs arbitrary: ys)
+    (simp_all add: insort_union_def distinct_insort insort_insert_key_def)
+
+lemma sorted_insort_union:
+  \<open>sorted ys \<Longrightarrow> sorted (insort_union xs ys)\<close>
+  by (induction xs) (simp_all add: insort_union_def fold_invariant sorted_insort_insert)
+
+lemma set_foldl_union_with:
+  "set (foldl (union_with List.union) g gs y) = (\<Union>f\<in>set (g # gs). set (f y))"
+proof (induction gs arbitrary: g)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons h hs)
+  then show ?case
+    by (auto simp: union_with_def)
+qed
+
+lemma set_unions_with_List_union:
+  assumes "fs \<noteq> []"
+  shows "set (unions_with List.union fs y) = (\<Union>f\<in>set fs. set (f y))"
+proof (cases fs)
+  case Nil
+  then show ?thesis
+    using assms by simp
+next
+  case (Cons g gs)
+  then show ?thesis
+    using set_foldl_union_with[of g gs y] by simp
+qed
+
+lemma list_diff_append_mset_cancel:
+  assumes \<open>mset zs = mset ys\<close>
+  shows \<open>list_diff (xs @ zs) ys = xs\<close>
+  using assms
+proof (induct ys arbitrary: zs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons y ys)
+  then have y_in: \<open>y \<in> set zs\<close>
+    using mset_eq_setD by fastforce
+  have mset_zs: \<open>mset (remove_last y zs) = mset ys\<close>
+    using Cons.prems by simp
+  show ?case
+    using Cons.hyps[OF mset_zs] y_in
+    by (simp add: remove_last_append_in_set)
+qed
+
+lemma list_diff_append_cancel_right:
+  \<open>list_diff (xs @ ys) ys = xs\<close>
+  by (rule list_diff_append_mset_cancel) simp
 end
