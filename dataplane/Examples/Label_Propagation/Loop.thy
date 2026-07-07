@@ -965,63 +965,9 @@ proof -
   show ?thesis
     using assms step_tau_pow_loop_updates by simp
 qed
-  (*
-
-lemma loop_op_label_propagation_op_increment_op:
-  fixes  os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
-    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
-    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
-    and T :: \<open>nat list\<close>
-    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
-    and V :: \<open>nat \<Rightarrow> nat list\<close>
-    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
-  defines
-    \<open>INV \<equiv> \<lambda> os_label_prop os L.
-    os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
-        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr> \<and>
-    label_prob_ty2_check os_label_prop (curry cbufs 1) \<and>
-    (\<forall>n. intsum (os n) = (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))) \<and>
-    dataplane_tracker_inv os cbufs sg \<and>
-    (\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
-    (\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
-    (\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t) \<and>
-    label_prop_upd_inv os_label_prop \<and> input_ocaps_inv (os 1)\<close>
-    (* Might be needed: \<open>input_ocaps_inv (os 2)
-  \<and> wf_label_prop_updates os_label_prop (set (outpu (os 2) 1 @ cbufs (1, 1) @ input os_label_prop 1)
-    \<union> set (map (\<lambda>(d, t). (d, t + MyPair 0 1)) (outpu os_label_prop 1 @ cbufs (2, 1) @ input (os 2) 1)))\<close> *)
-  assumes \<open>summ sg = antichain_from_list \<circ>\<circ> raw_summary \<and> nxt sg = graph_to_nxt (summ sg)\<close>
-    \<open>INV os_label_prop os L\<close>
-    \<open>T \<noteq> []\<close>
-  shows  "\<exists> os_label_prop' os' L'. (step Tau)\<^sup>*\<^sup>*
-     (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
-       (comp_map
-         (comp_op
-           comp_wire
-           (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
-           (logic_map (1 :: 3) (label_propagation_op (os_label_prop :: (nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state)))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
-       (loop_op loop_wire ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2,1) := [], Inr (1,1) := []))
-       (comp_map
-         (comp_op
-           comp_wire
-           ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2,1) := [], Inr (1,1) := []))
-           (logic_map (1 :: 3) (label_propagation_op (os_label_prop')))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((os' 2))))))) \<and>
-       INV os_label_prop' os' L'"
-  using assms(3) apply -
-  apply (induct "labels_measure (all_edges os_label_prop (Max (set T))) (min_label os_label_prop (Max (set T)))" arbitrary: os_label_prop os L rule: less_induct)
-  subgoal premises prems for os_label_prop os L
-    apply (intro exI conjI)
-     apply (rule rtranclp_trans)
-    using prems
-    oops *)
 
 
 subsection \<open>Frame and produced-progress facts for loop_updates\<close>
-
-
-
 
 lemma fst_snd_loop_updates_cbufs_irrelevant[simp]:
   fixes k :: \<open>3 \<times> 2\<close>
@@ -2555,10 +2501,5 @@ proof (induct cbufs os_label_prop os rule: loop_updates.induct)
     qed
   qed
 qed
-
-
-subsection \<open>Dataplane invariant preservation for loop_updates\<close>
-
-(* Preservation of dataplane_tracker_inv by the entire loop_updates iteration. *)
 
 end

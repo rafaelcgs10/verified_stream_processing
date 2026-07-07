@@ -18,7 +18,6 @@ imports
   Dataplane.Propagation_Properties
   Dataplane.Timely_Dataflow_Op
   Set_op
-  "HOL-ex.Sketch_and_Explore"
 begin
 no_notation shiftr  (infixl \<open>>>\<close> 55)
 

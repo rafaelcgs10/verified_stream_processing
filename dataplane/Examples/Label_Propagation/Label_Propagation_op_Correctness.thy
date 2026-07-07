@@ -3,7 +3,6 @@ theory Label_Propagation_op_Correctness
 imports
   Dataplane_Inv
   Labels
-  "HOL-ex.Sketch_and_Explore"
 begin
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del] 

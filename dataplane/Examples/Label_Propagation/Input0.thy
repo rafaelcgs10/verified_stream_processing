@@ -568,11 +568,4 @@ next
     by (cases \<open>label_prop_input0_batched ?step msgs\<close>) simp
 qed
 
-
-(* FIXME: move me to AntichainOrder.thy *)
-
-
-
-
-
 end

@@ -18,3 +18,19 @@ Move all lemmas at once, and use the MCP connection to check if the edit was suc
 For the lemmas break, check if it used anywhere: if is not, and if the lemma is not a simp or intro rule, them just comment it.
 For those broken lemmas that are used somewhere, revert the change, put the lemma back where it was, but write a comment on top of the lemma saying: FIXME: move me to (suggestion of location)
 If the move is successful you don't need to check with MCP if the source of the lemma is checking.
+
+The file Label_Propagation_op_Correctness.thy has more than 19k lines, and it takes too long to check.
+One way to improve the speed of the check is to split things into multiple files, so the checker runs in parallel for each file. And this is the main goal of waht we want: to improve the check speed of this long file.
+The main lemma in this file is label_propagation_correctness (and the next ones are just consequences of it).
+Everything before label_propagation_correctness must separate into new multiple files.
+The hard part is to do that minding the dependencies.
+So what you need to do now is to come up with a plan on how to sort and split Label_Propagation_op_Correctness.thy into multiple files.
+Notice that many lemmas in Label_Propagation_op_Correctness.thy already have file that should be at.
+Say some auxiliary lemma about ocaps and drop_caps could be moved to Timely_Operator_State.thy.
+First learn about the files in the dataplane folder, then study Label_Propagation_op_Correctness.thy to see which new files could be
+created, and which lemmas could be moved to existing files.
+
+Later, when you start executing the plan (whenyou moving things), you need to make sure to keep things working (checking),
+so you need to work in an incremental way. You will not move things before my approval of your plan, just mentioning this
+so you keep that in mind for your plan.
+
