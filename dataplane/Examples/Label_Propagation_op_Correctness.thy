@@ -14,7 +14,6 @@ imports
   "../Correctness/Consumes"
   "../Correctness/Init"
   "HOL-ex.Sketch_and_Explore"
-  "../../Isar_Explore"
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
   "../Correctness/Timely_Collections"
@@ -19612,5 +19611,177 @@ lemma correctness:
   apply (simp add: init_subgraph_def outputs_at_target_raw_summary inputs_at_target_def
       BULK_BENQ_def all_edges_def neighbors_def)
   done
+
+abbreviation "pr summary \<equiv> take_step summary PR"
+
+abbreviation "su \<equiv> (antichain_from_list oo raw_summary)"
+
+abbreviation "c0 \<equiv> initial_conf :: ((3, 2) location, (nat, nat) myprod) configuration"
+
+abbreviation wcc_fig_locs :: \<open>(nat \<times> (3, 2) location) list\<close> where
+  \<open>wcc_fig_locs \<equiv> [
+    (1, Loc 0 (Src 0)),
+    (2, Loc 1 (Trg 0)),
+    (3, Loc 1 (Trg 1)),
+    (4, Loc 1 (Src 0)),
+    (5, Loc 1 (Src 1)),
+    (6, Loc 2 (Trg 1)),
+    (7, Loc 2 (Src 1))]\<close>
+
+abbreviation wcc_locs where
+  \<open>wcc_locs \<equiv> wcc_fig_locs\<close>
+
+record 't zmsetl =
+  positive :: "'t list"
+  negative :: "'t list"
+
+record ('loc, 't) location_view =
+  loc :: 'loc
+  pts :: "'t zmsetl"
+  imps :: "'t zmsetl"
+  work :: "'t zmsetl"
+
+record ('loc, 't) step_view =
+  step_number :: nat
+  pr_pick :: "('t \<times> 'loc) option"
+  locations :: "('loc, 't) location_view list"
+  is_empty :: bool
+
+abbreviation zmsetl where
+  \<open>zmsetl M \<equiv>
+    \<lparr> positive = concat (map (\<lambda>t. replicate (nat (zcount M t)) t) [MyPair 0 0, MyPair 0 1]),
+      negative = concat (map (\<lambda>t. replicate (nat (- zcount M t)) t) [MyPair 0 0, MyPair 0 1]) \<rparr>\<close>
+
+abbreviation wcc_snapshot where
+  \<open>wcc_snapshot c \<equiv>
+    map (\<lambda>(_, l).
+      \<lparr> loc = location_to_nat l,
+        pts = zmsetl (c_pts c l),
+        imps = zmsetl (c_imp c l),
+        work = zmsetl (c_work c l) \<rparr>) wcc_locs\<close>
+
+abbreviation wcc_pick where
+  \<open>wcc_pick c \<equiv> (case mymin_code (t_loc_pairs c) of (t, l) \<Rightarrow> (t, location_to_nat l))\<close>
+
+fun wcc_rounds ::
+  \<open>nat \<Rightarrow> ((3, 2) location, (nat, nat) myprod) configuration \<Rightarrow>
+    ((3, 2) location, (nat, nat) myprod) configuration list\<close>
+where
+  \<open>wcc_rounds 0 c = [c]\<close>
+| \<open>wcc_rounds (Suc n) c = c # wcc_rounds n (pr su c)\<close>
+
+abbreviation wcc_states where
+  \<open>wcc_states \<equiv> wcc_rounds 11 c0\<close>
+
+abbreviation wcc_initial where
+  \<open>wcc_initial \<equiv>
+    \<lparr> step_number = 0,
+      pr_pick = None,
+      locations = wcc_snapshot c0,
+      is_empty = worklist_is_empty su c0 \<rparr>\<close>
+
+abbreviation wcc_step where
+  \<open>wcc_step i \<equiv>
+    (let c_before = nth wcc_states i;
+         c_after = nth wcc_states (Suc i) in
+      \<lparr> step_number = i,
+        pr_pick = Some (wcc_pick c_before),
+        locations = wcc_snapshot c_after,
+        is_empty = worklist_is_empty su c_after \<rparr>)\<close>
+
+record ('loc, 't) cm_step_view =
+  cm_step_number :: nat
+  cm_location :: 'loc
+  cm_time :: 't
+  cm_delta :: int
+  cm_locations :: "('loc, 't) location_view list"
+  cm_is_empty :: bool
+
+abbreviation wcc_after_pr_round where
+  \<open>wcc_after_pr_round \<equiv> nth wcc_states 11\<close>
+
+abbreviation wcc_output_locs :: \<open>(3, 2) location list\<close> where
+  \<open>wcc_output_locs \<equiv> [
+    Loc 0 (Src 0),
+    Loc 1 (Src 0),
+    Loc 1 (Src 1),
+    Loc 2 (Src 1)]\<close>
+
+abbreviation wcc_drop_locs :: \<open>(3, 2) location list\<close> where
+  \<open>wcc_drop_locs \<equiv> [
+    Loc 1 (Src 0),
+    Loc 1 (Src 1),
+    Loc 2 (Src 1)]\<close>
+
+abbreviation wcc_output_snapshot where
+  \<open>wcc_output_snapshot c \<equiv>
+    map (\<lambda>l.
+      \<lparr> loc = location_to_nat l,
+        pts = zmsetl (c_pts c l),
+        imps = zmsetl (c_imp c l),
+        work = zmsetl (c_work c l) \<rparr>) wcc_output_locs\<close>
+
+fun wcc_cm_drop_states ::
+  \<open>((3, 2) location, (nat, nat) myprod) configuration \<Rightarrow>
+    (3, 2) location list \<Rightarrow>
+    ((3, 2) location, (nat, nat) myprod) configuration list\<close>
+where
+  \<open>wcc_cm_drop_states c [] = [c]\<close>
+| \<open>wcc_cm_drop_states c (l # ls) =
+    c # wcc_cm_drop_states (take_step su (CM l (MyPair 0 0) (-1)) c) ls\<close>
+
+abbreviation wcc_drop_states where
+  \<open>wcc_drop_states \<equiv> wcc_cm_drop_states wcc_after_pr_round wcc_drop_locs\<close>
+
+abbreviation wcc_cm_drop_step where
+  \<open>wcc_cm_drop_step i \<equiv>
+    (let l = nth wcc_drop_locs i;
+         c_after = nth wcc_drop_states (Suc i) in
+      \<lparr> cm_step_number = 11 + i,
+        cm_location = location_to_nat l,
+        cm_time = MyPair 0 0,
+        cm_delta = -1,
+        cm_locations = wcc_output_snapshot c_after,
+        cm_is_empty = worklist_is_empty su c_after \<rparr>)\<close>
+
+abbreviation wcc_after_cm_drops where
+  \<open>wcc_after_cm_drops \<equiv> nth wcc_drop_states (length wcc_drop_locs)\<close>
+
+fun wcc_pr_after_drop_state ::
+  \<open>nat \<Rightarrow> ((3, 2) location, (nat, nat) myprod) configuration\<close>
+where
+  \<open>wcc_pr_after_drop_state 0 = wcc_after_cm_drops\<close>
+| \<open>wcc_pr_after_drop_state (Suc i) = pr su (wcc_pr_after_drop_state i)\<close>
+
+abbreviation wcc_pr_after_drop_step where
+  \<open>wcc_pr_after_drop_step i \<equiv>
+    (let c_before = wcc_pr_after_drop_state i;
+         c_after = wcc_pr_after_drop_state (Suc i) in
+      \<lparr> step_number = 11 + length wcc_drop_locs + i,
+        pr_pick = Some (wcc_pick c_before),
+        locations = wcc_snapshot c_after,
+        is_empty = worklist_is_empty su c_after \<rparr>)\<close>
+
+value [code] \<open>wcc_initial\<close>
+value [code] \<open>wcc_step 0\<close>
+value [code] \<open>wcc_step 2\<close>
+value [code] \<open>wcc_step 3\<close>
+value [code] \<open>wcc_step 4\<close>
+value [code] \<open>wcc_step 5\<close>
+value [code] \<open>wcc_step 7\<close>
+value [code] \<open>wcc_step 8\<close>
+value [code] \<open>wcc_step 9\<close>
+value [code] \<open>wcc_step 10\<close>
+value [code] \<open>wcc_cm_drop_step 0\<close>
+value [code] \<open>wcc_cm_drop_step 1\<close>
+value [code] \<open>wcc_cm_drop_step 2\<close>
+value [code] \<open>wcc_pr_after_drop_step 0\<close>
+value [code] \<open>wcc_pr_after_drop_step 1\<close>
+value [code] \<open>wcc_pr_after_drop_step 2\<close>
+value [code] \<open>wcc_pr_after_drop_step 3\<close>
+value [code] \<open>wcc_pr_after_drop_step 4\<close>
+value [code] \<open>wcc_pr_after_drop_step 5\<close>
+value [code] \<open>wcc_pr_after_drop_step 6\<close>
+
 
 end
