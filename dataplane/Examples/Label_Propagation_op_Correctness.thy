@@ -19783,5 +19783,634 @@ value [code] \<open>wcc_pr_after_drop_step 4\<close>
 value [code] \<open>wcc_pr_after_drop_step 5\<close>
 value [code] \<open>wcc_pr_after_drop_step 6\<close>
 
+abbreviation wcc_labelprop_input0_cm0_state where
+  \<open>wcc_labelprop_input0_cm0_state \<equiv>
+    take_step su (CM (Loc 1 (Trg 0)) (MyPair 0 0) 1) (wcc_pr_after_drop_state 7)\<close>
+
+abbreviation wcc_labelprop_input0_cm0_step where
+  \<open>wcc_labelprop_input0_cm0_step \<equiv>
+    \<lparr> cm_step_number = 21,
+      cm_location = location_to_nat (Loc 1 (Trg 0) :: (3, 2) location),
+      cm_time = MyPair 0 0,
+      cm_delta = 1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm0_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm0_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm0_step\<close>
+
+fun wcc_labelprop_input0_pr_after_cm0_state ::
+  \<open>nat \<Rightarrow> ((3, 2) location, (nat, nat) myprod) configuration\<close>
+where
+  \<open>wcc_labelprop_input0_pr_after_cm0_state 0 = wcc_labelprop_input0_cm0_state\<close>
+| \<open>wcc_labelprop_input0_pr_after_cm0_state (Suc i) =
+    pr su (wcc_labelprop_input0_pr_after_cm0_state i)\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm0_step where
+  \<open>wcc_labelprop_input0_pr_after_cm0_step i \<equiv>
+    (let c_before = wcc_labelprop_input0_pr_after_cm0_state i;
+         c_after = wcc_labelprop_input0_pr_after_cm0_state (Suc i) in
+      \<lparr> step_number = 22 + i,
+        pr_pick = Some (wcc_pick c_before),
+        locations = wcc_snapshot c_after,
+        is_empty = worklist_is_empty su c_after \<rparr>)\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm0_step 0\<close>
+
+abbreviation wcc_labelprop_input0_after_cm0_pr_state where
+  \<open>wcc_labelprop_input0_after_cm0_pr_state \<equiv>
+    wcc_labelprop_input0_pr_after_cm0_state 1\<close>
+
+abbreviation wcc_labelprop_input0_cm1_state where
+  \<open>wcc_labelprop_input0_cm1_state \<equiv>
+    take_step su (CM (Loc 1 (Trg 0)) (MyPair 0 0) (-1)) wcc_labelprop_input0_after_cm0_pr_state\<close>
+
+abbreviation wcc_labelprop_input0_cm1_step where
+  \<open>wcc_labelprop_input0_cm1_step \<equiv>
+    \<lparr> cm_step_number = 23,
+      cm_location = location_to_nat (Loc 1 (Trg 0) :: (3, 2) location),
+      cm_time = MyPair 0 0,
+      cm_delta = -1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm1_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm1_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm1_step\<close>
+
+abbreviation wcc_labelprop_input0_cm2_state where
+  \<open>wcc_labelprop_input0_cm2_state \<equiv>
+    take_step su (CM (Loc 1 (Src 0)) (MyPair 0 0) 1) wcc_labelprop_input0_cm1_state\<close>
+
+abbreviation wcc_labelprop_input0_cm2_step where
+  \<open>wcc_labelprop_input0_cm2_step \<equiv>
+    \<lparr> cm_step_number = 24,
+      cm_location = location_to_nat (Loc 1 (Src 0) :: (3, 2) location),
+      cm_time = MyPair 0 0,
+      cm_delta = 1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm2_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm2_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm2_step\<close>
+
+abbreviation wcc_labelprop_input0_cm3_state where
+  \<open>wcc_labelprop_input0_cm3_state \<equiv>
+    take_step su (CM (Loc 1 (Src 1)) (MyPair 0 0) 1) wcc_labelprop_input0_cm2_state\<close>
+
+abbreviation wcc_labelprop_input0_cm3_step where
+  \<open>wcc_labelprop_input0_cm3_step \<equiv>
+    \<lparr> cm_step_number = 25,
+      cm_location = location_to_nat (Loc 1 (Src 1) :: (3, 2) location),
+      cm_time = MyPair 0 0,
+      cm_delta = 1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm3_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm3_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm3_step\<close>
+
+fun wcc_labelprop_input0_pr_after_cm3_state ::
+  \<open>nat \<Rightarrow> ((3, 2) location, (nat, nat) myprod) configuration\<close>
+where
+  \<open>wcc_labelprop_input0_pr_after_cm3_state 0 = wcc_labelprop_input0_cm3_state\<close>
+| \<open>wcc_labelprop_input0_pr_after_cm3_state (Suc i) =
+    pr su (wcc_labelprop_input0_pr_after_cm3_state i)\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm3_step where
+  \<open>wcc_labelprop_input0_pr_after_cm3_step i \<equiv>
+    (let c_before = wcc_labelprop_input0_pr_after_cm3_state i;
+         c_after = wcc_labelprop_input0_pr_after_cm3_state (Suc i) in
+      \<lparr> step_number = 26 + i,
+        pr_pick = Some (wcc_pick c_before),
+        locations = wcc_snapshot c_after,
+        is_empty = worklist_is_empty su c_after \<rparr>)\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm3_step 0\<close>
+value [code] \<open>wcc_labelprop_input0_pr_after_cm3_step 1\<close>
+value [code] \<open>wcc_labelprop_input0_pr_after_cm3_step 2\<close>
+
+abbreviation wcc_labelprop_input0_after_cm3_pr_state where
+  \<open>wcc_labelprop_input0_after_cm3_pr_state \<equiv>
+    wcc_labelprop_input0_pr_after_cm3_state 3\<close>
+
+abbreviation wcc_labelprop_input0_cm4_state where
+  \<open>wcc_labelprop_input0_cm4_state \<equiv>
+    take_step su (CM (Loc 2 (Trg 1)) (MyPair 0 0) (-1)) wcc_labelprop_input0_after_cm3_pr_state\<close>
+
+abbreviation wcc_labelprop_input0_cm4_step where
+  \<open>wcc_labelprop_input0_cm4_step \<equiv>
+    \<lparr> cm_step_number = 29,
+      cm_location = location_to_nat (Loc 2 (Trg 1) :: (3, 2) location),
+      cm_time = MyPair 0 0,
+      cm_delta = -1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm4_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm4_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm4_step\<close>
+
+abbreviation wcc_labelprop_input0_cm5_state where
+  \<open>wcc_labelprop_input0_cm5_state \<equiv>
+    take_step su (CM (Loc 2 (Src 1)) (MyPair 0 1) 1) wcc_labelprop_input0_cm4_state\<close>
+
+abbreviation wcc_labelprop_input0_cm5_step where
+  \<open>wcc_labelprop_input0_cm5_step \<equiv>
+    \<lparr> cm_step_number = 30,
+      cm_location = location_to_nat (Loc 2 (Src 1) :: (3, 2) location),
+      cm_time = MyPair 0 1,
+      cm_delta = 1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm5_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm5_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm5_step\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm5_state0 where
+  \<open>wcc_labelprop_input0_pr_after_cm5_state0 \<equiv>
+    wcc_labelprop_input0_cm5_state\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm5_state1 where
+  \<open>wcc_labelprop_input0_pr_after_cm5_state1 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm5_state0\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm5_step0 where
+  \<open>wcc_labelprop_input0_pr_after_cm5_step0 \<equiv>
+    \<lparr> step_number = 31,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm5_state0),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm5_state1,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm5_state1 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm5_step0\<close>
+
+
+abbreviation wcc_labelprop_input0_cm6_state where
+  \<open>wcc_labelprop_input0_cm6_state \<equiv>
+    take_step su (CM (Loc 2 (Trg 1)) (MyPair 0 0) 1) wcc_labelprop_input0_pr_after_cm5_state1\<close>
+
+abbreviation wcc_labelprop_input0_cm6_step where
+  \<open>wcc_labelprop_input0_cm6_step \<equiv>
+    \<lparr> cm_step_number = 32,
+      cm_location = location_to_nat (Loc 2 (Trg 1) :: (3, 2) location),
+      cm_time = MyPair 0 0,
+      cm_delta = 1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm6_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm6_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm6_step\<close>
+
+
+abbreviation wcc_labelprop_input0_cm7_state where
+  \<open>wcc_labelprop_input0_cm7_state \<equiv>
+    take_step su (CM (Loc 0 (Src 0)) (MyPair 0 0) (-1)) wcc_labelprop_input0_cm6_state\<close>
+
+abbreviation wcc_labelprop_input0_cm7_step where
+  \<open>wcc_labelprop_input0_cm7_step \<equiv>
+    \<lparr> cm_step_number = 33,
+      cm_location = location_to_nat (Loc 0 (Src 0) :: (3, 2) location),
+      cm_time = MyPair 0 0,
+      cm_delta = -1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm7_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm7_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm7_step\<close>
+
+
+abbreviation wcc_labelprop_input0_cm8_state where
+  \<open>wcc_labelprop_input0_cm8_state \<equiv>
+    take_step su (CM (Loc 1 (Src 1)) (MyPair 0 0) (-1)) wcc_labelprop_input0_cm7_state\<close>
+
+abbreviation wcc_labelprop_input0_cm8_step where
+  \<open>wcc_labelprop_input0_cm8_step \<equiv>
+    \<lparr> cm_step_number = 34,
+      cm_location = location_to_nat (Loc 1 (Src 1) :: (3, 2) location),
+      cm_time = MyPair 0 0,
+      cm_delta = -1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm8_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm8_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm8_step\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_state0 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_state0 \<equiv>
+    wcc_labelprop_input0_cm8_state\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_state1 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_state1 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm8_state0\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_step0 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_step0 \<equiv>
+    \<lparr> step_number = 35,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm8_state0),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm8_state1,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm8_state1 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm8_step0\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_state2 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_state2 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm8_state1\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_step1 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_step1 \<equiv>
+    \<lparr> step_number = 36,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm8_state1),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm8_state2,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm8_state2 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm8_step1\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_state3 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_state3 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm8_state2\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_step2 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_step2 \<equiv>
+    \<lparr> step_number = 37,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm8_state2),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm8_state3,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm8_state3 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm8_step2\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_state4 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_state4 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm8_state3\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_step3 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_step3 \<equiv>
+    \<lparr> step_number = 38,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm8_state3),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm8_state4,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm8_state4 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm8_step3\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_state5 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_state5 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm8_state4\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_step4 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_step4 \<equiv>
+    \<lparr> step_number = 39,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm8_state4),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm8_state5,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm8_state5 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm8_step4\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_state6 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_state6 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm8_state5\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_step5 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_step5 \<equiv>
+    \<lparr> step_number = 40,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm8_state5),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm8_state6,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm8_state6 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm8_step5\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_state7 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_state7 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm8_state6\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_step6 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_step6 \<equiv>
+    \<lparr> step_number = 41,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm8_state6),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm8_state7,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm8_state7 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm8_step6\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_state8 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_state8 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm8_state7\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm8_step7 where
+  \<open>wcc_labelprop_input0_pr_after_cm8_step7 \<equiv>
+    \<lparr> step_number = 42,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm8_state7),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm8_state8,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm8_state8 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm8_step7\<close>
+
+
+abbreviation wcc_labelprop_input0_cm9_state where
+  \<open>wcc_labelprop_input0_cm9_state \<equiv>
+    take_step su (CM (Loc 1 (Trg 1)) (MyPair 0 1) 1) wcc_labelprop_input0_pr_after_cm8_state8\<close>
+
+abbreviation wcc_labelprop_input0_cm9_step where
+  \<open>wcc_labelprop_input0_cm9_step \<equiv>
+    \<lparr> cm_step_number = 43,
+      cm_location = location_to_nat (Loc 1 (Trg 1) :: (3, 2) location),
+      cm_time = MyPair 0 1,
+      cm_delta = 1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm9_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm9_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm9_step\<close>
+
+abbreviation wcc_labelprop_input0_cm10_state where
+  \<open>wcc_labelprop_input0_cm10_state \<equiv>
+    take_step su (CM (Loc 2 (Src 1)) (MyPair 0 1) (-1)) wcc_labelprop_input0_cm9_state\<close>
+
+abbreviation wcc_labelprop_input0_cm10_step where
+  \<open>wcc_labelprop_input0_cm10_step \<equiv>
+    \<lparr> cm_step_number = 44,
+      cm_location = location_to_nat (Loc 2 (Src 1) :: (3, 2) location),
+      cm_time = MyPair 0 1,
+      cm_delta = -1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm10_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm10_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm10_step\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm10_state0 where
+  \<open>wcc_labelprop_input0_pr_after_cm10_state0 \<equiv>
+    wcc_labelprop_input0_cm10_state\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm10_state1 where
+  \<open>wcc_labelprop_input0_pr_after_cm10_state1 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm10_state0\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm10_step0 where
+  \<open>wcc_labelprop_input0_pr_after_cm10_step0 \<equiv>
+    \<lparr> step_number = 45,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm10_state0),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm10_state1,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm10_state1 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm10_step0\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm10_state2 where
+  \<open>wcc_labelprop_input0_pr_after_cm10_state2 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm10_state1\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm10_step1 where
+  \<open>wcc_labelprop_input0_pr_after_cm10_step1 \<equiv>
+    \<lparr> step_number = 46,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm10_state1),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm10_state2,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm10_state2 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm10_step1\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm10_state3 where
+  \<open>wcc_labelprop_input0_pr_after_cm10_state3 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm10_state2\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm10_step2 where
+  \<open>wcc_labelprop_input0_pr_after_cm10_step2 \<equiv>
+    \<lparr> step_number = 47,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm10_state2),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm10_state3,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm10_state3 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm10_step2\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm10_state4 where
+  \<open>wcc_labelprop_input0_pr_after_cm10_state4 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm10_state3\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm10_step3 where
+  \<open>wcc_labelprop_input0_pr_after_cm10_step3 \<equiv>
+    \<lparr> step_number = 48,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm10_state3),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm10_state4,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm10_state4 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm10_step3\<close>
+
+
+abbreviation wcc_labelprop_input0_cm11_state where
+  \<open>wcc_labelprop_input0_cm11_state \<equiv>
+    take_step su (CM (Loc 1 (Trg 1)) (MyPair 0 1) (-1)) wcc_labelprop_input0_pr_after_cm10_state4\<close>
+
+abbreviation wcc_labelprop_input0_cm11_step where
+  \<open>wcc_labelprop_input0_cm11_step \<equiv>
+    \<lparr> cm_step_number = 49,
+      cm_location = location_to_nat (Loc 1 (Trg 1) :: (3, 2) location),
+      cm_time = MyPair 0 1,
+      cm_delta = -1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm11_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm11_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm11_step\<close>
+
+abbreviation wcc_labelprop_input0_cm12_state where
+  \<open>wcc_labelprop_input0_cm12_state \<equiv>
+    take_step su (CM (Loc 1 (Src 1)) (MyPair 0 1) 1) wcc_labelprop_input0_cm11_state\<close>
+
+abbreviation wcc_labelprop_input0_cm12_step where
+  \<open>wcc_labelprop_input0_cm12_step \<equiv>
+    \<lparr> cm_step_number = 50,
+      cm_location = location_to_nat (Loc 1 (Src 1) :: (3, 2) location),
+      cm_time = MyPair 0 1,
+      cm_delta = 1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm12_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm12_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm12_step\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm12_state0 where
+  \<open>wcc_labelprop_input0_pr_after_cm12_state0 \<equiv>
+    wcc_labelprop_input0_cm12_state\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm12_state1 where
+  \<open>wcc_labelprop_input0_pr_after_cm12_state1 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm12_state0\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm12_step0 where
+  \<open>wcc_labelprop_input0_pr_after_cm12_step0 \<equiv>
+    \<lparr> step_number = 51,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm12_state0),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm12_state1,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm12_state1 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm12_step0\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm12_state2 where
+  \<open>wcc_labelprop_input0_pr_after_cm12_state2 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm12_state1\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm12_step1 where
+  \<open>wcc_labelprop_input0_pr_after_cm12_step1 \<equiv>
+    \<lparr> step_number = 52,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm12_state1),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm12_state2,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm12_state2 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm12_step1\<close>
+
+
+abbreviation wcc_labelprop_input0_cm13_state where
+  \<open>wcc_labelprop_input0_cm13_state \<equiv>
+    take_step su (CM (Loc 1 (Src 1)) (MyPair 0 1) (-1)) wcc_labelprop_input0_pr_after_cm12_state2\<close>
+
+abbreviation wcc_labelprop_input0_cm13_step where
+  \<open>wcc_labelprop_input0_cm13_step \<equiv>
+    \<lparr> cm_step_number = 53,
+      cm_location = location_to_nat (Loc 1 (Src 1) :: (3, 2) location),
+      cm_time = MyPair 0 1,
+      cm_delta = -1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm13_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm13_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm13_step\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_state0 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_state0 \<equiv>
+    wcc_labelprop_input0_cm13_state\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_state1 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_state1 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm13_state0\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_step0 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_step0 \<equiv>
+    \<lparr> step_number = 54,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm13_state0),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm13_state1,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm13_state1 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm13_step0\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_state2 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_state2 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm13_state1\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_step1 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_step1 \<equiv>
+    \<lparr> step_number = 55,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm13_state1),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm13_state2,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm13_state2 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm13_step1\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_state3 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_state3 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm13_state2\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_step2 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_step2 \<equiv>
+    \<lparr> step_number = 56,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm13_state2),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm13_state3,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm13_state3 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm13_step2\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_state4 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_state4 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm13_state3\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_step3 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_step3 \<equiv>
+    \<lparr> step_number = 57,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm13_state3),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm13_state4,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm13_state4 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm13_step3\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_state5 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_state5 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm13_state4\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_step4 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_step4 \<equiv>
+    \<lparr> step_number = 58,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm13_state4),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm13_state5,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm13_state5 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm13_step4\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_state6 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_state6 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm13_state5\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_step5 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_step5 \<equiv>
+    \<lparr> step_number = 59,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm13_state5),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm13_state6,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm13_state6 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm13_step5\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_state7 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_state7 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm13_state6\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm13_step6 where
+  \<open>wcc_labelprop_input0_pr_after_cm13_step6 \<equiv>
+    \<lparr> step_number = 60,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm13_state6),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm13_state7,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm13_state7 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm13_step6\<close>
+
+
+abbreviation wcc_labelprop_input0_cm14_state where
+  \<open>wcc_labelprop_input0_cm14_state \<equiv>
+    take_step su (CM (Loc 1 (Src 0)) (MyPair 0 0) (-1)) wcc_labelprop_input0_pr_after_cm13_state7\<close>
+
+abbreviation wcc_labelprop_input0_cm14_step where
+  \<open>wcc_labelprop_input0_cm14_step \<equiv>
+    \<lparr> cm_step_number = 61,
+      cm_location = location_to_nat (Loc 1 (Src 0) :: (3, 2) location),
+      cm_time = MyPair 0 0,
+      cm_delta = -1,
+      cm_locations = wcc_snapshot wcc_labelprop_input0_cm14_state,
+      cm_is_empty = worklist_is_empty su wcc_labelprop_input0_cm14_state \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_cm14_step\<close>
+
+
+abbreviation wcc_labelprop_input0_pr_after_cm14_state0 where
+  \<open>wcc_labelprop_input0_pr_after_cm14_state0 \<equiv>
+    wcc_labelprop_input0_cm14_state\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm14_state1 where
+  \<open>wcc_labelprop_input0_pr_after_cm14_state1 \<equiv>
+    pr su wcc_labelprop_input0_pr_after_cm14_state0\<close>
+
+abbreviation wcc_labelprop_input0_pr_after_cm14_step0 where
+  \<open>wcc_labelprop_input0_pr_after_cm14_step0 \<equiv>
+    \<lparr> step_number = 62,
+      pr_pick = Some (wcc_pick wcc_labelprop_input0_pr_after_cm14_state0),
+      locations = wcc_snapshot wcc_labelprop_input0_pr_after_cm14_state1,
+      is_empty = worklist_is_empty su wcc_labelprop_input0_pr_after_cm14_state1 \<rparr>\<close>
+
+value [code] \<open>wcc_labelprop_input0_pr_after_cm14_step0\<close>
+
+
+
+
+
+
 
 end
