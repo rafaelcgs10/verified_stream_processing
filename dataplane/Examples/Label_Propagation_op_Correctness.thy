@@ -20428,7 +20428,8 @@ abbreviation wcc_labelprop_input0_cm14_step where
 value [code] \<open>wcc_labelprop_input0_cm14_step\<close>
 
 
-(* Final checkpoint: PR step 62.
+(* Phase 16: PR round, step 62, the last propagation round.  One pick
+   empties the worklist and leaves every field empty.
    Feeds tab:wcc_after_next_source_zero_cm_update. *)
 abbreviation wcc_labelprop_input0_pr_after_cm14_state0 where
   \<open>wcc_labelprop_input0_pr_after_cm14_state0 \<equiv>
