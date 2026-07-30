@@ -19805,7 +19805,7 @@ value [code] \<open>wcc_pr_after_drop_step 6\<close>
    them.  Feeds tab:wcc_after_second_propagation_trace, whose phases 1-15
    map to the blocks below, and tab:wcc_after_next_source_zero_cm_update. *)
 
-(* Phase 1: CM step 21 reports the input send. *)
+(* Phase 1: CM step 21 reports the input produce. *)
 abbreviation wcc_labelprop_input0_cm0_state where
   \<open>wcc_labelprop_input0_cm0_state \<equiv>
     take_step su (CM (Loc 1 (Trg 0)) (MyPair 0 0) 1) (wcc_pr_after_drop_state 7)\<close>
@@ -19840,7 +19840,7 @@ abbreviation wcc_labelprop_input0_pr_after_cm0_step where
 
 value [code] \<open>wcc_labelprop_input0_pr_after_cm0_step 0\<close>
 
-(* Phase 3: CM steps 23-25 report the LP consume and perform the send. *)
+(* Phase 3: CM steps 23-25 report the LP consume and perform the produce. *)
 abbreviation wcc_labelprop_input0_after_cm0_pr_state where
   \<open>wcc_labelprop_input0_after_cm0_pr_state \<equiv>
     wcc_labelprop_input0_pr_after_cm0_state 1\<close>
@@ -20132,7 +20132,7 @@ abbreviation wcc_labelprop_input0_pr_after_cm8_step7 where
 value [code] \<open>wcc_labelprop_input0_pr_after_cm8_step7\<close>
 
 
-(* Phase 9: CM steps 43-44 report the increment send and the source
+(* Phase 9: CM steps 43-44 report the increment produce and the source
    capability drop. *)
 abbreviation wcc_labelprop_input0_cm9_state where
   \<open>wcc_labelprop_input0_cm9_state \<equiv>
