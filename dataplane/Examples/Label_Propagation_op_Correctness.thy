@@ -19631,15 +19631,11 @@ abbreviation wcc_fig_locs :: \<open>(nat \<times> (3, 2) location) list\<close> 
 abbreviation wcc_locs where
   \<open>wcc_locs \<equiv> wcc_fig_locs\<close>
 
-record 't zmsetl =
-  positive :: "'t list"
-  negative :: "'t list"
-
 record ('loc, 't) location_view =
   loc :: 'loc
-  pts :: "'t zmsetl"
-  imps :: "'t zmsetl"
-  work :: "'t zmsetl"
+  pts :: "('t \<times> int) set"
+  imps :: "('t \<times> int) set"
+  work :: "('t \<times> int) set"
 
 record ('loc, 't) step_view =
   step_number :: nat
@@ -19648,9 +19644,7 @@ record ('loc, 't) step_view =
   is_empty :: bool
 
 abbreviation zmsetl where
-  \<open>zmsetl M \<equiv>
-    \<lparr> positive = concat (map (\<lambda>t. replicate (nat (zcount M t)) t) [MyPair 0 0, MyPair 0 1]),
-      negative = concat (map (\<lambda>t. replicate (nat (- zcount M t)) t) [MyPair 0 0, MyPair 0 1]) \<rparr>\<close>
+  \<open>zmsetl M \<equiv> (\<lambda>t. (t, zcount M t)) ` set_zmset M\<close>
 
 abbreviation wcc_snapshot where
   \<open>wcc_snapshot c \<equiv>
