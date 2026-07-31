@@ -241,8 +241,8 @@ Principle: Timely/ holds the Timely Dataflow infrastructure only.
       removed, Tree_Compile trim reverted (item 5 above). At commit
       time Operator_State, Tree_Compile, and Propagation_Exec were
       fully processed with zero errors and the two example chains were
-      mid-recheck, zero errors so far. A follow-up session should
-      confirm both example files reach fully_processed cleanly.
+      mid-recheck. The gate then completed GREEN: LP 14284 and
+      Batch 7779 commands fully processed, zero errors. Phase 8 done.
 
 ## Operational notes for continuing this work
 
