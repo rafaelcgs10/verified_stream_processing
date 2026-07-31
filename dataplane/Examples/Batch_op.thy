@@ -1,13 +1,13 @@
 theory Batch_op
 
 imports
-  Dataplane.Timely_Stream
-  Dataplane.Timely_Builder_Op
-  "../MyProduct_Instances"
+  "../Timely/Timely_Stream"
+  "../Timely/Timely_Builder_Op"
+  "../Lib/MyProduct_Instances"
   Ooo_Input_op
-  Dataplane.Timely_Tree_Compile
-  Dataplane.Timely_Dataflow_Op
-  Dataplane.LList_Haskell_Setup
+  "../Timely/Timely_Tree_Compile"
+  "../Timely/Timely_Dataflow_Op"
+  "../Timely/LList_Haskell_Setup"
 begin
 
 definition batch_op_logic where

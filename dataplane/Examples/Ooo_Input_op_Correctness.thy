@@ -3,8 +3,8 @@ theory Ooo_Input_op_Correctness
 imports
   Ooo_Input_op
   Source_op
-  Dataplane.Timely_Dataflow_Op
-  Dataplane.SimulationProofMethods
+  "../Timely/Timely_Dataflow_Op"
+  "../Lib/SimulationProofMethods"
 begin
 
 lemma timely_input_stream_ooo_input_op_logic:

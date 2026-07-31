@@ -3,7 +3,7 @@ theory LList_Haskell_Setup
 imports
   "Coinductive.Coinductive_List"
   Nondeterministic_Dataflow.CSet_LList_Impl
-  "Timely_Infrastructure"
+  Timely_Infrastructure
 begin
 
 

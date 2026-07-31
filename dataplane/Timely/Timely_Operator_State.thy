@@ -1,23 +1,7 @@
 theory Timely_Operator_State
 
 imports
-  Nondeterministic_Dataflow.Operator
-  Nondeterministic_Dataflow.BNA_Operators
-  Progress_Tracking.Propagate
-  Nondeterministic_Dataflow.Eval
-  "HOL-Library.While_Combinator"
-  "../propagation_extras/Executable"
-  "../propagation_extras/Termination"
-  Zero_Cyc_Check
-  Locations
-  DataplaneUtils
-  CsetUtils
-  ZmsetUtils
-  ListUtils
-  Containers.Collection_Order
-  AntichainOrder
-  Bots
-  MyMisc
+  Timely_Base
 begin
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]

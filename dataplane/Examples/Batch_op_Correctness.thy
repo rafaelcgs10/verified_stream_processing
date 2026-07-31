@@ -1,7 +1,7 @@
 theory Batch_op_Correctness
 
 imports
-  Dataplane.Timely_Stream
+  "../Timely/Timely_Stream"
   Ooo_Input_op
   Batch_op
   "../Correctness/General"
@@ -14,9 +14,9 @@ imports
   "../Correctness/Timely_Collections"
   "../Correctness/OCapsReorder"
   "../Correctness/Init"
-  Dataplane.LList_Haskell_Setup
-  Dataplane.Propagation_Properties
-  Dataplane.Timely_Dataflow_Op
+  "../Timely/LList_Haskell_Setup"
+  "../Timely/Propagation_Properties"
+  "../Timely/Timely_Dataflow_Op"
   Set_op
 begin
 no_notation shiftr  (infixl \<open>>>\<close> 55)

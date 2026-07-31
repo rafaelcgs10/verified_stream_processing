@@ -1,11 +1,11 @@
 theory Timely_Stream
   imports
     "Coinductive.Coinductive_List"
-    "HOL-Library.BNF_Corec"
-    "HOL-Library.Multiset"
-    Nondeterministic_Dataflow.Coinductive_List_Auxiliary
-    Nondeterministic_Dataflow.CSet_LList_Impl
-    AntichainOrder
+  "HOL-Library.BNF_Corec"
+  "HOL-Library.Multiset"
+  Nondeterministic_Dataflow.Coinductive_List_Auxiliary
+  Nondeterministic_Dataflow.CSet_LList_Impl
+  "../Lib/AntichainOrder"
 begin
 
 datatype ('t :: order, 'd) event = Data (time: 't) (data: 'd) | Drop (time: 't) | Mint (time: 't)

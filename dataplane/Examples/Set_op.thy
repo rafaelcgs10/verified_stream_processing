@@ -3,9 +3,9 @@ theory Set_op
 imports
   Nondeterministic_Dataflow.Operator
   Nondeterministic_Dataflow.CSet_LList_Impl
-  "../Timely_Infrastructure"
-  "../LList_Haskell_Setup"
-  "../Operators_Utils"
+  "../Timely/Timely_Infrastructure"
+  "../Timely/LList_Haskell_Setup"
+  "../Lib/Operators_Utils"
 begin
 
 (* FIXME: move me *)

@@ -2,7 +2,7 @@ theory Timely_Dataflow_Op
 
 imports
   Timely_Progress
-  Operators_Utils
+  "../Lib/Operators_Utils"
 begin
 
 section \<open>Dataflow Wrapper Operator\<close>

@@ -3,8 +3,8 @@ theory Timely_Builder_Op
 imports
   Timely_Progress
   Timely_Operator_State
-  MyMisc
-  Operators_Utils
+  "../Lib/MyMisc"
+  "../Lib/Operators_Utils"
 begin
 
 

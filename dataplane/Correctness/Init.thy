@@ -2,9 +2,9 @@ theory Init
 
 imports
   General
-  Dataplane.Timely_Stream
-  Dataplane.AntichainOrder
-  Dataplane.Propagation_Properties
+  "../Timely/Timely_Stream"
+  "../Lib/AntichainOrder"
+  "../Timely/Propagation_Properties"
   Propagates
 begin
 

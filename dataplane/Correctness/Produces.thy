@@ -3,8 +3,8 @@ theory Produces
 imports
   General
   Mints
-  Dataplane.Timely_Stream
-  Dataplane.AntichainOrder
+  "../Timely/Timely_Stream"
+  "../Lib/AntichainOrder"
   "HOL-Library.Product_Lexorder"
 begin
 

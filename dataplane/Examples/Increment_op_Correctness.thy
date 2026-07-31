@@ -4,7 +4,7 @@ imports
   Ooo_Input_op_Correctness
   Increment_op
   Source_op
-  Dataplane.Timely_Dataflow_Op
+  "../Timely/Timely_Dataflow_Op"
 begin
 
 (* TODO Move. *)

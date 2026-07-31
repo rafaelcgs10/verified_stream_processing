@@ -1,9 +1,9 @@
 theory General
 
 imports
-  Dataplane.Timely_Stream
-  Dataplane.MyMisc
-  Dataplane.Timely_Ifrontier
+  "../Timely/Timely_Stream"
+  "../Lib/MyMisc"
+  "../Timely/Timely_Ifrontier"
 begin
 
 

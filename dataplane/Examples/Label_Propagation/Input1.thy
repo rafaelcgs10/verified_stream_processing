@@ -13,11 +13,11 @@ imports
   "../../Correctness/OCapsReorder"
   "../../Correctness/Consumes"
   "../../Correctness/Init"
-  Dataplane.Timely_Dataflow_Op
-  Dataplane.Bots
+  "../../Timely/Timely_Dataflow_Op"
+  "../../Lib/Bots"
   "../../Correctness/Timely_Collections"
-  Dataplane.Propagation_Properties
-  Dataplane.SimulationProofMethods
+  "../../Timely/Propagation_Properties"
+  "../../Lib/SimulationProofMethods"
   Label_Propagation_op_Correctness_Extras
 begin
 

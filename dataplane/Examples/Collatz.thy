@@ -1,19 +1,19 @@
 theory Collatz
 
 imports
-  Dataplane.Timely_Stream
-  Dataplane.Numeral_Conversion
+  "../Timely/Timely_Stream"
+  "../Lib/Numeral_Conversion"
   Ooo_Input_op
-  "../MyProduct_Instances"
-  "../AntichainOrder"
-   Dataplane.LList_Haskell_Setup
+  "../Lib/MyProduct_Instances"
+  "../Lib/AntichainOrder"
+  "../Timely/LList_Haskell_Setup"
   Source_op
   Tmap_op
   Concat_op
   Branch_op
   Increment_op
-  Dataplane.Timely_Builder_Op
-  Dataplane.Timely_Dataflow_Op
+  "../Timely/Timely_Builder_Op"
+  "../Timely/Timely_Dataflow_Op"
 begin
 
 abbreviation init_input_state where

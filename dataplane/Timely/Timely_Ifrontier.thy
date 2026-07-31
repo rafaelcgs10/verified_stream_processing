@@ -2,7 +2,7 @@ theory Timely_Ifrontier
 
 imports
   Timely_Progress
-  AntichainOrder
+  "../Lib/AntichainOrder"
 begin
 
 section \<open>Implied-Frontier Reasoning\<close>

@@ -1,8 +1,8 @@
 theory Label_Propagation_op
 
 imports
-  Dataplane.Timely_Builder_Op
-  Dataplane.MyProduct_Instances
+  "../../Timely/Timely_Builder_Op"
+  "../../Lib/MyProduct_Instances"
   Wcc
 begin
 

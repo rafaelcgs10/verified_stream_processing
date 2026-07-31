@@ -3,7 +3,7 @@ theory AntichainOrder
 imports
   Progress_Tracking.Antichain
   Progress_Tracking.Propagate
-  "../propagation_extras/Executable"
+  "../../propagation_extras/Executable"
 begin 
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]

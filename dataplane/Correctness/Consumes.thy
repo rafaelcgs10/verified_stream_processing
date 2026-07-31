@@ -2,7 +2,7 @@ theory Consumes
 
 imports
   General
-  Dataplane.AntichainOrder
+  "../Lib/AntichainOrder"
 begin
 
 declare cin.rep_eq[simp del]

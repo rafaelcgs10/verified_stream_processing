@@ -89,10 +89,19 @@ across folders. No Dataplane.X session-qualified imports.
 ## Dependency-tree improvements (parallelism)
 
 1. Deduplicate the base hub: Timely_Operator_State imports just Timely_Base.
-2. Import trims, one at a time, each verified by MCP before keeping
+2. Dissolve the folder-level cycle found during phase 2+3:
+   propagation_extras/Executable.thy imports dataplane/Lib/Locations while
+   dataplane imports propagation_extras. Fix by moving Executable.thy and
+   Termination.thy into dataplane/Lib/ (Termination has only external
+   imports). Rewrite: AntichainOrder / ZmsetUtils / Zero_Cyc_Check refer to
+   bare Executable, Timely_Base to "../Lib/Executable" and
+   "../Lib/Termination", Executable's Locations import becomes bare.
+   The ROOT session Propagation_Extras stays (it lists only
+   Progress_Tracking theories; the folder keeps existing).
+3. Import trims, one at a time, each verified by MCP before keeping
    (e.g. Input1's SimulationProofMethods / Propagation_Properties if unused,
    Init's AntichainOrder which comes via General).
-3. Stretch goal (separate decision later): split Input1.thy along its
+4. Stretch goal (separate decision later): split Input1.thy along its
    sections so Input0 and Loop can start earlier.
 
 ## Within-file organization (sections with short text blurbs)
@@ -135,10 +144,16 @@ Misplaced-lemma moves (with the sectioning pass, one group at a time):
       Tools/, swept 61 *.thy~ backups into Attic/backups/. Gate green
       (LP 14284 + Batch 7770 commands, 0 errors). GHC spot check passed
       (value [GHC] at Batch_op.thy:110 returns the expected trace).
-- [ ] Phase 2+3 (combined to avoid double reprocessing) - move 13 files to
-      Lib/ and 12 to Timely/, rewrite all import headers to relative paths,
-      dedup Timely_Operator_State -> Timely_Base. Check, commit.
-- [ ] Phase 4 - import trims, one at a time, MCP-verified. Check, commit.
-- [ ] Phase 5 - sectioning + lemma moves, file by file per priority list.
+- [x] Phase 2+3 (combined to avoid double reprocessing) - moved 13 files to
+      Lib/ and 12 to Timely/, rewrote all import headers to relative paths,
+      dedup Timely_Operator_State -> Timely_Base. Found and fixed on the
+      way: Executable.thy imported "../dataplane/Locations", now
+      "../dataplane/Lib/Locations". Gate green (LP 14284 + Batch 7770 +
+      Executable 513 commands, 0 errors).
+- [ ] Phase 4 - dissolve the propagation_extras <-> dataplane folder cycle:
+      move Executable.thy and Termination.thy into dataplane/Lib/, rewrite
+      the five referencing headers (see item 2 above). Check, commit.
+- [ ] Phase 5 - import trims, one at a time, MCP-verified. Check, commit.
+- [ ] Phase 6 - sectioning + lemma moves, file by file per priority list.
       Check + commit per file batch.
-- [ ] Phase 6 (optional, needs user decision) - split Input1.thy.
+- [ ] Phase 7 (optional, needs user decision) - split Input1.thy.
