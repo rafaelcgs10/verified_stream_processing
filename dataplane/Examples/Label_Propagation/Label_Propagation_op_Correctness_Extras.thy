@@ -1225,4 +1225,5 @@ proof -
       using x_in x_le by blast
   qed
 qed
+
 end

@@ -976,13 +976,7 @@ proof (coinduction arbitrary: buf buf' op rule: op.coinduct_upto)
     ultimately show \<open>\<exists>op''. op'' |\<in>| un_Choice (loop_op wire buf op) \<and> op.congclp R op'' op'\<close>
       by blast
   qed
-  ultimately have \<open>rel_set (op.congclp R)
-  (rcset (un_Choice (loop_op wire buf op))) (rcset (un_Choice (loop_op wire buf' op)))\<close>
-    unfolding rel_set_def by auto
-  moreover have \<open>R = (\<lambda>op1 op2. \<exists>buf buf' op. op1 = loop_op wire buf op \<and> op2 = loop_op wire buf' op
-  \<and> (\<forall>p\<in>inputs op \<inter> ran wire. buf' p = buf p))\<close>
-    unfolding R_def fun_eq_iff by auto
-  ultimately show ?case by simp
+  ultimately show ?case by (force simp add: rel_set_def R_def Ball_def)
 qed
 
 lemma step_Tau_pow_eqI:
