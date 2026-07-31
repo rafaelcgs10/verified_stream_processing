@@ -2,8 +2,6 @@ theory Progress
 
 imports
   General
-  "../Timely/Timely_Stream"
-  "../Lib/AntichainOrder"
   "../Timely/Propagation_Properties"
 begin
 

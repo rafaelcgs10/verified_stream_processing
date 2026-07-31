@@ -2,7 +2,6 @@ theory General
 
 imports
   "../Timely/Timely_Stream"
-  "../Lib/MyMisc"
   "../Timely/Timely_Ifrontier"
 begin
 

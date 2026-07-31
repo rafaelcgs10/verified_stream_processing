@@ -1,11 +1,7 @@
 theory Batch_op
 
 imports
-  "../Timely/Timely_Stream"
-  "../Timely/Timely_Builder_Op"
-  "../Lib/MyProduct_Instances"
   Ooo_Input_op
-  "../Timely/Timely_Tree_Compile"
   "../Timely/Timely_Dataflow_Op"
   "../Timely/LList_Haskell_Setup"
 begin

@@ -3,8 +3,6 @@ theory Increment_op_Correctness
 imports
   Ooo_Input_op_Correctness
   Increment_op
-  Source_op
-  "../Timely/Timely_Dataflow_Op"
 begin
 
 (* TODO Move. *)

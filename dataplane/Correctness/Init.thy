@@ -1,10 +1,6 @@
 theory Init
 
 imports
-  General
-  "../Timely/Timely_Stream"
-  "../Lib/AntichainOrder"
-  "../Timely/Propagation_Properties"
   Propagates
 begin
 

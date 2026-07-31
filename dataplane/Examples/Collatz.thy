@@ -1,18 +1,13 @@
 theory Collatz
 
 imports
-  "../Timely/Timely_Stream"
-  "../Lib/Numeral_Conversion"
   Ooo_Input_op
-  "../Lib/MyProduct_Instances"
-  "../Lib/AntichainOrder"
   "../Timely/LList_Haskell_Setup"
   Source_op
   Tmap_op
   Concat_op
   Branch_op
   Increment_op
-  "../Timely/Timely_Builder_Op"
   "../Timely/Timely_Dataflow_Op"
 begin
 

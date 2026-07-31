@@ -154,7 +154,12 @@ Misplaced-lemma moves (with the sectioning pass, one group at a time):
       cycle: Executable.thy and Termination.thy moved into dataplane/Lib/,
       five referencing headers rewritten. Gate green (LP 14284 + Batch 7770
       + Executable 513 commands, 0 errors).
-- [ ] Phase 5 - import trims, one at a time, MCP-verified. Check, commit.
+- [x] Phase 5 - import trims: removed 48 redundant import edges across 16
+      files (semantic no-ops, verified by closure computation) plus the
+      unused SimulationProofMethods import in Input1, which drops that
+      theory from the LP chain. Timely_Base's deliberate hub list kept.
+      Input1 18 -> 8 imports, Batch_op_Correctness 17 -> 9. Gate green
+      (LP 14284 + Batch 7770 commands, 0 errors, full recheck ~6 min).
 - [ ] Phase 6 - sectioning + lemma moves, file by file per priority list.
       Check + commit per file batch.
 - [ ] Phase 7 (optional, needs user decision) - split Input1.thy.

@@ -3,9 +3,7 @@ theory ZmsetUtils
 imports
   Nondeterministic_Dataflow.Operator
   Nondeterministic_Dataflow.BNA_Operators
-  Executable
   Zero_Cyc_Check
-  Locations
 
 begin
 

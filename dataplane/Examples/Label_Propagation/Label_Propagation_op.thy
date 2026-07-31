@@ -2,7 +2,6 @@ theory Label_Propagation_op
 
 imports
   "../../Timely/Timely_Builder_Op"
-  "../../Lib/MyProduct_Instances"
   Wcc
 begin
 

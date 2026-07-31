@@ -2,7 +2,6 @@ theory Consumes
 
 imports
   General
-  "../Lib/AntichainOrder"
 begin
 
 declare cin.rep_eq[simp del]

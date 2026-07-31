@@ -1,22 +1,14 @@
 theory Batch_op_Correctness
 
 imports
-  "../Timely/Timely_Stream"
-  Ooo_Input_op
   Batch_op
-  "../Correctness/General"
   "../Correctness/Consumes"
   "../Correctness/Progress"
   "../Correctness/Produces"
   "../Correctness/Outputs"
-  "../Correctness/Propagates"
-  "../Correctness/Mints"
   "../Correctness/Timely_Collections"
   "../Correctness/OCapsReorder"
   "../Correctness/Init"
-  "../Timely/LList_Haskell_Setup"
-  "../Timely/Propagation_Properties"
-  "../Timely/Timely_Dataflow_Op"
   Set_op
 begin
 no_notation shiftr  (infixl \<open>>>\<close> 55)

@@ -3,7 +3,6 @@ theory Timely_Collections
 imports
   "../Timely/Timely_Stream"
   "../Timely/Timely_Operator_State"
-  "../Lib/MyMisc"
 begin
 
 declare cin.rep_eq[simp del]

@@ -1,10 +1,7 @@
 theory Produces
 
 imports
-  General
   Mints
-  "../Timely/Timely_Stream"
-  "../Lib/AntichainOrder"
   "HOL-Library.Product_Lexorder"
 begin
 

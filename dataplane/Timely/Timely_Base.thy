@@ -6,8 +6,8 @@ imports
   Progress_Tracking.Propagate
   Nondeterministic_Dataflow.Eval
   "HOL-Library.While_Combinator"
-  "../../propagation_extras/Executable"
-  "../../propagation_extras/Termination"
+  "../Lib/Executable"
+  "../Lib/Termination"
   "../Lib/Zero_Cyc_Check"
   "../Lib/Locations"
   "../Lib/DataplaneUtils"

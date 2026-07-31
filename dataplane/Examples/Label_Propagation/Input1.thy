@@ -1,23 +1,13 @@
 theory Input1
 
 imports
-  Label_Propagation_op
-  "../Ooo_Input_op"
-  "../Increment_op"
-  "../Set_op"
   "../../Correctness/Outputs"
   "../../Correctness/Produces"
-  "../../Correctness/Mints"
-  "../../Correctness/Propagates"
   "../../Correctness/Progress"
   "../../Correctness/OCapsReorder"
   "../../Correctness/Consumes"
   "../../Correctness/Init"
-  "../../Timely/Timely_Dataflow_Op"
-  "../../Lib/Bots"
   "../../Correctness/Timely_Collections"
-  "../../Timely/Propagation_Properties"
-  "../../Lib/SimulationProofMethods"
   Label_Propagation_op_Correctness_Extras
 begin
 
