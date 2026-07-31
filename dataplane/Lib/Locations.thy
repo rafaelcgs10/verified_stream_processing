@@ -9,6 +9,11 @@ imports
   Nondeterministic_Dataflow.Operator
 begin 
 
+section \<open>Ports and Locations\<close>
+
+text \<open>Ports distinguish targets from sources; a location pairs a node
+  with a port.\<close>
+
 (* Inspired by timely/src/progress/mod.rs:61 *)
 datatype 'p port = Trg (idp: 'p) | Src (idp: 'p)
 abbreviation is_Src where "is_Src x \<equiv> (case x of Src _ \<Rightarrow> True | _ \<Rightarrow> False)"
@@ -16,6 +21,10 @@ abbreviation is_Trg where "is_Trg x \<equiv> (case x of Trg _ \<Rightarrow> True
 
 (* Inspired by timely/src/progress/mod.rs:19 *)
 datatype ('id, 'p) location = Loc (node: 'id) (port: "'p port")
+
+section \<open>Enumeration\<close>
+
+text \<open>enum instances for ports and locations.\<close>
 
 instantiation port :: (enum) enum
 begin
@@ -64,6 +73,10 @@ instance
   apply (metis location.collapse)+
   done
 end
+
+section \<open>Linear Orders\<close>
+
+text \<open>Order instances for ports and locations.\<close>
 
 instantiation port :: (ord) ord
 begin
@@ -138,6 +151,10 @@ instance
   done
 end
 
+section \<open>Hash Functions\<close>
+
+text \<open>hashable instances for numerals, ports, and locations.\<close>
+
 instantiation "num0" :: hashable
 begin
   definition [simp]: "hashcode (n :: num0) = uint32_of_int 0"
@@ -181,6 +198,10 @@ begin
   definition "def_hashmap_size = (\<lambda>_ :: (_ bit1) itself. 16)"
   instance by(intro_classes)(simp_all add: def_hashmap_size_bit1_def)
 end
+
+section \<open>Minima over Timestamp-Location Pairs\<close>
+
+text \<open>A linear order on timestamp-location pairs and the executable mymin.\<close>
 
 definition t_loc_linord :: "('t \<Rightarrow> 't \<Rightarrow> bool) \<Rightarrow> ('t \<times> 'loc :: linorder ) \<Rightarrow> ('t \<times> 'loc) \<Rightarrow> bool" where
   "t_loc_linord t_less p1 p2 = (case (p1, p2) of ((t1, l1), (t2, l2)) \<Rightarrow>
@@ -233,6 +254,10 @@ lemma mymin_code[code]: "mymin_code (set ((x :: 't :: ccompare \<times> 'loc :: 
   apply (simp add: ID_code ccompare comparator.comp_same)
   done
 
+section \<open>Printing\<close>
+
+text \<open>Human-readable output of ports and locations.\<close>
+
 fun print_numeral where
   "print_numeral n = (if n = 0 then STR ''0'' 
    else (if n = 1 then STR ''1'' 
@@ -247,6 +272,11 @@ definition show_port where
 definition show_loc where
   "show_loc x = STR ''node: '' + print_numeral (node x) + STR '', port: '' + show_port (port x)"
 
+
+section \<open>Case Analysis and Enumeration Facts\<close>
+
+text \<open>Case-analysis and enumeration simp rules for small location
+  universes.\<close>
 
 lemma loc_2_1_cases:
   "l = Loc (0 :: 2) (Trg (1 :: 1)) \<or> l = Loc 0 (Src 1) \<or> l = Loc 1 (Src 1) \<or> l = Loc 1 (Trg 1)"

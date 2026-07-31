@@ -10,6 +10,10 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
 
+section \<open>Trivial Topologies\<close>
+
+text \<open>Degenerate graph and dataflow topology instances.\<close>
+
 lemma trivial_graph[simp]:
   "graph (\<lambda> (a :: unit) _. antichain ({} :: nat set))"
   apply standard
@@ -32,6 +36,11 @@ lemma trivial_dataflow_topology[simp]:
 global_interpretation trivial_dataflow_topology_interpretation:
    dataflow_topology "(\<lambda> (a :: unit) _. antichain ({} :: nat set))" "(+)"
   by simp
+
+section \<open>Orders and Equality on Antichains\<close>
+
+text \<open>The frontier_below_eq_frontier relation, order type class instances,
+  emptiness, and executable equality of antichains.\<close>
 
 definition
   "frontier_below_eq_frontier ft1 ft2 = ((\<forall> t2. t2 \<in>\<^sub>A ft2 \<longrightarrow> (\<exists> t1. t1 \<in>\<^sub>A ft1 \<and> t1 \<le> t2)))"
@@ -127,6 +136,11 @@ lemma in_antichain_singleton[simp]:
   "x \<in>\<^sub>A antichain {x}"
   by (metis ID.set_finite in_antichain_minimal_antichain insertI1 minimal_antichain_singleton)
 
+
+section \<open>The Frontier of a Signed Multiset\<close>
+
+text \<open>How frontier interacts with addition, subtraction, and ordering of
+  signed multisets.\<close>
 
 lemma frontier_idempotent[simp]:
   "frontier (zmset_of (mset_set (set_antichain (frontier M)))) = frontier M"
@@ -459,6 +473,11 @@ lemma frontier_le_remove_left:
   unfolding less_eq_antichain_def
   by (metis add.commute in_frontier_in_frontier_add_alt)
 
+section \<open>The frontier_less_equal Order\<close>
+
+text \<open>A frontier is less-equal a timestamp when one of its elements lies
+  at or below it.\<close>
+
 definition
   "frontier_less_equal ft t = (\<not> is_empty_antichain (filter_antichain (\<lambda> f. f \<le> t) ft))"
 
@@ -666,6 +685,10 @@ lemma frontier_sum_le_alt2:
   subgoal for x F S'
     by (simp add: frontier_lt_subseq subset_zmset.add_mono trivial_dataflow_topology_interpretation.sum_mono_subseteq)
   done
+
+section \<open>Frontiers of Sums\<close>
+
+text \<open>Membership and ordering in the frontier of a sum of signed multisets.\<close>
 
 lemma int_sum_disj:
   "0 \<le> x \<Longrightarrow>
@@ -918,6 +941,10 @@ lemma frontier_le_subset[simp]:
   done
 
 
+section \<open>Antichains from Lists\<close>
+
+text \<open>Building antichains from lists of pairwise incomparable elements.\<close>
+
 lemma in_antichain_from_list[intro]:
   "\<forall>t'\<in>set xs. \<not> t' < t \<and> \<not> t < t' \<Longrightarrow>
    t \<in> set xs \<Longrightarrow>
@@ -971,6 +998,10 @@ lemma set_antichain_antichain_singleton[simp]:
 lemma antichain_nonempty[simp]:
   "antichain {A} \<noteq> {}\<^sub>A"
   by (metis empty_antichain.rep_eq insert_not_empty set_antichain_antichain_singleton)
+
+section \<open>Miscellaneous Frontier Facts\<close>
+
+text \<open>Frontiers of negated multisets are empty, and other assorted facts.\<close>
 
 lemma frontier_negs[simp]:
   "frontier (- {# a #}\<^sub>z ) = {}\<^sub>A"

@@ -11,6 +11,10 @@ begin
 (* to_zmset: list to zmultiset conversion                                     *)
 (* -------------------------------------------------------------------------- *)
 
+section ‹From Lists to Signed Multisets›
+
+text ‹to_zmset converts a list of positive updates into a signed multiset.›
+
 fun to_zmset where
   "to_zmset [] = {#}⇩z"
 | "to_zmset (x # xs) = to_zmset xs + {# x #}⇩z"
@@ -96,6 +100,10 @@ lemma set_zmset_to_zmset[simp]:
 (* del_zmset                                                                  *)
 (* -------------------------------------------------------------------------- *)
 
+section ‹Adding and Deleting Elements›
+
+text ‹del_zmset and its interplay with add_zmset.›
+
 lift_definition del_zmset :: "'a ⇒ 'a zmultiset ⇒ 'a zmultiset" is
   "λx (Mp, Mn). (Mp, add_mset x Mn)"
   by (auto simp: equiv_zmset_def)
@@ -125,6 +133,10 @@ lemma zmset_in_add_zmset[simp]:
 (* Equality instances                                                         *)
 (* -------------------------------------------------------------------------- *)
 
+section ‹Executable Equality›
+
+text ‹Equality instance for signed multisets.›
+
 instantiation zmultiset :: (equal) equal
 begin
 definition
@@ -142,6 +154,10 @@ end
 (* -------------------------------------------------------------------------- *)
 (* zmset: (location * timestamp * multiplicity) list to zmultiset             *)
 (* -------------------------------------------------------------------------- *)
+
+section ‹Signed Multisets of Update Lists›
+
+text ‹The zmset of a list of signed updates and its zcount arithmetic.›
 
 fun zmset where
   "zmset [] = {#}⇩z"

@@ -8,6 +8,10 @@ imports
 
 begin
 
+section ‹Element Extraction and Cardinality›
+
+text ‹Lifted operations for choosing elements and counting a cset.›
+
 context includes cset.lifting begin
 lift_definition cthe_elem :: "'m cset ⇒ 'm" is Set.the_elem .
 lift_definition csome_elem :: "'m cset ⇒ 'm" is some_elem .
@@ -19,6 +23,11 @@ lemma ccard_eq_0_iff[simp]:
   "(ccard A = 0) = (A = {||} ∨ cinfinite A)"
   unfolding ccard_def cinfinite_def
   by fastforce
+
+section ‹From Lists and Lazy Lists›
+
+text ‹Building csets from finite lists and lazy lists, with simp rules
+  for the constructors.›
 
 lemma cset_of_llist_llist_of_append[simp]:
   "cset_of_llist (llist_of (xs @ ys)) = cUn (cset_of_llist (llist_of xs)) (cset_of_llist (llist_of ys))"
@@ -109,6 +118,10 @@ lemma cset_of_llist_lshift[simp]:
     apply (metis cinsert_code)
     done
   done
+
+section ‹Filtering and Unions›
+
+text ‹cfilter and cUnion distribution facts.›
 
 lemma snd_cfilter[simp]:
   "snd |`| cfilter (λ(d, t). P t) S = cfilter P (snd |`| S)"

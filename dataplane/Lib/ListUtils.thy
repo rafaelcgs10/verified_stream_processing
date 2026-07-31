@@ -6,6 +6,10 @@ imports
   "Automatic_Refinement.Misc"
 begin
 
+section \<open>Removing Duplicates\<close>
+
+text \<open>The rmdups function and its set, distinctness, and append facts.\<close>
+
 fun rmdups where
   "rmdups S [] = []"
 | "rmdups S (x # xs) = (if x \<in> S then rmdups S xs else x # (rmdups (insert x S) xs))"
@@ -25,6 +29,11 @@ lemma rmdups_append[simp]:
 lemma distinct_rmdups[simp]:
   "distinct (rmdups A xs)"
   by (induct xs arbitrary: A) auto
+
+section \<open>Removing the Last Occurrence and List Difference\<close>
+
+text \<open>remove_last deletes the last occurrence of an element and list_diff
+  removes one list from another, with append and membership facts.\<close>
 
 fun remove_last where
   "remove_last x [] = []"
@@ -222,6 +231,10 @@ lemma set_list_diff_filter[simp]:
   done
 
 
+section \<open>Filtering and Searching\<close>
+
+text \<open>Facts about filter, find, and counting on lists.\<close>
+
 lemma filter_filter_True1_pair:
   "(\<forall> (x, y) \<in> set xs. Q y) \<Longrightarrow>
    filter (\<lambda>(x, y). Q y \<and> P y) xs = filter (P o snd) xs"
@@ -288,6 +301,11 @@ lemma filter_if_const[simp]:
    filter (\<lambda>x. p = fst x \<and> P p) xs"
   by auto
 
+
+section \<open>Sums and Mapped Filters\<close>
+
+text \<open>Strict monotonicity of list sums and distribution of map over
+  filters.\<close>
 
 lemma sum_list_strict_mono_ex1:
   fixes xs :: \<open>'a list\<close>
