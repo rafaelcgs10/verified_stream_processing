@@ -1,7 +1,7 @@
-theory Timely_Dataflow_Op
+theory Dataflow_Op
 
 imports
-  Timely_Progress
+  Progress_Extraction
   "../Lib/Operators_Utils"
 begin
 

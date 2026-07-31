@@ -1,7 +1,7 @@
-theory Timely_Builder_Op
+theory Builder_Op
 
 imports
-  Timely_Progress
+  Progress_Extraction
   "../Lib/Operators_Utils"
 begin
 

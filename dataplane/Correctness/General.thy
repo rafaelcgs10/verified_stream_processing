@@ -1,8 +1,8 @@
 theory General
 
 imports
-  "../Timely/Timely_Stream"
-  "../Timely/Timely_Ifrontier"
+  "../Timely_Stream"
+  "../Timely/Ifrontier"
 begin
 
 

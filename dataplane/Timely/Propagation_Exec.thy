@@ -1,7 +1,7 @@
-theory Timely_Propagation_Exec
+theory Propagation_Exec
 
 imports
-  Timely_Tree_Compile
+  Tree_Compile
   Containers.Collection_Order
 begin           
 

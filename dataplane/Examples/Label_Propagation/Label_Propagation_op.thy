@@ -1,7 +1,7 @@
 theory Label_Propagation_op
 
 imports
-  "../../Timely/Timely_Builder_Op"
+  "../../Timely/Builder_Op"
   Wcc
 begin
 

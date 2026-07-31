@@ -1,7 +1,7 @@
 theory Concat_op
 
 imports
-  "../Timely/Timely_Builder_Op"
+  "../Timely/Builder_Op"
 begin
 
 definition \<open>concat_op ips p os = builder_op False ips {|p|} os (\<lambda> os. 

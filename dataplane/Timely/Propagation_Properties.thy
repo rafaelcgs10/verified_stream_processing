@@ -1,7 +1,7 @@
 theory Propagation_Properties
 
 imports
-  Timely_Progress
+  Progress_Extraction
 begin 
 
 

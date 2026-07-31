@@ -1,7 +1,7 @@
 theory Increment_op
 
 imports
-  "../Timely/Timely_Builder_Op"
+  "../Timely/Builder_Op"
 begin
 
 definition \<open>increment_op_logic ip op inc = (\<lambda>os. 

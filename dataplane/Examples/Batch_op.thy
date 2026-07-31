@@ -2,8 +2,8 @@ theory Batch_op
 
 imports
   Ooo_Input_op
-  "../Timely/Timely_Dataflow_Op"
-  "../Timely/LList_Haskell_Setup"
+  "../Timely/Dataflow_Op"
+  "../Lib/LList_Haskell_Setup"
 begin
 
 definition batch_op_logic where

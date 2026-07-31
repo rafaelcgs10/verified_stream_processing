@@ -317,7 +317,7 @@ proof -
   thus ?thesis by (simp add: assms(1) w_assigned_label)
 qed
 
-(* FIXME: move me to Timely_Operator_State.thy. *)
+(* FIXME: move me to Operator_State.thy. *)
 
 
 

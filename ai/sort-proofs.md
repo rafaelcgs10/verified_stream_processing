@@ -185,3 +185,49 @@ Misplaced-lemma moves (with the sectioning pass, one group at a time):
       sections into batch facts (518-2683) / invariant transfer +
       base-state projection (2684-4371) / loop_updates function (4372+),
       after computing which facts Input0 and Loop actually cite.
+
+# Phase 8 - refined sorting of the Timely folder (approved 2026-07-31)
+
+Principle: Timely/ holds the Timely Dataflow infrastructure only.
+
+1. Move out:
+   - LList_Haskell_Setup.thy -> Lib/ (code-extraction setup, zero Timely
+     identifiers; imports become Coinductive.Coinductive_List + CsetUtils).
+     Fix importers Set_op, Batch_op, Collatz.
+   - Timely_Stream.thy -> dataplane/ top level (orthogonal stream
+     formalization, name kept). Fix importers Correctness/General,
+     Correctness/Timely_Collections, Examples/Ooo_Input_op.
+2. Delete (to Attic/):
+   - Timely_Base.thy (empty aggregator; import list inlined into
+     Operator_State and, for now verbatim, into Tree_Compile).
+   - Timely_Infrastructure.thy (empty stub, only spurious importer was
+     LList_Haskell_Setup; its intended content is item 4).
+3. Rename, dropping the Timely_ prefix (theory headers renamed too):
+   Operator_State, Progress_Extraction (bare Progress would clash with
+   Correctness/Progress), Propagation_Exec, Tree_Compile, Builder_Op,
+   Dataflow_Op, Ifrontier. Propagation_Properties unchanged. Also update
+   the two qualified references Timely_Operator_State.intsum_add_caps in
+   Label_Propagation_op_Correctness.thy (lines ~1595, ~1881).
+4. Consolidate state-law simp/intro lemmas into Operator_State's
+   "Frame and Simp Rules" section. Confirmed movers: produ_release_caps
+   (Extras), intsum_CONSUMES (Label_Propagation_op), the FIXME lemma at
+   Labels.thy:320. Non-movers: anything whose subject is min_label,
+   all_edges, labels_inv, label_prop_upd_inv, vertices, timestamps,
+   graph, outputs_at_target, dataplane_tracker_inv. Execution rescans
+   with a strict filter (every constant resolves in Operator_State) and
+   MCP-verifies each mover.
+5. Batch B extras: trim Tree_Compile's inlined import list down to what
+   it uses, MCP-verified.
+
+## Phase 8 progress
+
+- [x] Batch A: moves + deletions + renames + import and qualified-ref
+      fixups done. Fixed on the way: LList_Haskell_Setup used is_None
+      from Automatic_Refinement.Autoref_Bindings_HOL (reached only
+      accidentally via Zero_Cyc_Check -> DFS_Framework); inlined as
+      (%r. r ~= None). Gate green: LP 14284 + Batch 7786 + LList 144 +
+      all eight off-chain files fully processed. value [GHC] failures
+      in Batch_op (2) and Collatz (2) tolerated per user instruction,
+      pending an isabelle ghc_setup rerun.
+- [ ] Batch B: lemma consolidation + Tree_Compile import trim. Gate,
+      commit.

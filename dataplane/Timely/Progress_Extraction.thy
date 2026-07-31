@@ -1,8 +1,8 @@
-theory Timely_Progress
+theory Progress_Extraction
 
 imports
-  Timely_Propagation_Exec
-  Timely_Operator_State
+  Propagation_Exec
+  Operator_State
 begin
 
 section \<open>Progress Extraction and Dataflow Wrapper\<close>

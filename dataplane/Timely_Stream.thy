@@ -5,7 +5,7 @@ theory Timely_Stream
   "HOL-Library.Multiset"
   Nondeterministic_Dataflow.Coinductive_List_Auxiliary
   Nondeterministic_Dataflow.CSet_LList_Impl
-  "../Lib/AntichainOrder"
+  "Lib/AntichainOrder"
 begin
 
 section \<open>Events and Monotone Streams\<close>

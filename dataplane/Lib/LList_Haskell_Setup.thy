@@ -1,9 +1,8 @@
 theory LList_Haskell_Setup
 
 imports
-  "Coinductive.Coinductive_List"
-  Nondeterministic_Dataflow.CSet_LList_Impl
-  Timely_Infrastructure
+  Coinductive.Coinductive_List
+  CsetUtils
 begin
 
 
@@ -202,7 +201,7 @@ fun find_output_at where
 | "find_output_at (Read p f) x n = Code.abort (STR ''steps_of should not read'') undefined"
 | "find_output_at (Silent op) x (Suc n) = find_output_at op x n"
 | "find_output_at (Choice ops) x (Suc n) = (
-   let ops' = cfilter (Not o is_None) (cimage (\<lambda> op. find_output_at op x n) (ops)) in
+   let ops' = cfilter (\<lambda>r. r \<noteq> None) (cimage (\<lambda> op. find_output_at op x n) (ops)) in
    (if ops' = {||} then None else cthe_elem ops'))"
 | "find_output_at op x _ = Code.abort (STR ''steps_of out of gas'') undefined"
 

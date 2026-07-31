@@ -1,8 +1,8 @@
 theory Timely_Collections
 
 imports
-  "../Timely/Timely_Stream"
-  "../Timely/Timely_Operator_State"
+  "../Timely_Stream"
+  "../Timely/Operator_State"
 begin
 
 declare cin.rep_eq[simp del]

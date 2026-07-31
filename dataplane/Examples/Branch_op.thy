@@ -1,7 +1,7 @@
 theory Branch_op
 
 imports
-  "../Timely/Timely_Builder_Op"
+  "../Timely/Builder_Op"
 begin
 
 definition \<open>branch_op ip p0 p1 c os = builder_op False {|ip|} {|p0, p1|} os (\<lambda> os. 

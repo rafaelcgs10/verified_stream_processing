@@ -3,7 +3,7 @@ theory Ooo_Input_op_Correctness
 imports
   Ooo_Input_op
   Source_op
-  "../Timely/Timely_Dataflow_Op"
+  "../Timely/Dataflow_Op"
   "../Lib/SimulationProofMethods"
 begin
 

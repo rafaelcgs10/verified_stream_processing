@@ -1,7 +1,7 @@
-theory Timely_Ifrontier
+theory Ifrontier
 
 imports
-  Timely_Progress
+  Progress_Extraction
 begin
 
 section \<open>Implied-Frontier Reasoning\<close>

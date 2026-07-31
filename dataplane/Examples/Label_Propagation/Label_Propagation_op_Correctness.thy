@@ -1592,7 +1592,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     done
                   subgoal 
                     using G
-                    by (smt (verit) Timely_Operator_State.intsum_add_caps array_rules(3,4) graph_summar_nt_intsum_cong intsum_drop_caps intsum_input_tl
+                    by (smt (verit) Operator_State.intsum_add_caps array_rules(3,4) graph_summar_nt_intsum_cong intsum_drop_caps intsum_input_tl
                         intsum_produces)
                   using subgraph_inv(2) apply assumption 
                   done
@@ -1878,7 +1878,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     done
                   subgoal premises
                     using G
-                    by (smt (verit, best) Timely_Operator_State.intsum_add_caps fun_upd_other fun_upd_same graph_summar_nt_intsum_cong intsum_drop_caps intsum_input_tl intsum_produces)
+                    by (smt (verit, best) Operator_State.intsum_add_caps fun_upd_other fun_upd_same graph_summar_nt_intsum_cong intsum_drop_caps intsum_input_tl intsum_produces)
                   subgoal
                     using subgraph_inv(2) by assumption
                   done

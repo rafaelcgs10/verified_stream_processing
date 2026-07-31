@@ -1,7 +1,23 @@
-theory Timely_Operator_State
+theory Operator_State
 
 imports
-  Timely_Base
+  Nondeterministic_Dataflow.Operator
+  Nondeterministic_Dataflow.BNA_Operators
+  Progress_Tracking.Propagate
+  Nondeterministic_Dataflow.Eval
+  "HOL-Library.While_Combinator"
+  "../Lib/Executable"
+  "../Lib/Termination"
+  "../Lib/Zero_Cyc_Check"
+  "../Lib/Locations"
+  "../Lib/DataplaneUtils"
+  "../Lib/CsetUtils"
+  "../Lib/ZmsetUtils"
+  "../Lib/ListUtils"
+  Containers.Collection_Order
+  "../Lib/AntichainOrder"
+  "../Lib/Bots"
+  "../Lib/MyMisc"
 begin
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
