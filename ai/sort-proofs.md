@@ -170,7 +170,18 @@ Misplaced-lemma moves (with the sectioning pass, one group at a time):
       - [x] 6d small Correctness files + Timely_Stream (3) +
             Zero_Cyc_Check (3) + Batch_op_Correctness subsections (4).
             Gate green.
-      - [ ] 6e lemma moves: MyMisc path block -> Zero_Cyc_Check,
-            DataplaneUtils prod-defaults -> MyProduct_Instances and
-            cfilter_cinsert -> CsetUtils, plus sections for both donors.
-- [ ] Phase 7 (optional, needs user decision) - split Input1.thy.
+      - [x] 6e lemma moves: MyMisc path block -> AntichainOrder (first
+            tried Zero_Cyc_Check, but the proofs cite
+            in_antichain_from_list and two Automatic_Refinement.Misc
+            artifacts: the oo notation, now inlined, and list_e_eq_lel,
+            replaced by a local singleton_eq_append_conv),
+            DataplaneUtils prod-defaults -> MyProduct_Instances,
+            cfilter_cinsert -> CsetUtils, sections for both donors.
+            Also opened and checked the eight off-chain example files
+            that no gate had covered.
+- [-] Phase 7 - split Input1.thy: DEFERRED by user decision
+      (2026-07-31). Not worth it now; revisit if LP-chain check times
+      become a bottleneck. Sketch: Input1 splits along its top-level
+      sections into batch facts (518-2683) / invariant transfer +
+      base-state projection (2684-4371) / loop_updates function (4372+),
+      after computing which facts Input0 and Loop actually cite.

@@ -143,4 +143,8 @@ lemma cUnion_cUn_distrib[simp]:
   apply (auto simp add:  cin.rep_eq)
   done
 
+lemma cfilter_cinsert:
+  "cfilter P (cinsert a A) = (if P a then cinsert a (cfilter P A) else cfilter P A)"
+  by force
+
 end

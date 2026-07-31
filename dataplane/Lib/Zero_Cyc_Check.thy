@@ -641,4 +641,5 @@ lemma empty_graph_no_zero_cyc:
 
 abbreviation "has_zero_cyc s \<equiv> cyc_checker_codeT (graph_from_weights s)"
 
+
 end

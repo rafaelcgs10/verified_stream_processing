@@ -6,6 +6,10 @@ begin
 
 abbreviation "isr x ≡ ¬ (isl x)"
 
+section ‹General-Purpose Facts›
+
+text ‹Congruence rules, lazy list shifts, and relational sets.›
+
 lemma ldropWhile_LConsD:
   "ldropWhile P lxs = LCons x lxs' ⟹
    ¬ P x"
@@ -51,6 +55,10 @@ lemma rel_set_reflI:
   apply auto
   done
 
+section ‹Buffer Heads and Enqueues›
+
+text ‹How BHD and BENQ interact with appending.›
+
 lemma BAPPEND_BENQ_BHD':
   "buf1 p ≠ [] ⟹ BHD p buf1 = x ⟹ (BTL p buf1) >> (BENQ p x buf2) = buf1 >> buf2"
   unfolding BULK_BENQ_def BTL_def BENQ_def BHD_def by force
@@ -62,6 +70,10 @@ lemma BHD_map[simp]:
   apply (auto simp add: hd_map)
   done
 
+
+section ‹Concatenations of Lazy Lists›
+
+text ‹Heads and tails of concatenated, zipped lazy lists.›
 
 lemma lhd_concat_ldropWhile:
   "lfinite (ltakeWhile ((=) []) lxs) ⟹
@@ -146,15 +158,6 @@ lemma ltl_lconcat_lmap_zip:
     done
   done
 
-instantiation prod :: (defaults, type) defaults
-begin
-definition defaults_prod where "defaults_prod = defaults × defaults"
-instance
-proof qed
-end
-
-lemma cfilter_cinsert:
-  "cfilter P (cinsert a A) = (if P a then cinsert a (cfilter P A) else cfilter P A)"
-  by force
 
 end
+

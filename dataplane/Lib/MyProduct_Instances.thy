@@ -545,4 +545,15 @@ lemma myprod_le_if_myfst_le_mysnd_zero:
   using assms
   apply (simp add: myprod_le_iff_myfst_le_if_mysnd_zero)
   done
+section \<open>Defaults for Products\<close>
+
+text \<open>The defaults instance for pairs.\<close>
+
+instantiation prod :: (defaults, type) defaults
+begin
+definition defaults_prod where "defaults_prod = defaults \<times> defaults"
+instance
+proof qed
+end
+
 end
