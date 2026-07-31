@@ -217,17 +217,82 @@ Principle: Timely/ holds the Timely Dataflow infrastructure only.
    with a strict filter (every constant resolves in Operator_State) and
    MCP-verifies each mover.
 5. Batch B extras: trim Tree_Compile's inlined import list down to what
-   it uses, MCP-verified.
+   it uses, MCP-verified. ATTEMPTED AND REVERTED: the file uses
+   Zero_Cyc_Check constants and its downstream (Propagation_Exec and
+   further) relied on the transitive externals (map_entry, ccompare
+   instances, while_option, the oo notation). A future trim needs a
+   real used-constants analysis per file, not name grepping.
 
 ## Phase 8 progress
 
 - [x] Batch A: moves + deletions + renames + import and qualified-ref
-      fixups done. Fixed on the way: LList_Haskell_Setup used is_None
-      from Automatic_Refinement.Autoref_Bindings_HOL (reached only
+      fixups done, committed as efa63eb. Fixed on the way:
+      LList_Haskell_Setup used is_None from
+      Automatic_Refinement.Autoref_Bindings_HOL (reached only
       accidentally via Zero_Cyc_Check -> DFS_Framework); inlined as
       (%r. r ~= None). Gate green: LP 14284 + Batch 7786 + LList 144 +
       all eight off-chain files fully processed. value [GHC] failures
       in Batch_op (2) and Collatz (2) tolerated per user instruction,
       pending an isabelle ghc_setup rerun.
-- [ ] Batch B: lemma consolidation + Tree_Compile import trim. Gate,
-      commit.
+- [ ] Batch B: APPLIED ON DISK, UNCOMMITTED, GATE PENDING. Exact state
+      at handoff (2026-07-31 ~15:00):
+      - Working tree has 4 modified dataplane files, deliberately
+        uncommitted until the gate is green:
+        Timely/Operator_State.thy (added subsection "Consolidated
+        State Laws" with intsum_CONSUMES and de1_CONSUMES before the
+        theory end; a produ_release_caps duplicate was inserted and
+        removed again, the file already had it at ~line 320),
+        Examples/Label_Propagation/Label_Propagation_op.thy (the two
+        lemmas removed), .../Label_Propagation_op_Correctness_Extras.thy
+        (redundant produ_release_caps copy removed),
+        .../Labels.thy (stale FIXME comment removed).
+      - Tree_Compile.thy is back to its committed (Batch A) content:
+        the import trim was attempted and REVERTED, see item 5 above.
+      - TO FINISH BATCH B: wait until
+        Examples/Label_Propagation/Label_Propagation_op_Correctness.thy
+        and Examples/Batch_op_Correctness.thy are fully_processed with
+        error_count 0 (Timely/Operator_State, Timely/Tree_Compile,
+        Timely/Propagation_Exec should also be clean), then
+        git add the four files + this tracker and commit as
+        "Sorting phase 8b: consolidate state laws into Operator_State".
+        If new errors appear in the consolidated lemmas, the fallback
+        is reverting the four files (git checkout -- <files>).
+
+## Operational notes for continuing this work
+
+- Isabelle MCP: the harness-level mcp tools may be missing; a working
+  fallback is piping JSON-RPC to
+  python3 /home/rafael/Documents/AutoCorrode/iq/iq_bridge.py
+  (helper: /home/rafael/.claude/jobs/03116bc3/tmp/iq.sh, usage
+  "iq.sh <tool> <json-args>"; authenticate token MY_TOKEN is
+  handled inside). Key tools: get_processing_status {path},
+  get_diagnostics {scope:file, path, severity:error}, open_file,
+  write_file (str_replace/insert/line; file must be open in jEdit;
+  pass wait_until_processed:false or slow proofs hang the call),
+  save_file, read_file (mode "Line"/"Search"), get_command_info
+  (mode line, start_line/end_line).
+- Gate protocol: after every batch, poll get_processing_status on the
+  two example files until fully_processed with error_count 0; also
+  check the eight off-chain Examples files (Collatz, Branch_op,
+  Concat_op, Tmap_op, Source_op, Accumulator,
+  Increment_op_Correctness, Ooo_Input_op_Correctness) - jEdit parks
+  unfocused buffers, so force them with open_file followed by
+  get_command_info on the last line with wait_until_processed:true.
+- Known tolerated errors: value [GHC] commands in Examples/Batch_op.thy
+  (2) and Examples/Collatz.thy (2) fail until the user reruns
+  isabelle ghc_setup. Everything else must be error-free.
+- File moves/renames need an Isabelle/jEdit RESTART by the user (ask
+  them); buffer-level edits via write_file do not.
+- The Poly/ML heap degrades after hours of reprocessing (seen at
+  26 GB, GC stalls where zero commands finish for 12+ min). Remedy:
+  ask the user to restart Isabelle; a fresh instance rechecks the
+  full chain in ~20 min.
+- Editing rules: pair-proving.md in this folder applies (edit .thy
+  via MCP write_file, keep MCP timeouts short, the user's jEdit check
+  is the final say). Isabelle theory names must be unique across the
+  whole session (folders do not namespace them).
+- Remaining open items beyond Phase 8: Phase 7 (Input1 split) is
+  deferred, see above; the Dataplane ROOT session entry is still
+  malformed/empty (optional fix); Set_op.thy line ~10 has a
+  "FIXME: move me" comment about generic wsteps lemmas that could go
+  to Lib/Operators_Utils.
