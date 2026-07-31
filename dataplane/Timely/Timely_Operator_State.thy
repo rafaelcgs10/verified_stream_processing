@@ -7,6 +7,10 @@ begin
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
+section \<open>State Records\<close>
+
+text \<open>Subgraphs, shared state, and the operator state record.\<close>
+
 type_synonym 'a change_batch = "'a list"
 
 record ('id, 'p, 't) subgraph =
@@ -70,12 +74,21 @@ definition "default_internal_summary = (\<lambda> p1 p2. if p1 = p2 then [0] els
 abbreviation "init_op_states \<equiv> (\<lambda> x. init_op_state default_internal_summary (x = 0))"
 
 
+section \<open>Typed State Extensions\<close>
+
+text \<open>Record extensions carrying typed input buffers.\<close>
+
 record ('p, 'd, 'd1, 't) operator_state_ty = "('p, 'd, 't) operator_state" +
   en1 :: "'d1 \<Rightarrow> 'd" de1 :: "'d \<Rightarrow> 'd1" is_en1 :: "'d \<Rightarrow> bool"
 record ('p, 'd, 'd1, 'd2, 't) operator_state_ty2 = "('p, 'd, 'd1, 't) operator_state_ty" +
   en2 :: "'d2 \<Rightarrow> 'd" de2 :: "'d \<Rightarrow> 'd2" is_en2 :: "'d \<Rightarrow> bool"
 record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) operator_state_ty2" +
   en3 :: "'d3 \<Rightarrow> 'd" de3 :: "'d \<Rightarrow> 'd3" is_en3 :: "'d \<Rightarrow> bool"
+
+section \<open>Primitive State Operations\<close>
+
+text \<open>Delaying, producing, consuming, minting, dropping, and releasing
+  capabilities on the operator state.\<close>
 
 definition "delay_cap os cap incr = (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
@@ -131,6 +144,11 @@ definition "add_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap
 
 definition "consumes os p t d = add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) (concat (map (\<lambda> p'. map (\<lambda> t'. Cap (t + t') p') (intsum os p p')) enum_class.enum))"
 
+
+section \<open>Frame and Simp Rules\<close>
+
+text \<open>Simp rules for how each primitive operation changes each state
+  field.\<close>
 
 lemma outpu_obtain_progress[simp]:
   "outpu (fst (obtain_progress os)) = outpu os"

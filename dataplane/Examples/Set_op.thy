@@ -7,6 +7,10 @@ imports
   "../Lib/Operators_Utils"
 begin
 
+section \<open>Weak Steps of the Set Operator\<close>
+
+text \<open>Introduction rules for weak steps of set_op.\<close>
+
 (* FIXME: move me *)
 lemma wsteps_step_tau[intro]:
   "wsteps vios op2 op3 \<Longrightarrow>
@@ -367,6 +371,11 @@ lemma wstep_set_op_elim:
     done
   done
 
+section \<open>Output Traces\<close>
+
+text \<open>Weak-step lemmas pushing outputs through sequences of silent
+  steps.\<close>
+
 lemma wsteps_map_VOut_step_taus_set_op:
   "wsteps (map (\<lambda>(x, y). VOut x y) xs) op op' \<Longrightarrow>
    op'' = (set_op (cUn (cset_of_llist (llist_of xs)) S) S' op') \<Longrightarrow>
@@ -698,6 +707,10 @@ lemma wtraced_trace_exec:
     done
   done
 
+section \<open>Trace Soundness\<close>
+
+text \<open>Outputs of the operator agree with the set semantics.\<close>
+
 lemma set_op_trace_soundness:
   "VOut p x \<in> lset ios \<Longrightarrow>
    set_op_trace S S' op ios \<Longrightarrow>
@@ -786,6 +799,10 @@ lemma set_op_trace_soundness:
       done
     done
   done
+
+section \<open>Finished Computations\<close>
+
+text \<open>The wfinished predicate and closure properties.\<close>
 
 lemma wfinished_csubset_eq[intro]:
   "wfinished (set_op S S' op) \<Longrightarrow> csubset_eq S S'"
@@ -906,6 +923,10 @@ lemma set_op_trace_trace_exec:
     done
   done
 
+
+section \<open>Trace Completeness\<close>
+
+text \<open>Every specified output is eventually produced by the operator.\<close>
 
 lemma set_op_trace_completeness:
   "VOut p x \<in> lset ios \<Longrightarrow>
@@ -1032,6 +1053,10 @@ lemma wtraced_set_op_trace:
 corec set_spec_op :: "('a \<times> 'b) cset \<Rightarrow> ('a \<times> 'b) cset \<Rightarrow> ('a, 'a, 'b) op"  where
   "set_spec_op S S' = 
   (Choice (cimage (\<lambda> (p, x). Write (set_spec_op S (cinsert (p, x) S')) p x) (S - S')))"
+
+section \<open>The Specification Operator\<close>
+
+text \<open>An abstract set operator used as the simulation target.\<close>
 
 lemma step_set_spec_op_elim:
   assumes "step io (set_spec_op S S') op'"

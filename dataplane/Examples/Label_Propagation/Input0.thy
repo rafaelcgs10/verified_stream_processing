@@ -4,6 +4,10 @@ imports
   Input1
 begin
 
+section \<open>Frame Facts for the Input-0 Step State\<close>
+
+text \<open>Simp rules for the fields untouched by the input-0 step state.\<close>
+
 lemma input_label_prop_input0_step_state[simp]:
   \<open>input (label_prop_input0_step_state os d t) = (input os)(0 := tl (input os 0))\<close>
   unfolding label_prop_input0_step_state_def
@@ -272,6 +276,10 @@ proof -
     unfolding wf_label_prop_updates_def step_input1 step_de1 step_ts
     by (smt (verit, best) list.set_intros(2) split_beta')
 qed
+
+section \<open>Label Invariants across Input-0 Steps\<close>
+
+text \<open>labels_inv and related invariants are preserved by input-0 steps.\<close>
 
 lemma labels_inv_label_prop_input0_step_stateI:
   fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
@@ -736,6 +744,11 @@ proof -
 qed
 
 
+section \<open>Batched Prefix Equations\<close>
+
+text \<open>Prefix stability of the batched input-0 function on edges and
+  labels.\<close>
+
 lemma all_edges_fst_label_prop_input0_batched_prefix_eq:
   assumes input_eq: \<open>input os 0 = msgs @ rest\<close>
     and inv: \<open>label_prop_upd_inv os\<close>
@@ -1029,6 +1042,11 @@ proof -
     by (simp add: wf_label_prop_updates_un)
 qed
 
+
+section \<open>Well-Formed Updates after Output Shifts\<close>
+
+text \<open>wf_label_prop_updates holds for batched input-0 results with
+  shifted outputs.\<close>
 
 lemma wf_label_prop_updates_fst_label_prop_input0_batched_output1_shiftI:
   fixes os :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>

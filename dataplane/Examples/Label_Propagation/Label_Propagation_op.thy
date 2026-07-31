@@ -14,6 +14,11 @@ declare cin.rep_eq[simp del]
 declare cin.rep_eq[symmetric, simp]
 
 
+section \<open>The Label-Propagation State\<close>
+
+text \<open>The operator state record and the graph views used by the
+  algorithm.\<close>
+
 record ('d, 'v :: linorder, 't1, 't2) label_propagation_state =
   \<open>(2, 'd, 'v \<times> 'v, 'v set set, ('t1, 't2) myprod) operator_state_ty2\<close> +
   timestamps :: \<open>'t1 list\<close> graph :: \<open>'t1 \<Rightarrow> 'v \<Rightarrow> 'v list\<close> vertices :: \<open>'t1 \<Rightarrow> 'v list\<close>
@@ -40,6 +45,11 @@ lemma set_neighbors:
   "set (neighbors os t v) = (\<Union>t'\<in>{t' \<in> set (timestamps os). t' \<le> t}. set (graph os t' v))"
   unfolding neighbors_def
   by simp
+
+section \<open>Update Invariants and Frame Rules\<close>
+
+text \<open>The label_prop_upd_inv and wf_label_prop_updates invariants with
+  frame rules for every state field.\<close>
 
 definition label_prop_upd_inv where
   "label_prop_upd_inv os \<longleftrightarrow>
@@ -978,6 +988,11 @@ qed
 
 
 
+section \<open>Edge Enumeration under Label Updates\<close>
+
+text \<open>all_edges is stable under label updates on either side of the
+  order.\<close>
+
 lemma all_edges_eq_le:
   fixes t :: "'t::order"
   assumes V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
@@ -1211,6 +1226,10 @@ shows "all_edges
 
 
 
+section \<open>Batching and the Operator Definition\<close>
+
+text \<open>Record-update batches and the label_propagation_op operator itself.\<close>
+
 definition label_prop_edge_record_update where
   \<open>label_prop_edge_record_update old_os event_t src_v dst_v updated_v updated_label =
     old_os\<lparr>
@@ -1308,6 +1327,11 @@ definition label_propagation_op where
 
 
 (* FIXME: move me closer to dependencies *)
+
+section \<open>Frame Facts for the Operator State\<close>
+
+text \<open>Vertices, timestamps, and min_label are unchanged by capability and
+  buffer updates.\<close>
 
 lemma vertices_drop_caps[simp]:
   "vertices (drop_caps os caps) = vertices os"
@@ -2628,6 +2652,11 @@ qed
 
 
 
+section \<open>Label Invariants under Input Steps\<close>
+
+text \<open>Preservation of labels_inv and labels_stable across input steps and
+  record updates.\<close>
+
 lemma min_label_label_update_v_cases:
   fixes q t1 :: "'t::order"
   assumes timestamps_eq: "timestamps os' = timestamps os"
@@ -3181,6 +3210,10 @@ lemma step_compower_label_propagation_op_input0[intro]:
 
 
 
+
+section \<open>Batched Input Step Functions\<close>
+
+text \<open>Executable step-state and batched forms of the input handlers.\<close>
 
 definition label_prop_input0_step_state where
   \<open>label_prop_input0_step_state os d t = (
