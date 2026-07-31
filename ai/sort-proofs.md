@@ -162,4 +162,15 @@ Misplaced-lemma moves (with the sectioning pass, one group at a time):
       (LP 14284 + Batch 7770 commands, 0 errors, full recheck ~6 min).
 - [ ] Phase 6 - sectioning + lemma moves, file by file per priority list.
       Check + commit per file batch.
+      - [x] 6a Produces (6 sections) + Consumes (3). Gate green.
+      - [x] 6b AntichainOrder (7) + ZmsetUtils, ListUtils, CsetUtils,
+            Locations (2-7 each). Gate green.
+      - [x] 6c Label_Propagation_op (7) + Timely_Operator_State (4) +
+            Set_op (6) + Input0 (4). Gate green.
+      - [x] 6d small Correctness files + Timely_Stream (3) +
+            Zero_Cyc_Check (3) + Batch_op_Correctness subsections (4).
+            Gate green.
+      - [ ] 6e lemma moves: MyMisc path block -> Zero_Cyc_Check,
+            DataplaneUtils prod-defaults -> MyProduct_Instances and
+            cfilter_cinsert -> CsetUtils, plus sections for both donors.
 - [ ] Phase 7 (optional, needs user decision) - split Input1.thy.

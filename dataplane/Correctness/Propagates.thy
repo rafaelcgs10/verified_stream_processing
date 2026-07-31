@@ -8,6 +8,10 @@ begin
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
+section \<open>Propagation Preserves the Configuration Invariants\<close>
+
+text \<open>propagate_all keeps c_pts and the tracker invariants intact.\<close>
+
 lemma propagate_all_preserves_c_pts:
   assumes "propagate_all summary c = Some c'"
   shows "c_pts c' = c_pts c"
@@ -291,6 +295,11 @@ lemma dataplane_tracker_inv_front_update:
   done
 
 
+
+section \<open>Implied Frontiers after Propagation\<close>
+
+text \<open>What propagate_all guarantees about implied frontiers and exit
+  scopes.\<close>
 
 lemma propagated_ifrontier_exit_scopeI:
   assumes prop_all: \<open>propagate_all su c0 = Some c1\<close>

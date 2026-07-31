@@ -8,6 +8,11 @@ theory Timely_Stream
   "../Lib/AntichainOrder"
 begin
 
+section \<open>Events and Monotone Streams\<close>
+
+text \<open>Stream events carry data, drops, or mints; monotone streams only
+  use held capabilities.\<close>
+
 datatype ('t :: order, 'd) event = Data (time: 't) (data: 'd) | Drop (time: 't) | Mint (time: 't)
 
 coinductive timely_monotone :: "('t::order, 'd) event llist \<Rightarrow> 't multiset \<Rightarrow> bool" where
@@ -19,6 +24,10 @@ coinductive timely_monotone :: "('t::order, 'd) event llist \<Rightarrow> 't mul
 inductive_cases timely_monotone_LNilE[elim!]: "timely_monotone LNil C"
 inductive_cases timely_monotone_LConsE[elim!]: "timely_monotone (LCons e lxs) C"
 
+section \<open>Vacancy and Timely Progress\<close>
+
+text \<open>Vacant timestamps and the progress condition on streams.\<close>
+
 definition "vacant t C = (\<forall>u \<le> t. count C u = 0)"
 
 lemma vacant_diff:
@@ -29,6 +38,10 @@ definition "timely_progress lxs C =
    (\<forall> t.
      (\<exists> n \<le> llength lxs.
        vacant t (C + mset (map time (filter is_Mint (ltaken n lxs))) - mset (map time (filter is_Drop (ltaken n lxs))))))"
+
+section \<open>Timely Input Streams\<close>
+
+text \<open>Input streams whose events respect the announced capabilities.\<close>
 
 definition "timely_input_stream lxs C =
  (timely_monotone lxs C \<and> timely_progress lxs C)"

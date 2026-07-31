@@ -4,6 +4,10 @@ imports
   General
 begin
 
+section \<open>Invariant Preservation under Mint\<close>
+
+text \<open>The dataplane tracker invariant survives minting a capability.\<close>
+
 lemma dataplane_tracker_inv_mints:
   assumes D: "dataflow_topology (summ sg) (-+-)"
   shows
@@ -318,6 +322,11 @@ lemma dataplane_tracker_inv_mints:
       done
     done
   done
+
+section \<open>Minting Many and Adding Capabilities\<close>
+
+text \<open>Iterated mints and directly added capabilities preserve the
+  invariant.\<close>
 
 lemma dataplane_tracker_inv_mints_many:
   assumes D: "dataflow_topology (summ sg) (-+-)"

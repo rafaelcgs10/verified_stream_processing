@@ -5,6 +5,10 @@ imports
 begin
 
 
+section \<open>The Initial Configuration\<close>
+
+text \<open>The empty initial configuration satisfies the invariants.\<close>
+
 lemma init_config_empty_conf:
   assumes D: "dataflow_topology su (-+-)"
   shows "dataflow_topology_from_tree.init_config initial_conf"

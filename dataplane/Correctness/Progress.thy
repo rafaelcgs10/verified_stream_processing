@@ -8,6 +8,10 @@ begin
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
+section \<open>Invariant Preservation under Progress Extraction\<close>
+
+text \<open>Extracting progress changes from an operator keeps the invariant.\<close>
+
 lemma dataplane_tracker_inv_progress:
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    dataflow_topology (summ sg) (-+-) \<Longrightarrow>

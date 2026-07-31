@@ -17,6 +17,10 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
 
 (* Zero cycle checking and it correctness proof *)
 
+section \<open>Graphs from Weight Functions\<close>
+
+text \<open>Building graphs that keep only zero-weight summary edges.\<close>
+
 abbreviation remove_non_zero_weights where
   "remove_non_zero_weights weights l1 l2 \<equiv> 
    (if (0::'a) \<in>\<^sub>A weights l1 l2 then antichain_from_list [0::'a::{order, monoid_add}] else antichain_from_list [])"
@@ -230,6 +234,11 @@ lemma fst_snd_eq: "(\<lambda>x. fst (snd x) = 0) = (\<lambda>(s, l, t). l = 0)"
   by (simp add: split_def)
 
 
+section \<open>Enumerable Graphs\<close>
+
+text \<open>The graph_enum locale connects weight functions to the DFS
+  framework.\<close>
+
 locale graph_enum = Graph.graph weights
   for weights :: "'vtx :: {order, enum} \<Rightarrow> 'vtx \<Rightarrow> 'lbl :: {order, monoid_add} antichain"
 begin
@@ -424,6 +433,11 @@ proof -
   then have "no_zero_cycle_alt weights" using less_add_same_cancel1[symmetric] by blast
   then show ?thesis by blast
 qed
+
+section \<open>Executable Checkers\<close>
+
+text \<open>Boolean checkers for self loops and zero cycles on enumerable
+  graphs.\<close>
 
 (* Checks for self loops  *)
 definition no_self_loop_checker  where

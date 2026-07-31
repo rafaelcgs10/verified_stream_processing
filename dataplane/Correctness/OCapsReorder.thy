@@ -9,6 +9,11 @@ declare cin.rep_eq[simp del]
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
+section \<open>Reordering Output Capabilities\<close>
+
+text \<open>Replacing the capability lists by permutations keeps the
+  invariant.\<close>
+
 lemma dataplane_tracker_inv_replace_ocaps:
   "dataplane_tracker_inv os' cbufs sg \<Longrightarrow>
    mset (ocaps (os nid) p) = mset C \<Longrightarrow>

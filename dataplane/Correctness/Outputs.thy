@@ -8,6 +8,11 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
 
+section \<open>Invariant Preservation under Output Updates\<close>
+
+text \<open>Updating output buffers outside the tracked fields keeps the
+  invariant.\<close>
+
 lemma dataplane_tracker_inv_update_outputs_outside:
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    os' = os(nid := (os nid)\<lparr> outpu := (\<lambda> p'. if p' = p then xs else outpu (os nid) p') \<rparr>) \<Longrightarrow>
@@ -150,6 +155,10 @@ lemma dataplane_tracker_inv_update_outputs_outside:
       done
     done
   done
+
+section \<open>Summary Lookup Facts\<close>
+
+text \<open>Resolving summaries through the wiring of the dataflow graph.\<close>
 
 lemma the_elem_graph_summar_nt_summ:
   "the_elem {(nid'a, p'a). summ sg (Loc nid'a (Src p'a)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A} = (nid, p) \<Longrightarrow>

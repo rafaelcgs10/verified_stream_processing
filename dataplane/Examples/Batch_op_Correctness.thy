@@ -31,6 +31,10 @@ definition "my_summ = (\<lambda> l1 l2.
    then [0 :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}]
    else [])"
 
+subsection \<open>Topology Facts\<close>
+
+text \<open>Simp rules about the concrete two-node summary topology.\<close>
+
 lemma antichain_from_list_pair_set_singleton[simp]:
   "{(nid' :: 2, p' :: 1). antichain_from_list (if nid' = 0 then [0] else []) \<noteq> {}\<^sub>A} = {(0, 0)}"
   apply (auto 10 10 simp add: if_distrib antichain_from_list_singleton)
@@ -137,6 +141,10 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
     done
   done 
 
+subsection \<open>The Wired Operators\<close>
+
+text \<open>The input, transform, and graph operators of the batch pipeline.\<close>
+
 abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
 abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_op os f)"
 
@@ -151,6 +159,10 @@ lemma outputs_at_target_my_summ[simp]:
   apply (auto simp add: antichain_from_list_singleton split: prod.splits if_splits)
   done
 
+subsection \<open>Output Batches\<close>
+
+text \<open>Collecting the outputs a batch function produces at a timestamp.\<close>
+
 definition "output_batches f F batches = (let ts = outputs_ts F (map snd batches) in
                                           concat (map (\<lambda> t. map (\<lambda> d. (d, t)) (f (map fst (filter (\<lambda> (d, t'). t' = t) batches)))) ts))" 
 
@@ -162,6 +174,11 @@ lemma output_batchesI:
   unfolding output_batches_def Let_def outputs_ts_def
   apply auto
   done
+
+subsection \<open>The Generalized Correctness Lemma\<close>
+
+text \<open>One large induction establishing correctness for the wired batch
+  dataflow.\<close>
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
