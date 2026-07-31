@@ -6,7 +6,7 @@ theory Zero_Cyc_Check
     (*     "Collections.Collections"
  *)
     "DFS_Framework.Cyc_Check"
-    Propagation_Extras.Executable
+    Executable
     Progress_Tracking.Graph
     Progress_Tracking.Auxiliary
 

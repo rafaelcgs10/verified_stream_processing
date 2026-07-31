@@ -150,9 +150,10 @@ Misplaced-lemma moves (with the sectioning pass, one group at a time):
       way: Executable.thy imported "../dataplane/Locations", now
       "../dataplane/Lib/Locations". Gate green (LP 14284 + Batch 7770 +
       Executable 513 commands, 0 errors).
-- [ ] Phase 4 - dissolve the propagation_extras <-> dataplane folder cycle:
-      move Executable.thy and Termination.thy into dataplane/Lib/, rewrite
-      the five referencing headers (see item 2 above). Check, commit.
+- [x] Phase 4 - dissolved the propagation_extras <-> dataplane folder
+      cycle: Executable.thy and Termination.thy moved into dataplane/Lib/,
+      five referencing headers rewritten. Gate green (LP 14284 + Batch 7770
+      + Executable 513 commands, 0 errors).
 - [ ] Phase 5 - import trims, one at a time, MCP-verified. Check, commit.
 - [ ] Phase 6 - sectioning + lemma moves, file by file per priority list.
       Check + commit per file batch.
