@@ -11,6 +11,11 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
 
+section \<open>Channel Data Justifies Pointstamps\<close>
+
+text \<open>Each timestamp of data sitting in a channel is covered by a
+  positive pointstamp count at the receiving target, counting in-flight
+  productions.\<close>
 lemma data_in_channel_justifies_c_pts_alt:
   "Trg_caps_inv caps chnls \<Longrightarrow>
    c_pts_inv (change_multiplicities su (extract_prog Enum.enum nt os) c) caps \<Longrightarrow> 
@@ -112,6 +117,10 @@ lemma data_in_channel_justifies_c_pts_alt:
     done
   done
 
+section \<open>Extracted Progress Stays above the Implied Frontier\<close>
+
+text \<open>Progress changes extracted at a consume step never fall below the
+  implied frontier of the consuming location.\<close>
 lemma extract_prog_changes_above_impl_inv_consumes:
   assumes D: "dataflow_topology su (-+-)"
     and C: "cbufs (nid, p) = (d, t) # cbufs'"
@@ -1157,6 +1166,10 @@ lemma extract_prog_changes_above_impl_inv_consumes:
     done
   done
 
+section \<open>Invariant Preservation under Consume\<close>
+
+text \<open>The dataplane tracker invariant survives consuming data from a
+  channel, for a single consume and for a fold over several.\<close>
 lemma dataplane_tracker_inv_consumes:
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    cbufs (nid, p) = (d, t) # xs \<Longrightarrow>

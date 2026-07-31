@@ -17,6 +17,10 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
    (\<forall> p. to_zmset (drops p) \<subseteq>#\<^sub>z zmset (map snd (filter (\<lambda>x. p = fst x) produs))) \<Longrightarrow>
 *)
 
+section \<open>Graph Path Weights and Filtered Sums\<close>
+
+text \<open>Path-weight facts for the summary graph and sums over filtered
+  signed multisets.\<close>
 lemma zero_in_graph_path_weight[simp,intro]:
   "nt = graph_to_nxt su \<Longrightarrow>
    Graph.graph su \<Longrightarrow>
@@ -144,6 +148,10 @@ termination
 
 declare find_timestamp.simps[simp del]
 
+section \<open>Backtracking Induction over Summaries\<close>
+
+text \<open>The backtracks predicate walks timestamps backwards along summary
+  edges, and graph_induct is the derived induction principle.\<close>
 definition "backtracks su P T = (\<forall> t l. t \<in> set (T l) \<longrightarrow> (\<exists> l' t' s. l \<noteq> l' \<and> s \<in>\<^sub>A su l' l \<and> t = t' -+- s \<and> t' \<in> set (T l')) \<or> P l t)"
 
 
@@ -192,6 +200,10 @@ lemma graph_induct:
     done
   done
 
+section \<open>Zero Predecessors\<close>
+
+text \<open>Predecessor locations whose summaries leave a timestamp unchanged,
+  with a well-founded weight for inducting over them.\<close>
 context dataflow_topology
 begin
 
@@ -243,6 +255,10 @@ end
 end
 
 
+section \<open>Invariant Preservation under Produces and Drops\<close>
+
+text \<open>The central lemma of this theory: the dataplane tracker invariant
+  survives a step that produces data and drops capabilities.\<close>
 lemma dataplane_tracker_inv_produces_drops:
   fixes drops :: "'p :: {enum,linorder} \<Rightarrow> 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} list"
   assumes D: "dataflow_topology (summ sg) (-+-)"
@@ -1450,6 +1466,10 @@ lemma dataplane_tracker_inv_produces_drops:
     done
   done
 
+section \<open>Cleaning, Singletons, and Reordered Drops\<close>
+
+text \<open>Variants of the main lemma: cleaned inputs, singleton productions,
+  individual capability drops, and reordering of the change list.\<close>
 lemma dataplane_tracker_inv_clean_input:
   "(\<forall>nid. intsum (os nid) = intsum (os' nid) \<and>
     ocaps (os nid) = ocaps (os' nid) \<and>
@@ -1818,6 +1838,10 @@ proof -
 qed
 
 
+section \<open>Releasing and Adding Capabilities\<close>
+
+text \<open>Invariant preservation when capabilities are released or added
+  after production.\<close>
 lemma dataplane_tracker_inv_release_caps:
   assumes D: "dataflow_topology (summ sg) (-+-)"
     and Inv: "dataplane_tracker_inv os cbufs sg"
