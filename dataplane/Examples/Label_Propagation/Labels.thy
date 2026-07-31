@@ -317,10 +317,6 @@ proof -
   thus ?thesis by (simp add: assms(1) w_assigned_label)
 qed
 
-(* FIXME: move me to Operator_State.thy. *)
-
-
-
 
 definition label_prop_covered_inv where
   \<open>label_prop_covered_inv os msgs \<longleftrightarrow>

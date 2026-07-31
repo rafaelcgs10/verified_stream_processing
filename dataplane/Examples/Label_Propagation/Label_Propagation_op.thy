@@ -3347,10 +3347,6 @@ next
 qed
 
 
-lemma intsum_CONSUMES[simp]:
-  \<open>intsum (CONSUMES p xs os) = intsum os\<close>
-  by (induct xs arbitrary: os) (auto split: prod.splits)
-
 lemma vertices_CONSUMES[simp]:
   \<open>vertices (CONSUMES p xs os) = vertices os\<close>
   unfolding fold_consumes by simp
@@ -3358,10 +3354,6 @@ lemma vertices_CONSUMES[simp]:
 lemma label_CONSUMES[simp]:
   \<open>label (CONSUMES p xs os) = label os\<close>
   unfolding fold_consumes by simp
-
-lemma de1_CONSUMES[simp]:
-  \<open>de1 (CONSUMES p xs os) = de1 os\<close>
-  by simp
 
 lemma all_vertices_CONSUMES[simp]:
   \<open>all_vertices (CONSUMES p xs os) = all_vertices os\<close>

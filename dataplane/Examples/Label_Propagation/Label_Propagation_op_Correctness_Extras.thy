@@ -1075,11 +1075,6 @@ lemma Inr_2_1_in_ran[simp]:
 find_consts "_ list \<Rightarrow> _ cset"
 
 (* FIXME: move me to operator states *)
-lemma produ_release_caps[simp]:
-  "produ (release_caps os p) = produ os"
-  unfolding release_caps_def
-  by auto
-
 (* FIXME: move me to cset things *)
 lemma cfilter_False:
   "\<forall> x. x |\<in>| A \<longrightarrow> \<not> P x \<Longrightarrow>

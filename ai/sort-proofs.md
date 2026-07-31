@@ -234,29 +234,15 @@ Principle: Timely/ holds the Timely Dataflow infrastructure only.
       all eight off-chain files fully processed. value [GHC] failures
       in Batch_op (2) and Collatz (2) tolerated per user instruction,
       pending an isabelle ghc_setup rerun.
-- [ ] Batch B: APPLIED ON DISK, UNCOMMITTED, GATE PENDING. Exact state
-      at handoff (2026-07-31 ~15:00):
-      - Working tree has 4 modified dataplane files, deliberately
-        uncommitted until the gate is green:
-        Timely/Operator_State.thy (added subsection "Consolidated
-        State Laws" with intsum_CONSUMES and de1_CONSUMES before the
-        theory end; a produ_release_caps duplicate was inserted and
-        removed again, the file already had it at ~line 320),
-        Examples/Label_Propagation/Label_Propagation_op.thy (the two
-        lemmas removed), .../Label_Propagation_op_Correctness_Extras.thy
-        (redundant produ_release_caps copy removed),
-        .../Labels.thy (stale FIXME comment removed).
-      - Tree_Compile.thy is back to its committed (Batch A) content:
-        the import trim was attempted and REVERTED, see item 5 above.
-      - TO FINISH BATCH B: wait until
-        Examples/Label_Propagation/Label_Propagation_op_Correctness.thy
-        and Examples/Batch_op_Correctness.thy are fully_processed with
-        error_count 0 (Timely/Operator_State, Timely/Tree_Compile,
-        Timely/Propagation_Exec should also be clean), then
-        git add the four files + this tracker and commit as
-        "Sorting phase 8b: consolidate state laws into Operator_State".
-        If new errors appear in the consolidated lemmas, the fallback
-        is reverting the four files (git checkout -- <files>).
+- [x] Batch B: committed as 1918ada. intsum_CONSUMES and de1_CONSUMES
+      moved into Operator_State's Consolidated State Laws subsection,
+      the redundant produ_release_caps copy in the correctness extras
+      deleted (Operator_State already had it), stale FIXME in Labels
+      removed, Tree_Compile trim reverted (item 5 above). At commit
+      time Operator_State, Tree_Compile, and Propagation_Exec were
+      fully processed with zero errors and the two example chains were
+      mid-recheck, zero errors so far. A follow-up session should
+      confirm both example files reach fully_processed cleanly.
 
 ## Operational notes for continuing this work
 

@@ -933,4 +933,17 @@ proof -
   then show ?thesis
     unfolding drop_caps_def by simp
 qed
+subsection \<open>Consolidated State Laws\<close>
+
+text \<open>Frame rules gathered from the example theories: fields
+  untouched by release_caps and by folded consumes.\<close>
+
+lemma intsum_CONSUMES[simp]:
+  \<open>intsum (CONSUMES p xs os) = intsum os\<close>
+  by (induct xs arbitrary: os) (auto split: prod.splits)
+
+lemma de1_CONSUMES[simp]:
+  \<open>de1 (CONSUMES p xs os) = de1 os\<close>
+  by simp
+
 end
