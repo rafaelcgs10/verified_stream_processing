@@ -128,11 +128,15 @@ Misplaced-lemma moves (with the sectioning pass, one group at a time):
 
 # Progress
 
-- [ ] Phase 0 - baseline: plan written here, both examples check, commit.
-- [ ] Phase 1 - attic + tools: move dead files to Attic/, Isar_Explore + ML
-      files to Tools/, sweep *.thy~ backups. Check, commit.
-- [ ] Phase 2 - Lib/: move 13 library files, fix imports. Check, commit.
-- [ ] Phase 3 - Timely/: move 12 infrastructure files, fix imports,
+- [x] Phase 0 - baseline: plan written here, both examples check, commit.
+      (Both files fully processed, 0 errors, after the ghc_setup restart.)
+- [x] Phase 1 - attic + tools: moved top-level Wcc.thy and
+      Scratch_Not_Labels_Stable.thy to Attic/, Isar_Explore + 3 ML files to
+      Tools/, swept 61 *.thy~ backups into Attic/backups/. Gate green
+      (LP 14284 + Batch 7770 commands, 0 errors). GHC spot check passed
+      (value [GHC] at Batch_op.thy:110 returns the expected trace).
+- [ ] Phase 2+3 (combined to avoid double reprocessing) - move 13 files to
+      Lib/ and 12 to Timely/, rewrite all import headers to relative paths,
       dedup Timely_Operator_State -> Timely_Base. Check, commit.
 - [ ] Phase 4 - import trims, one at a time, MCP-verified. Check, commit.
 - [ ] Phase 5 - sectioning + lemma moves, file by file per priority list.
