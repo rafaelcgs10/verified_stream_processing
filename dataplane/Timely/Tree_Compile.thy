@@ -22,16 +22,13 @@ begin
 
 section \<open>Compilation From Dataflow Trees\<close>
 
-text \<open>
-  This section connects a compositional dataflow-tree syntax with executable operator and
-  graph-level representations used by the progress-tracking control plane.
-\<close>
-
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree =
   "apply": Logic "('p option, 'p option, 's + 'd) op" "'p \<Rightarrow> 'p \<Rightarrow> 't list"
   | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
   | Loop "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree"
+
+subsection \<open>Compiling Trees to Operators\<close>
 
 fun dataflow_tree_to_operator_aux where
   "dataflow_tree_to_operator_aux n chns (Logic op su) = (
@@ -57,6 +54,8 @@ fun dataflow_tree_to_operator_aux where
     op)))"
 
 definition "dataflow_tree_to_operator chns df = snd (dataflow_tree_to_operator_aux 0 chns df)"
+
+subsection \<open>Compiling Trees to Summary Graphs\<close>
 
 fun dataflow_tree_to_graph_aux where
   "dataflow_tree_to_graph_aux n (Logic op su) =
@@ -111,6 +110,8 @@ definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,
      bi_unique (op_conn s)
   then raw_s
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. ((\<lambda> _ _. []))))"
+
+subsection \<open>Structural Properties of Compiled Graphs\<close>
 
 lemma compile_dataflow_tree_aux_same_loc:
   "(n'', intsum) = dataflow_tree_to_graph_aux n df \<Longrightarrow>
@@ -238,10 +239,6 @@ global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "antic
     and after_summary = "dataflow_topology.after_summary (+) :: 't zmultiset \<Rightarrow> 't antichain \<Rightarrow> 't zmultiset"
   by simp
 
-text \<open>
-  Path-weight decomposition for compiled tree graphs: any non-trivial path starting from
-  a target port must first pass through a source port of the same node.
-\<close>
 lemma dataflow_tree_to_graph_Trg_decompose:
   "(s :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A graph.path_weight (\<lambda>x xa. antichain_from_list (su x xa)) (Loc nid (Trg p)) l \<Longrightarrow>
    l \<noteq> Loc (nid :: _ :: {enum,minus,one,plus,zero,hashable,linorder}) (Trg (p :: _ :: {enum,hashable,linorder})) \<Longrightarrow>
@@ -262,6 +259,8 @@ lemma dataflow_tree_to_graph_Trg_decompose:
   subgoal
     by (auto dest: in_empty_graph_False split: prod.splits)
   done
+
+subsection \<open>Summary Notation\<close>
 
 notation dataflow_topology_from_tree.followed_by (infixl \<open>-+-\<close> 65)
 notation dataflow_topology_from_tree.after_summary (infixl \<open>+++\<close> 65)

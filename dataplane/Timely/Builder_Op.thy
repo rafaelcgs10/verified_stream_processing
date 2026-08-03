@@ -299,6 +299,8 @@ lemma inputs_builder_op_le_alt[dest!]:
   using set_mp[OF inputs_builder_op_le, simplified] by fastforce
 
 
+subsection \<open>The Notifier Operator\<close>
+
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os
    (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))))"

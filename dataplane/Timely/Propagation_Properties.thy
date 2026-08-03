@@ -5,6 +5,8 @@ imports
 begin 
 
 
+section \<open>Invariant Preservation Under PR take_step\<close>
+
 lemma take_step_PR_p_preserves_inv_imps_work_sum:
   "dataflow_topology summary (-+-) \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
@@ -87,6 +89,8 @@ lemma take_step_PR_p_preserves_inv:
     done
   done
 
+section \<open>Termination of propagate_all\<close>
+
 lemma propagate_all_terminates:
   assumes "dataflow_topology su (-+-)"
     and "Propagate.dataflow_topology.inv_imps_work_sum su (-+-) c"
@@ -162,7 +166,7 @@ lemma propagate_all_terminates:
   done
 
 
-section \<open>Invariant Preservation Under Progress take_step\<close>
+section \<open>Invariant Preservation Under CM take_step\<close>
 lemma take_step_CM_p_preserves_inv_imps_work_sum:
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>

@@ -7,11 +7,6 @@ begin
 
 section \<open>Executable Propagation Primitives\<close>
 
-text \<open>
-  These definitions and lemmas connect the executable stepper with the abstract
-  dataflow-topology locale and establish basic algebraic properties used later.
-\<close>
-
 lemma AF_empty[simp]:
   "A -++- {}\<^sub>A = {#}\<^sub>z"
   by (metis after_summary_def dataflow_topology_from_tree.after_summary_empty_summary)
@@ -19,6 +14,8 @@ lemma AF_empty[simp]:
 lemma AP_simp[simp]:
   "M -++- S = (\<Sum>s \<in> set_antichain S. image_zmset (\<lambda>t. t -+- s) M)"
   by (metis after_summary_def dataflow_topology_from_tree.after_summary_def)
+
+subsection \<open>take_step and propagate_all\<close>
 
 definition take_step_locale where
   "take_step_locale df = take_step' df cless"
@@ -45,6 +42,8 @@ lemma take_step_fast_code[simp]:
   apply (cases x)
    apply (auto simp add: fun_eq_iff mymin_code_def)
   done
+
+subsection \<open>Executable Minimum Selection\<close>
 
 lemma class_linorder_lt_of_comp:
   "ID ccompare = Some a \<Longrightarrow> class.linorder (\<lambda>t u. lt_of_comp a t u \<or> t = u) (lt_of_comp a)"
@@ -125,6 +124,8 @@ proof -
     by (metis ID_code ccompare comparator.Gt_lt_conv comparator.le_lt_convs(4) not_none option.exhaust_sel order.distinct(5))
 qed
 
+subsection \<open>Laws of take_step\<close>
+
 lemma take_step_enum_dataflow_topology_take_step:
   "enum_dataflow_topology su dataflow_topology_from_tree.followed_by \<Longrightarrow>
    take_step su = enum_dataflow_topology.take_step su dataflow_topology_from_tree.followed_by cless"
@@ -147,6 +148,8 @@ lemma take_step_comm:
 lemma take_step_plus[simp]:
   "take_step su (CM l t m) (take_step su (CM l t n) c) = take_step su (CM l t (m + n)) c"
   by (cases c; auto simp add: add.commute)
+
+subsection \<open>Display Utilities\<close>
 
 abbreviation "show_frontier x \<equiv> let f = Max_antichain x in if f = 42 then STR ''{}'' else STR ''{ '' + show_nat (Max_antichain x) + STR '' }''"
 

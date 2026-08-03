@@ -7,11 +7,6 @@ begin
 
 section \<open>Dataflow Wrapper Operator\<close>
 
-text \<open>
-  The corecursive wrapper couples operator transitions with control-plane propagation.
-  The following lemmas characterize the induced transition system and lifting rules.
-\<close>
-
 corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of
      Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
@@ -163,6 +158,8 @@ lemma dataflow_op_simps[simp]:
   by (subst dataflow_op.code; simp)+
 
 
+section \<open>Compilation Entry Points\<close>
+
 abbreviation init_conf where
   "init_conf summary \<equiv> the (propagate_all summary initial_conf)"
 
@@ -177,6 +174,8 @@ definition "compile_dataflow chns dt = (let summary = antichain_from_list oo (da
                                     dataflow_op sg op)"
 
 
+
+section \<open>Optimized Dataflow Operator\<close>
 
 fun get_nid where
   "get_nid (Read (Inl nid) f) = Some nid"

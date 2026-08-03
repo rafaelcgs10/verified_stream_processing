@@ -260,6 +260,70 @@ Principle: Timely/ holds the Timely Dataflow infrastructure only.
       GREEN: LP 14284 + Batch 7779 + Set_op 2203 + Operators_Utils
       1828 commands fully processed, zero errors.
 
+## Phase 10: Timely refinement round 2 (approved plan)
+
+User constraint: NO text blocks — prose is restricted to section
+titles only. This also means REMOVING the text blocks added in
+earlier phases to the Timely files.
+
+- Batch C (sectioning, titles only):
+  - Delete all 12 text blocks in Timely files (Dataflow_Op,
+    Operator_State x6, Progress_Extraction, Propagation_Exec,
+    Tree_Compile x2).
+  - Propagation_Properties: section "Invariant Preservation Under PR
+    take_step" before first lemma, "Termination of propagate_all"
+    before propagate_all_terminates, retitle existing section to
+    "Invariant Preservation Under CM take_step".
+  - Progress_Extraction: retitle top section to "Progress
+    Extraction" (the wrapper lives in Dataflow_Op); subsections
+    "Laws of change_multiplicities" / "CM_equiv Congruence" /
+    "Filtering extract_progress".
+  - Tree_Compile: subsections "Compiling Trees to Operators" /
+    "Compiling Trees to Summary Graphs" / "Structural Properties of
+    Compiled Graphs" / "Summary Notation".
+  - Propagation_Exec: subsections "take_step and propagate_all" /
+    "Executable Minimum Selection" / "Laws of take_step" /
+    "Display Utilities".
+  - Dataflow_Op: sections "Compilation Entry Points" (before
+    init_conf) and "Optimized Dataflow Operator" (before get_nid).
+  - Builder_Op: subsection "The Notifier Operator" before
+    notifier_op.
+  - Ifrontier: retitle "Lemmas for ifrontier" to "Implied Frontiers
+    Under change_multiplicities".
+- Batch A (lemma moves; all cited facts verified to resolve at the
+  targets):
+  - class_linorder_lt_of_comp + linorder_order_ccompare:
+    Propagation_Exec -> Lib/MyProduct_Instances (home of the
+    order_ccompare class).
+  - frontier_less_equal_pluss_le: Propagation_Properties ->
+    Lib/AntichainOrder (near frontier_less_equal_le_trans).
+  - frontier_less_equal_exit_scope_myfst_le: Propagation_Properties
+    -> Lib/Bots (next to frontier_less_equal_exit_scope).
+  - step_tau_pow_map_op: Dataflow_Op -> Lib/Operators_Utils (near
+    steps_map_op).
+  - take_step_PR_preserves_c_pts[simp]: Propagation_Properties ->
+    Propagation_Exec (Laws of take_step; used by
+    Correctness/Propagates).
+  - sum_zmset (Ifrontier -> ZmsetUtils) SKIPPED: would need
+    generalizing over the -+- notation.
+- Batch B (riskiest, own gate + revert plan): trim Builder_Op's
+  import Progress_Extraction -> Operator_State. Builder_Op and all
+  six of its importers (Label_Propagation_op, Tmap_op, Concat_op,
+  Branch_op, Increment_op, Ooo_Input_op) reference nothing from the
+  Tree_Compile -> Propagation_Exec -> Progress_Extraction chain
+  (grep-verified). Unblocks them from waiting on that chain. Same
+  failure shape as the reverted Tree_Compile trim, so: MCP-verify
+  Builder_Op + all importers incl. off-chain examples, revert on
+  errors.
+
+### Phase 10 progress
+
+- [x] Batch C: 30 edits applied (12 text blocks deleted, 16 titles
+      inserted, 3 retitles). Gate GREEN: LP 14284 + Batch 7779 fully
+      processed, all 8 Timely files error-free.
+- [ ] Batch A
+- [ ] Batch B
+
 ## Operational notes for continuing this work
 
 - Isabelle MCP: the harness-level mcp tools may be missing; a working

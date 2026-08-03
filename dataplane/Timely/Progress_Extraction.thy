@@ -5,12 +5,9 @@ imports
   Operator_State
 begin
 
-section \<open>Progress Extraction and Dataflow Wrapper\<close>
+section \<open>Progress Extraction\<close>
 
-text \<open>
-  This section defines progress extraction from operator-local buffers and the core
-  wrapper helpers that couple data-plane progress updates with control-plane updates.
-\<close>
+subsection \<open>Laws of change_multiplicities\<close>
 
 definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
 
@@ -164,6 +161,8 @@ next
   qed
 qed
 
+subsection \<open>CM_equiv Congruence\<close>
+
 definition "CM_equiv xs ys = (\<forall> l \<in> fst ` set xs \<union> fst ` set ys. zmset (map snd (filter (\<lambda> (l', _, _). l = l') xs)) = zmset (map snd (filter (\<lambda> (l', _, _). l = l') ys)))"
 
 lemma change_multiplicities_zmset_cong:
@@ -304,6 +303,8 @@ proof (unfold CM_equiv_def, intro ballI)
   show "zmset (map snd (?F (a @ b))) = zmset (map snd (?F (c @ d)))"
     by (simp add: part_a part_b)
 qed
+
+subsection \<open>Filtering extract_progress\<close>
 
 lemma filter_extract_progress_outside:
   assumes "node l \<noteq> nid"

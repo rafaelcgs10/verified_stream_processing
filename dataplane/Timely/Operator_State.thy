@@ -25,8 +25,6 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
 
 section \<open>State Records\<close>
 
-text \<open>Subgraphs, shared state, and the operator state record.\<close>
-
 type_synonym 'a change_batch = "'a list"
 
 record ('id, 'p, 't) subgraph =
@@ -67,11 +65,6 @@ record ('p, 'd, 't) operator_state =
 
 section \<open>Initial States and Compilation Entry Points\<close>
 
-text \<open>
-  Initial control-plane and operator states, graph-to-next-edge extraction, and
-  top-level compilation into a wrapped dataflow operator.
-\<close>
-
 abbreviation init_op_state where
   "init_op_state su i \<equiv> \<lparr>
    intsum = su,
@@ -92,8 +85,6 @@ abbreviation "init_op_states \<equiv> (\<lambda> x. init_op_state default_intern
 
 section \<open>Typed State Extensions\<close>
 
-text \<open>Record extensions carrying typed input buffers.\<close>
-
 record ('p, 'd, 'd1, 't) operator_state_ty = "('p, 'd, 't) operator_state" +
   en1 :: "'d1 \<Rightarrow> 'd" de1 :: "'d \<Rightarrow> 'd1" is_en1 :: "'d \<Rightarrow> bool"
 record ('p, 'd, 'd1, 'd2, 't) operator_state_ty2 = "('p, 'd, 'd1, 't) operator_state_ty" +
@@ -102,9 +93,6 @@ record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) 
   en3 :: "'d3 \<Rightarrow> 'd" de3 :: "'d \<Rightarrow> 'd3" is_en3 :: "'d \<Rightarrow> bool"
 
 section \<open>Primitive State Operations\<close>
-
-text \<open>Delaying, producing, consuming, minting, dropping, and releasing
-  capabilities on the operator state.\<close>
 
 definition "delay_cap os cap incr = (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
@@ -162,9 +150,6 @@ definition "consumes os p t d = add_caps (os\<lparr> consu := consu os @ [(p, t,
 
 
 section \<open>Frame and Simp Rules\<close>
-
-text \<open>Simp rules for how each primitive operation changes each state
-  field.\<close>
 
 lemma outpu_obtain_progress[simp]:
   "outpu (fst (obtain_progress os)) = outpu os"
@@ -934,9 +919,6 @@ proof -
     unfolding drop_caps_def by simp
 qed
 subsection \<open>Consolidated State Laws\<close>
-
-text \<open>Frame rules gathered from the example theories: fields
-  untouched by release_caps and by folded consumes.\<close>
 
 lemma intsum_CONSUMES[simp]:
   \<open>intsum (CONSUMES p xs os) = intsum os\<close>

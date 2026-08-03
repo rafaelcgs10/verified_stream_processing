@@ -172,7 +172,7 @@ lemma ifrontier_eq_all_le:
   apply (metis dataflow_topology_from_tree.elems_eq_sum_eq member_antichain.rep_eq)
   done
 
-section \<open>Lemmas for ifrontier\<close>
+section \<open>Implied Frontiers Under change_multiplicities\<close>
 lemma frontier_less_equal_change_multiplicities_ge_0:
   assumes D: "dataflow_topology su (-+-)"
   shows 
