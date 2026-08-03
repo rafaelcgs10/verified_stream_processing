@@ -25,14 +25,17 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
 
 section \<open>State Records\<close>
 
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/change_batch.rs#L16 *)
 type_synonym 'a change_batch = "'a list"
 
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/subgraph.rs#L236 *)
 record ('id, 'p, 't) subgraph =
   pt_tr :: "(('id, 'p) location, 't) configuration"
   nxt :: "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option"
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
   upfro :: "'id \<Rightarrow> bool"
 
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/operate.rs#L185 *)
 record ('p, 't) shared_state =
   cons :: "('p \<times> 't \<times> int) change_batch"
   inte :: "('p \<times> 't \<times> int) change_batch"
@@ -479,7 +482,8 @@ lemma consu_produces[simp]:
   unfolding produces_def 
   by auto
 
-definition extract_progress where
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/subgraph.rs#L752 *)
+definition extract_progress where    
   "extract_progress nid nt st =
     map (\<lambda> (p, t, m). (Loc nid (Trg p), t, -m)) (cons st) @
     map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @

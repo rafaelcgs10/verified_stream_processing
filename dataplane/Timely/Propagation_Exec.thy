@@ -33,6 +33,7 @@ fun take_step where
 definition "propagate_all_locale summary df c0 = (while_option (Not o (worklist_is_empty summary))
                                            (take_step_locale df PR) c0)"
 
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/reachability.rs#L637 *)
 definition "propagate_all summary c0 = (while_option (Not o (worklist_is_empty summary))
                                         (take_step summary PR) c0)"
 

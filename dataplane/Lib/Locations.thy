@@ -14,12 +14,12 @@ section \<open>Ports and Locations\<close>
 text \<open>Ports distinguish targets from sources; a location pairs a node
   with a port.\<close>
 
-(* Inspired by timely/src/progress/mod.rs:61 *)
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/mod.rs#L63 *)
 datatype 'p port = Trg (idp: 'p) | Src (idp: 'p)
 abbreviation is_Src where "is_Src x \<equiv> (case x of Src _ \<Rightarrow> True | _ \<Rightarrow> False)"
 abbreviation is_Trg where "is_Trg x \<equiv> (case x of Trg _ \<Rightarrow> True | _ \<Rightarrow> False)"
 
-(* Inspired by timely/src/progress/mod.rs:19 *)
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/mod.rs#L21 *)
 datatype ('id, 'p) location = Loc (node: 'id) (port: "'p port")
 
 section \<open>Enumeration\<close>

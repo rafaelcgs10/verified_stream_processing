@@ -9,6 +9,7 @@ begin
 (* All timely operators are defined using this function. The logic is passed as argument. This is the only corec we need *)
 section \<open>Builder Operator\<close>
 
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/dataflow/operators/generic/builder_rc.rs#L27 *)
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
   (choice5
@@ -301,6 +302,7 @@ lemma inputs_builder_op_le_alt[dest!]:
 
 subsection \<open>The Notifier Operator\<close>
 
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/dataflow/operators/generic/notificator.rs#L17 *)
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os
    (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))))"

@@ -262,6 +262,7 @@ lemma dataflow_tree_to_graph_Trg_decompose:
 
 subsection \<open>Summary Notation\<close>
 
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/timestamp.rs#L87 *)
 notation dataflow_topology_from_tree.followed_by (infixl \<open>-+-\<close> 65)
 notation dataflow_topology_from_tree.after_summary (infixl \<open>+++\<close> 65)
 
