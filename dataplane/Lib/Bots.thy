@@ -146,6 +146,17 @@ proof -
     using that unfolding member_antichain.rep_eq by blast
 qed
 
+lemma frontier_less_equal_exit_scope_myfst_le:
+  assumes "frontier_less_equal A T"
+    and "myfst T \<le> t"
+  shows "frontier_less_equal (exit_scope myfst A) t"
+proof -
+  have "frontier_less_equal (exit_scope myfst A) (myfst T)"
+    using frontier_less_equal_exit_scope assms(1) by blast
+  then show ?thesis
+    using assms(2) by (rule frontier_less_equal_trans)
+qed
+
 lemma frontier_less_equal_exit_scopeI:
   assumes "x \<in>\<^sub>A A"
   shows "frontier_less_equal (exit_scope myfst A) (myfst x)"

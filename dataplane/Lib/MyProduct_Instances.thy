@@ -556,4 +556,26 @@ instance
 proof qed
 end
 
+subsection \<open>Linear Orders from ccompare\<close>
+
+lemma class_linorder_lt_of_comp:
+  "ID ccompare = Some a \<Longrightarrow> class.linorder (\<lambda>t u. lt_of_comp a t u \<or> t = u) (lt_of_comp a)"
+  apply (frule ID_ccompare)
+  apply (erule arg_cong2[where ?f=class.linorder, THEN iffD1, rotated 2])
+   apply (auto simp add: le_of_comp_def lt_of_comp_def fun_eq_iff split: order.splits)
+   apply (meson ID_ccompare' comparator.nEq_neq_conv)
+  apply (simp add: ID_code ccompare comparator.comp_same)
+  done
+
+lemma linorder_order_ccompare:
+ "class.linorder (\<lambda>(t :: 't :: order_ccompare) u. cless t u \<or> t = u) cless"
+ proof -
+    from not_none obtain comp where comp: "ID CCOMPARE('t) = Some comp" by auto
+    have "class.linorder (\<lambda>t u. lt_of_comp comp t u \<or> t = u) (lt_of_comp comp)"
+      by (rule class_linorder_lt_of_comp[OF comp])
+    also have "lt_of_comp comp = (cless :: 't \<Rightarrow> 't \<Rightarrow> bool)"
+      using comp by simp
+    finally show ?thesis by assumption
+  qed
+
 end

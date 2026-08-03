@@ -256,24 +256,4 @@ lemma change_multiplicities_preserves_inv:
   done
 
 
-lemma take_step_PR_preserves_c_pts[simp]:
-  "c_pts (take_step summary PR c) = c_pts c"
-  by (simp_all split: prod.splits if_splits)
-
-
-
-lemma  frontier_less_equal_pluss_le:
-  \<open>frontier_less_equal (A + B) t \<Longrightarrow> A \<le> B \<Longrightarrow> frontier_less_equal A t\<close>
-  by (meson frontier_less_equal_iff2 frontier_less_equal_le_trans in_sum_antichainD)
-
-lemma frontier_less_equal_exit_scope_myfst_le:
-  assumes "frontier_less_equal A T"
-    and "myfst T \<le> t"
-  shows "frontier_less_equal (exit_scope myfst A) t"
-proof -
-  have "frontier_less_equal (exit_scope myfst A) (myfst T)"
-    using frontier_less_equal_exit_scope assms(1) by blast
-  then show ?thesis
-    using assms(2) by (rule frontier_less_equal_trans)
-qed
 end

@@ -321,7 +321,11 @@ earlier phases to the Timely files.
 - [x] Batch C: 30 edits applied (12 text blocks deleted, 16 titles
       inserted, 3 retitles). Gate GREEN: LP 14284 + Batch 7779 fully
       processed, all 8 Timely files error-free.
-- [ ] Batch A
+- [x] Batch A: all five moves applied. Gate GREEN: LP 14284 + Batch
+      7779 fully processed; MyProduct_Instances, AntichainOrder,
+      Bots, Operators_Utils, Propagation_Exec,
+      Propagation_Properties, Dataflow_Op, Correctness/Propagates
+      all error-free.
 - [ ] Batch B
 
 ## Operational notes for continuing this work

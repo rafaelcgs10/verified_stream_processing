@@ -1020,6 +1020,10 @@ lemma in_sum_antichainD:
   apply auto
   done
 
+lemma  frontier_less_equal_pluss_le:
+  \<open>frontier_less_equal (A + B) t \<Longrightarrow> A \<le> B \<Longrightarrow> frontier_less_equal A t\<close>
+  by (meson frontier_less_equal_iff2 frontier_less_equal_le_trans in_sum_antichainD)
+
 lemma not_frontier_less_equal_sum:
   "\<not> frontier_less_equal (A + B) t \<Longrightarrow> \<not> frontier_less_equal A t \<and> \<not> frontier_less_equal B t"
   unfolding frontier_less_equal_iff2

@@ -45,15 +45,6 @@ lemma take_step_fast_code[simp]:
 
 subsection \<open>Executable Minimum Selection\<close>
 
-lemma class_linorder_lt_of_comp:
-  "ID ccompare = Some a \<Longrightarrow> class.linorder (\<lambda>t u. lt_of_comp a t u \<or> t = u) (lt_of_comp a)"
-  apply (frule ID_ccompare)
-  apply (erule arg_cong2[where ?f=class.linorder, THEN iffD1, rotated 2])
-   apply (auto simp add: le_of_comp_def lt_of_comp_def fun_eq_iff split: order.splits)
-   apply (meson ID_ccompare' comparator.nEq_neq_conv)
-  apply (simp add: ID_code ccompare comparator.comp_same)
-  done
-
 lemma mymin_code_in_worklist:
   assumes "\<not> worklist_is_empty su c"
   and "mymin_code (t_loc_pairs c) = (t :: 't :: {order, ccompare}, (loc :: 'loc :: {enum,linorder}))"
@@ -87,17 +78,6 @@ proof -
     unfolding t_loc_pairs_def set_zmset_def
     by auto
 qed
-
-lemma linorder_order_ccompare:
- "class.linorder (\<lambda>(t :: 't :: order_ccompare) u. cless t u \<or> t = u) cless"
- proof -
-    from not_none obtain comp where comp: "ID CCOMPARE('t) = Some comp" by auto
-    have "class.linorder (\<lambda>t u. lt_of_comp comp t u \<or> t = u) (lt_of_comp comp)"
-      by (rule class_linorder_lt_of_comp[OF comp])
-    also have "lt_of_comp comp = (cless :: 't \<Rightarrow> 't \<Rightarrow> bool)"
-      using comp by simp
-    finally show ?thesis by assumption
-  qed
 
 lemma mymin_code_is_minimum:
   assumes "mymin_code (t_loc_pairs c) = (t :: 't :: order_ccompare, (loc :: 'loc :: {enum,linorder}))"
@@ -138,6 +118,10 @@ lemma take_step_enum_dataflow_topology_take_step:
     apply (simp add: after_summary_def mymin_code_def)
     done
   done
+
+lemma take_step_PR_preserves_c_pts[simp]:
+  "c_pts (take_step summary PR c) = c_pts c"
+  by (simp_all split: prod.splits if_splits)
 
 lemma take_step_comm:
   "(take_step su (CM l2 t2 m2) \<circ>\<circ>\<circ> take_step) su (CM l1 t1 m1) = (take_step su (CM l1 t1 m1) \<circ>\<circ>\<circ> take_step) su (CM l2 t2 m2)"
