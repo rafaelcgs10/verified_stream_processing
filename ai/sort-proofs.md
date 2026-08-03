@@ -326,7 +326,18 @@ earlier phases to the Timely files.
       Bots, Operators_Utils, Propagation_Exec,
       Propagation_Properties, Dataflow_Op, Correctness/Propagates
       all error-free.
-- [ ] Batch B
+- [x] Batch B: Builder_Op now imports Operator_State instead of
+      Progress_Extraction. Gate: LP 14284 + Batch 7779 fully
+      reprocessed through the real invalidation cascade, zero
+      errors; Builder_Op (509) and its six importers all fully
+      processed and error-free (Increment_op 148, Ooo_Input_op 510,
+      Tmap/Concat/Branch green, Label_Propagation_op via the LP
+      chain). CAVEAT: three off-chain leaf files (Collatz 7/50,
+      Accumulator 29/243, Increment_op_Correctness 39/957) were
+      starved by the degraded Poly/ML instance and never finished
+      (zero errors in their processed prefixes; Accumulator imports
+      only BNA_Operators, so it cannot be affected by the trim).
+      Confirm these three after the next Isabelle restart.
 
 ## Operational notes for continuing this work
 
