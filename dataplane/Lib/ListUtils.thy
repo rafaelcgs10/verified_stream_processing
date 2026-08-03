@@ -148,34 +148,6 @@ lemma remove_last_append_diff_singleton:
   apply simp
   done
 
-lemma remove_last_Cons_if:
-  "remove_last a (a # xs) = (if a \<in> set xs then a # remove_last a xs else xs)"
-  apply (induct xs rule: rev_induct)
-  subgoal
-    apply (simp del: remove_last.simps)
-    apply (subst remove_last.simps)
-    apply (simp del: remove_last.simps)
-    done
-  subgoal for x xs'
-    apply (auto simp del: remove_last.simps split: if_splits)
-    subgoal
-      apply (subst remove_last.simps)
-      apply (clarsimp simp del: remove_last.simps split: if_splits)
-      done
-    subgoal
-      apply (subst remove_last.simps)
-      apply (clarsimp simp del: remove_last.simps simp add: remove_last_append_diff_singleton split: if_splits)
-      done
-    subgoal
-      apply (subst remove_last.simps)
-      apply (clarsimp simp del: remove_last.simps split: if_splits)
-      done
-    subgoal
-      apply (subst remove_last.simps)
-      apply (clarsimp simp del: remove_last.simps simp add: remove_last_append_diff_singleton split: if_splits)
-      done
-    done
-  done
 
 lemma remove_last_append_in_set:
   "a \<in> set ys \<Longrightarrow>
@@ -354,9 +326,6 @@ next
   qed
 qed
 
-lemma map_filter_append:
-  "List.map_filter f (xs @ ys) = List.map_filter f xs @ List.map_filter f ys"
-  by (induct xs) (auto simp: List.map_filter_def split: option.splits)
 
 lemma fold_min_Min:
   fixes a :: "'a::linorder"
@@ -409,9 +378,6 @@ lemma distinct_insort_union[simp]:
   by (induction xs arbitrary: ys)
     (simp_all add: insort_union_def distinct_insort insort_insert_key_def)
 
-lemma sorted_insort_union:
-  \<open>sorted ys \<Longrightarrow> sorted (insort_union xs ys)\<close>
-  by (induction xs) (simp_all add: insort_union_def fold_invariant sorted_insort_insert)
 
 lemma set_foldl_union_with:
   "set (foldl (union_with List.union) g gs y) = (\<Union>f\<in>set (g # gs). set (f y))"
@@ -424,18 +390,6 @@ next
     by (auto simp: union_with_def)
 qed
 
-lemma set_unions_with_List_union:
-  assumes "fs \<noteq> []"
-  shows "set (unions_with List.union fs y) = (\<Union>f\<in>set fs. set (f y))"
-proof (cases fs)
-  case Nil
-  then show ?thesis
-    using assms by simp
-next
-  case (Cons g gs)
-  then show ?thesis
-    using set_foldl_union_with[of g gs y] by simp
-qed
 
 lemma list_diff_append_mset_cancel:
   assumes \<open>mset zs = mset ys\<close>

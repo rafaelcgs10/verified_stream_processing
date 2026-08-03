@@ -34,31 +34,6 @@ lemma remove_non_zero_weights_is_graph:
     mem_antichain_nonempty empty_antichain_def antichain_from_list.abs_eq filter.simps(1) list.set(1)
   by (smt (verit, del_insts))
 
-lemma remove_non_zero_weights_path_all_zeros:
-  assumes G: "Graph.graph weights"
-    and P: "graph.path (remove_non_zero_weights weights) (loc::'loc::{enum,hashable,linorder}) loc' xs"
-  shows "list_all (\<lambda> x . fst (snd x) = 0) xs"
-  using P apply (induct rule: graph.path.induct [where weights="remove_non_zero_weights weights"])
-  subgoal apply (simp add: G remove_non_zero_weights_is_graph) done
-  subgoal apply (simp add: P) done
-  subgoal apply simp done
-  subgoal
-    apply (subst list_all_append)
-    apply (rule conjI)
-    subgoal apply simp done
-    subgoal apply (simp)
-      apply (simp add: antichain_from_list_def split: if_splits)
-      subgoal 
-        apply (subst (asm) member_antichain.abs_eq)
-        subgoal
-          apply (simp add: eq_onp_def incomparable_def)
-          done
-        subgoal apply fastforce done
-        done
-      subgoal apply (metis empty_antichain_def mem_antichain_nonempty) done
-      done
-    done
-  done
 
 lemma remove_non_zero_sum_path_weights_zero:
   assumes G: "Graph.graph weights"
@@ -84,16 +59,6 @@ lemma remove_non_zero_sum_path_weights_zero:
     done
   done
 
-lemma remove_non_zero_weights_doenst_increase_weights:
-  assumes G: "Graph.graph weights" 
-    and P: "graph.path (remove_non_zero_weights weights) (loc::'loc::{enum,hashable,linorder}) loc xs"
-    and S: "s = graph.sum_path_weights xs"
-    and L: "t < t + s"
-  shows "False"
-proof - 
-  from G P remove_non_zero_sum_path_weights_zero have "graph.sum_path_weights xs = 0" by blast
-  from this L S show ?thesis by force
-qed
 
 lemma empty_path_inversion:
   assumes H1: "graph.path weights loc1 loc2 []"
@@ -147,9 +112,6 @@ abbreviation no_zero_cycle where
 abbreviation no_zero_cycle_alt where
   "no_zero_cycle_alt weights \<equiv> (\<forall> loc xs. (graph.path weights loc loc xs \<longrightarrow> xs \<noteq> [] \<longrightarrow> 0 < ((graph.sum_path_weights xs)::'a::{ordered_ab_semigroup_monoid_add_imp_le})))"
 
-lemma path_always_ge_zero: "Graph.graph (weights::'a::{enum,order} \<Rightarrow> 'a::{enum,order} \<Rightarrow> 'b::{monoid_add,order} antichain) \<Longrightarrow> x \<in> set xs \<Longrightarrow> case x of (s, l, t) \<Rightarrow> l \<ge> (0::'b)"
-  unfolding Graph.graph_def
-  by fast
 
 lemma path_always_gt_zero_aux: "Graph.graph (weights::'a::{enum,order} \<Rightarrow> 'a::{enum,order} \<Rightarrow> 'b::{monoid_add,order} antichain) \<Longrightarrow>
               \<not> list_all (\<lambda>(s, l, t). l = (0::'b::{order, monoid_add})) xs \<Longrightarrow>
@@ -398,16 +360,6 @@ lemma no_path_no_zero_cycle:
   qed
   done
 
-lemma acyclic_no_zero_cycle_with_remove_non_zero_weights:
-  assumes R: "((graph_from_weights (weights::'a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::{canonically_ordered_monoid_add, ordered_ab_semigroup_monoid_add_imp_le} antichain)), G) \<in> \<langle>Rm, Id\<rangle>g_impl_rel_ext"
-    and G: "Graph.graph weights"
-    and N: "acyclic (g_E G \<inter> ((g_E G)\<^sup>* `` g_V0 G \<times> UNIV))"
-  shows "no_zero_cycle (remove_non_zero_weights weights)"
-  apply (rule no_path_no_zero_cycle [of weights G Rm])
-  subgoal using assms by simp
-  subgoal using assms by simp
-  subgoal using assms no_cycle_no_self_path by blast
-  done
 
 lemma acyclic_no_zero_cycle:
   assumes R: "((graph_from_weights (weights::'a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::{canonically_ordered_monoid_add, ordered_ab_semigroup_monoid_add_imp_le} antichain)), G) \<in> \<langle>Rm, Id\<rangle>g_impl_rel_ext"
@@ -423,16 +375,6 @@ lemma acyclic_no_zero_cycle:
   subgoal using assms by simp
   done
 
-lemma acyclic_no_zero_cycle_alt:
-  assumes R: "((graph_from_weights (weights::'a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::{canonically_ordered_monoid_add, ordered_ab_semigroup_monoid_add_imp_le} antichain)), G) \<in> \<langle>Rm, Id\<rangle>g_impl_rel_ext"
-    and G: "graph_enum weights"
-    and N: "acyclic (g_E G \<inter> ((g_E G)\<^sup>* `` g_V0 G \<times> UNIV))"
-  shows "no_zero_cycle_alt weights"
-proof -
-  from assms have "no_zero_cycle weights" using acyclic_no_zero_cycle graph_enum_def by blast
-  then have "no_zero_cycle_alt weights" using less_add_same_cancel1[symmetric] by blast
-  then show ?thesis by blast
-qed
 
 section \<open>Executable Checkers\<close>
 
@@ -443,16 +385,11 @@ text \<open>Boolean checkers for self loops and zero cycles on enumerable
 definition no_self_loop_checker  where
   "no_self_loop_checker g = (set (map set_antichain (map ((\<lambda> loc . (g loc loc))) Enum.enum)) = {{}})"
 
-lemma  no_enum_card_0: "CARD('a::enum) = 0 \<Longrightarrow> False"
-  by simp
 
 lemma range_is_set_enum: "range f = set (map f Enum.enum)"
   apply (simp add: UNIV_enum)
   done
 
-lemma empty_enum_eq_card_zero: "(Enum.enum :: 'a :: enum list) = [] = (CARD('a::enum) = 0)"
-  apply (simp add: card_UNIV_length_enum)
-  done
 
 lemma set_image2: "(\<lambda> x . f x x) ` (UNIV::'a::enum set) = {y} \<Longrightarrow> f x x = y"
   by blast
@@ -463,18 +400,6 @@ lemma set_image_sigleton: "{f x} = f ` {x}"
 lemma set_antichain_image_inject:"set_antichain ` s1 = set_antichain ` s2 = (s1 = s2)"
   by (metis inj_on_def inj_on_image inj_on_inverseI insert_iff set_antichain_inverse)
 
-lemma self_loop_checker_sound: "no_self_loop_checker g \<Longrightarrow> g (loc::'loc::enum) loc = {}\<^sub>A"
-  unfolding no_self_loop_checker_def
-  apply (rule set_image2)
-  apply (subst range_is_set_enum)
-  apply (subst (asm) set_map)
-  apply (subst (asm) empty_antichain.rep_eq[symmetric])
-  apply (subst (asm) set_image_sigleton [where f=set_antichain])
-  apply (subst (asm) set_antichain_image_inject)
-  apply fast
-  done
-
-(* Checks that the graph is indeed a graph *)
 definition graph_checker :: "('a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::{canonically_ordered_monoid_add, ordered_ab_semigroup_monoid_add_imp_le} antichain) \<Rightarrow> bool" where
   "graph_checker weights \<equiv> Enum.enum_all (\<lambda> loc . is_empty_antichain (weights loc loc))"
 

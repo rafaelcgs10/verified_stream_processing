@@ -116,13 +116,6 @@ lemma ooo_input_op_logic_cUn:
    apply (auto 10 10 simp flip: cin.rep_eq)
   done
 
-lemma remove_last_Nil:
-  "remove_last t M = [] \<Longrightarrow>
-   mset M - {# t #} = {#}"
-  apply (induct M)
-   apply simp
-  apply (metis mset_remove_last mset.simps(1))
-  done
 
 lemma ooo_input_op_logic_iterates_n:
   "timely_input_stream (es os p) (mset (ocaps os p)) \<Longrightarrow>

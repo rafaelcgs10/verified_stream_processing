@@ -117,19 +117,11 @@ lemma consu_fst_label_prop_input0_batched[simp]:
   \<open>consu (fst (label_prop_input0_batched os msgs)) = consu os\<close>
   by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
 
-lemma inter_fst_label_prop_input0_batched:
-  \<open>inter (fst (label_prop_input0_batched os msgs)) =
-    inter (fold (\<lambda>(d, t) os. label_prop_input0_step_state os d t) msgs os)\<close>
-  by (induct msgs arbitrary: os) (auto simp: case_prod_beta split: prod.splits)
 
 lemma front_fst_label_prop_input0_batched[simp]:
   \<open>front (fst (label_prop_input0_batched os msgs)) = front os\<close>
   by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
 
-lemma ocaps_fst_label_prop_input0_batched:
-  \<open>ocaps (fst (label_prop_input0_batched os msgs)) =
-    ocaps (fold (\<lambda>(d, t) os. label_prop_input0_step_state os d t) msgs os)\<close>
-  by (induct msgs arbitrary: os) (auto simp: case_prod_beta split: prod.splits)
 
 lemma ocaps_0_fst_label_prop_input0_batched[simp]:
   \<open>ocaps (fst (label_prop_input0_batched os msgs)) 0 = ocaps os 0\<close>
@@ -828,26 +820,6 @@ proof (rule wf_label_prop_updates_os_mono[OF H])
 qed
 
 
-lemma wf_label_prop_updates_fst_label_prop_input0_batched_monoI:
-  assumes H: \<open>wf_label_prop_updates os S\<close>
-  shows \<open>wf_label_prop_updates (fst (label_prop_input0_batched os xs)) S\<close>
-  using H
-proof (induct xs arbitrary: os)
-  case Nil
-  then show ?case
-    by simp
-next
-  case (Cons x xs)
-  obtain d t where x_eq: \<open>x = (d, t)\<close>
-    by (cases x)
-  have step: \<open>wf_label_prop_updates (label_prop_input0_step_state os d t) S\<close>
-    by (rule wf_label_prop_updates_label_prop_input0_step_state_monoI[OF Cons.prems])
-  have rec: \<open>wf_label_prop_updates (fst (label_prop_input0_batched (label_prop_input0_step_state os d t) xs)) S\<close>
-    by (rule Cons.hyps[OF step])
-  show ?case
-    using rec unfolding x_eq
-    by (cases \<open>label_prop_input0_batched (label_prop_input0_step_state os d t) xs\<close>) simp
-qed
 
 
 lemma labels_inv_fst_label_prop_input0_batched_input_allI:

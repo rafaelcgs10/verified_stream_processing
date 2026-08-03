@@ -158,34 +158,8 @@ instance myprod :: (group_add, group_add) group_add
 instance myprod :: (ab_group_add, ab_group_add) ab_group_add
   by standard (simp_all add: myprod_eq_iff)
 
-lemma myfst_sum: "myfst (\<Sum>x\<in>A. f x) = (\<Sum>x\<in>A. myfst (f x))"
-proof (cases "finite A")
-  case True
-  then show ?thesis by induct simp_all
-next
-  case False
-  then show ?thesis by simp
-qed
 
-lemma mysnd_sum: "mysnd (\<Sum>x\<in>A. f x) = (\<Sum>x\<in>A. mysnd (f x))"
-proof (cases "finite A")
-  case True
-  then show ?thesis by induct simp_all
-next
-  case False
-  then show ?thesis by simp
-qed
 
-lemma sum_myprod: "(\<Sum>x\<in>A. MyPair (f x) (g x)) = MyPair (\<Sum>x\<in>A. f x) (\<Sum>x\<in>A. g x)"
-proof (cases "finite A")
-  case True
-  then show ?thesis by induct (simp_all add: zero_myprod_def)
-next
-  case False
-  then show ?thesis by (simp add: zero_myprod_def)
-qed
-
-(* Copy of Product_Order *)
 
 subsection \<open>Pointwise ordering\<close>
 
@@ -214,8 +188,6 @@ lemma MyPair_mono: "x \<le> x' \<Longrightarrow> y \<le> y' \<Longrightarrow> My
 lemma MyPair_le [simp]: "MyPair a b \<le> MyPair c d \<longleftrightarrow> a \<le> c \<and> b \<le> d"
   unfolding less_eq_myprod_def by simp
 
-lemma atLeastAtMost_myprod_eq: "{a..b} = (\<Union>x\<in>{myfst a..myfst b}. \<Union>y\<in>{mysnd a..mysnd b}. {MyPair x y})"
-  by (auto simp: less_eq_myprod_def) force
 
 instance myprod :: (preorder, preorder) preorder
 proof
@@ -301,8 +273,6 @@ lemma myfst_top [simp]: "myfst top = top"
 lemma mysnd_top [simp]: "mysnd top = top"
   unfolding top_myprod_def by simp
 
-lemma MyPair_top_top: "MyPair top top = top"
-  unfolding top_myprod_def by simp
 
 instance myprod :: (order_top, order_top) order_top
   by standard (simp add: less_eq_myprod_def)
@@ -323,8 +293,6 @@ lemma myfst_bot [simp]: "myfst bot = bot"
 lemma mysnd_bot [simp]: "mysnd bot = bot"
   unfolding bot_myprod_def by simp
 
-lemma MyPair_bot_bot: "MyPair bot bot = bot"
-  unfolding bot_myprod_def by simp
 
 instance myprod :: (order_bot, order_bot) order_bot
   by standard (simp add: less_eq_myprod_def)
@@ -366,43 +334,25 @@ instance myprod :: (complete_lattice, complete_lattice) complete_lattice
 lemma myfst_Inf: "myfst (Inf A) = (INF x\<in>A. myfst x)"
   by (simp add: Inf_myprod_def)
 
-lemma myfst_INF: "myfst (INF x\<in>A. f x) = (INF x\<in>A. myfst (f x))"
-  by (simp add: myfst_Inf image_image)
 
 lemma myfst_Sup: "myfst (Sup A) = (SUP x\<in>A. myfst x)"
   by (simp add: Sup_myprod_def)
 
-lemma myfst_SUP: "myfst (SUP x\<in>A. f x) = (SUP x\<in>A. myfst (f x))"
-  by (simp add: myfst_Sup image_image)
 
 lemma mysnd_Inf: "mysnd (Inf A) = (INF x\<in>A. mysnd x)"
   by (simp add: Inf_myprod_def)
 
-lemma mysnd_INF: "mysnd (INF x\<in>A. f x) = (INF x\<in>A. mysnd (f x))"
-  by (simp add: mysnd_Inf image_image)
 
 lemma mysnd_Sup: "mysnd (Sup A) = (SUP x\<in>A. mysnd x)"
   by (simp add: Sup_myprod_def)
 
-lemma mysnd_SUP: "mysnd (SUP x\<in>A. f x) = (SUP x\<in>A. mysnd (f x))"
-  by (simp add: mysnd_Sup image_image)
 
-lemma INF_MyPair: "(INF x\<in>A. MyPair (f x) (g x)) = MyPair (INF x\<in>A. f x) (INF x\<in>A. g x)"
-  by (simp add: Inf_myprod_def image_image)
 
-lemma SUP_MyPair: "(SUP x\<in>A. MyPair (f x) (g x)) = MyPair (SUP x\<in>A. f x) (SUP x\<in>A. g x)"
-  by (simp add: Sup_myprod_def image_image)
 
 text \<open>Alternative formulations for set infima and suprema over the myproduct
 of two complete lattices:\<close>
 
-lemma INF_myprod_alt_def:
-  "Inf (f ` A) = MyPair (Inf ((myfst \<circ> f) ` A)) (Inf ((mysnd \<circ> f) ` A))"
-  by (simp add: Inf_myprod_def image_image)
 
-lemma SUP_myprod_alt_def:
-  "Sup (f ` A) = MyPair (Sup ((myfst \<circ> f) ` A)) (Sup((mysnd \<circ> f) ` A))"
-  by (simp add: Sup_myprod_def image_image)
 
 subsection \<open>Complete distributive lattices\<close>
 

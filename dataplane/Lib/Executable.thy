@@ -322,14 +322,6 @@ lemma update_zmultiset_comm:
   apply (simp add: add.commute)
   done
 
-lemma update_zmultiset_plus_pos:
-  "A + update_zmultiset B x (int m) = B + update_zmultiset A x (int m)"
-  by simp
-lemma update_zmultiset_plus_neg:
-  "A + update_zmultiset B x (- (int m)) = (A + B) - update_zmultiset {#}\<^sub>z x (int m)"
-  apply simp
-  using add_diff_eq apply blast
-  done
 
 lemma update_zmultiset_plus[simp]:
   "update_zmultiset (update_zmultiset A t n) t m = update_zmultiset A t (n + m)"

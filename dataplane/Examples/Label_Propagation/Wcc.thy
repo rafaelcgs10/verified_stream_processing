@@ -28,9 +28,6 @@ abbreviation ccs :: \<open>'a set set\<close> where
 definition is_ccs :: \<open>'a set set \<Rightarrow> bool\<close> where
   \<open>is_ccs \<equiv> (=) ccs\<close>
 
-lemma Ex1_is_ccs:
-  \<open>Ex1 is_ccs\<close>
-  unfolding is_ccs_def by blast
 
 definition cc_of where
   \<open>cc_of v = {u \<in> edge_vertices. reachable v u}\<close>
@@ -166,35 +163,7 @@ lemma cc_of_in_ccs:
   shows "cc_of v \<in> ccs"
   using assms cc_of_is_cc by simp
 
-lemma cc_of_disjoint_or_eq:
-  "cc_of u \<inter> cc_of v = {} \<or> cc_of u = cc_of v"
-proof (cases "cc_of u \<inter> cc_of v = {}")
-  case False
-  then obtain w where "w \<in> cc_of u" and "w \<in> cc_of v"
-    by blast
-  then have "cc_of w = cc_of u" and "cc_of w = cc_of v"
-    using cc_of_eq_if_member by blast+
-  then show ?thesis
-    by blast
-qed simp
 
-lemma Union_ccs:
-  "\<Union>ccs = edge_vertices"
-proof (intro set_eqI iffI)
-  fix x
-  assume "x \<in> \<Union>ccs"
-  then obtain C where "C \<in> ccs" and "x \<in> C"
-    by auto
-  then show "x \<in> edge_vertices"
-    unfolding is_cc_def is_subcc_def by auto
-next
-  fix x
-  assume "x \<in> edge_vertices"
-  then have "cc_of x \<in> ccs" and "x \<in> cc_of x"
-    using cc_of_in_ccs cc_of_self by auto
-  then show "x \<in> \<Union>ccs"
-    by auto
-qed
 
 
 lemma is_cc_eq_cc_of:
@@ -228,10 +197,6 @@ definition labels_measure :: "_ \<Rightarrow> nat" where
 
 subsection \<open>Label Invariants\<close>
 
-lemma labels_invI:
-  assumes "\<And>v. v \<in> edge_vertices \<Longrightarrow> l v \<in> cc_of v"
-  shows "labels_inv l"
-  using assms unfolding labels_inv_def by simp
 
 lemma labels_invD:
   assumes "labels_inv l" and "v \<in> edge_vertices"
@@ -257,10 +222,6 @@ proof -
     by (rule reachable_trans)
 qed
 
-lemma labels_inv_label_class_is_subcc:
-  assumes "labels_inv l"
-  shows "is_subcc {v \<in> edge_vertices. l v = a}"
-  unfolding is_subcc_def by (auto intro: labels_inv_same_label_reachable[OF assms])
 
 subsection \<open>Stable Labels\<close>
 
@@ -283,10 +244,6 @@ proof -
     by (metis order_antisym)
 qed
 
-lemma labels_stable_edge_eq_E:
-  assumes "labels_stable (l :: 'a \<Rightarrow> 'b::order)" and "(v, u) \<in> E"
-  shows "l v = l u"
-  using assms by (auto intro: labels_stable_edge_eq)
 
 lemma labels_stable_reachable_eq:
   assumes "labels_stable (l :: 'a \<Rightarrow> 'b::order)" and "reachable u v"
@@ -540,15 +497,7 @@ lemma cc_of_insert_loop[simp]:
   "cc_of (insert (v, v) A) v = insert v (cc_of A v)"
   by simp
 
-lemma cc_of_Un_mono_left:
-  "cc_of A v \<subseteq> cc_of (A \<union> B) v"
-  unfolding cc_of_def
-  by (auto intro: reachable_Un_mono_left)
 
-lemma cc_of_Un_mono_right:
-  "cc_of B v \<subseteq> cc_of (A \<union> B) v"
-  unfolding cc_of_def
-  by (auto intro: reachable_Un_mono_right)
 
 lemma is_subcc_empty[simp]:
   "is_subcc E {}"

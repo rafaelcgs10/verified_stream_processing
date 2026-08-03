@@ -493,11 +493,6 @@ lemma set_icoll_llist_of:
   apply (auto simp: icoll_def split: event.splits)
   done
 
-lemma set_icoll_llist_of_map_Data_pair:
-  \<open>set (icoll (llist_of (map (\<lambda>(x, t'). Data t' (f x)) xs)) t) =
-    (\<lambda>x. f (fst x)) ` {x \<in> set xs. snd x \<le> t}\<close>
-  apply (auto simp: set_icoll_llist_of split_beta)
-  done
 
 lemma set_icoll_lshift:
   \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) lxs) \<Longrightarrow>
@@ -541,17 +536,6 @@ lemma ts_lsetI:
   apply simp
   using assms by (simp add: cin.rep_eq cset_of_llist.rep_eq)
 
-lemma ts_ldropnD:
-  assumes \<open>t |\<in>| ts (ldropn n lxs)\<close>
-  shows \<open>t |\<in>| ts lxs\<close>
-proof -
-  from assms obtain d where data: \<open>Data t d \<in> lset (ldropn n lxs)\<close>
-    by (rule ts_lsetE)
-  then have \<open>Data t d \<in> lset lxs\<close>
-    by (rule in_lset_ldropnD)
-  then show ?thesis
-    by (rule ts_lsetI)
-qed
 
 lemma icoll_empty_if_no_data_le:
   assumes \<open>\<And>t' d. t' \<le> t \<Longrightarrow> Data t' d \<notin> lset lxs\<close>

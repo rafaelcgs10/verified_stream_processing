@@ -266,32 +266,6 @@ lemma timely_input_stream_MintI[intro]:
   "timely_input_stream (LCons (Mint t) lxs) C \<Longrightarrow> timely_input_stream lxs (add_mset t C)"
   by (auto simp add: timely_input_stream_def)
 
-lemma timely_input_stream_expires_at_n:
-  "timely_input_stream lxs C \<Longrightarrow> 
-   \<exists> n. t \<notin> event.time ` lset (ldropn n lxs) \<and> n \<le> llength lxs"
-  apply (drule timely_input_stream_expires[of _ _ t])
-  apply (induct "lfilter (\<lambda>e. event.time e = t) lxs" arbitrary: lxs rule: lfinite_induct)
-  subgoal
-    by (metis (mono_tags, lifting) enat_0_iff(1) imageE ldropn_0 lfilter_empty_conv lnull_def zero_le)
-  subgoal for lxs
-    apply (cases "lfilter (\<lambda>e. event.time e = t) lxs"; simp)
-    apply (drule lfilter_eq_LConsD)
-    apply clarsimp
-    apply hypsubst_thin
-    subgoal for t' us vs
-      apply (drule meta_spec)
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply clarsimp
-      subgoal for n
-        apply (rule exI[of _ "the_enat (llength us) + n + 1"])
-        apply clarsimp
-        apply (smt (verit) add.commute add_Suc_right add_diff_cancel_right' eSuc_enat enat_ord_simps(1) ldropn_Suc_LCons ldropn_lappend2 le_add1 lfinite_conv_llength_enat linorder_linear llength_LCons
-            llength_lappend lnull_ldropn order_class.order_eq_iff plus_enat_simps(1) the_enat.simps)
-        done
-      done
-    done
-  done
 
 lemma timely_progress_DataI[intro]:
   "timely_progress (LCons (Data t d) lxs) C \<Longrightarrow> t \<in># C \<Longrightarrow> timely_progress lxs C"
@@ -359,18 +333,6 @@ lemma timely_input_stream_DropI[intro]:
   "timely_input_stream (LCons (Drop t) lxs) C \<Longrightarrow> timely_input_stream lxs ((C - {# t #}))"
   by (auto simp add: timely_input_stream_def)
 
-lemma lfinite_llength_ltaken:
-  "lfinite lxs \<Longrightarrow>
-   n = llength lxs \<Longrightarrow>
-   ltaken n lxs = list_of lxs"
-  apply (induct lxs arbitrary: n rule: lfinite_induct)
-   apply (auto simp add: lnull_def)
-  subgoal for xs n
-    apply (cases xs; cases n; simp)
-    using zero_enat_def apply force
-    apply (metis enat_eSuc_iff eSuc_inject)
-    done
-  done
 
 lemma vacant_not_frontier_less_equal:
   "vacant t M \<Longrightarrow>

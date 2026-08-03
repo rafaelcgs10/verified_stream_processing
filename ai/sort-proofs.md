@@ -402,6 +402,37 @@ rejects ("Malformed command syntax") - batch builds of dataplane
 are impossible without a symbol-conversion pass; that is why the
 repro copied and converted the three Lib files.
 
+## Phase 12: unused-lemma cleanup
+
+Criterion: lemmas in dataplane (excluding Attic, Tools, Termination.thy
+per user preference, and the off-chain demo files Collatz/Accumulator/
+Tmap_op/Concat_op/Branch_op) that contribute to nothing loaded in the
+session. Data source: a single "unused_thms Operator - <leaves>"
+command hosted in a scratch theory UnusedScan.thy at the dataplane
+root that imports the four working leaf theories (Accumulator is
+chronically unschedulable in jEdit). unused_thms tracks implicit
+simp/intro usage, so it is safer than grepping. Filters applied on
+top: never delete the main correctness theorems (correctness,
+correctness_aux, correctness_gen, soundness, completeness,
+label_propagation_correctness, ooo_input_op_source_op,
+ooo_input_op_increment_op_source_op); never delete attributed
+lemmas ([simp]/[intro]/[elim]/[dest]/[iff]/[cong]/[code]); never
+delete anything textually referenced elsewhere in the repo (regex
+must use lookarounds, NOT \b - primed names like find_SomeD'' defeat
+word boundaries); block extraction must know ALL top-level keywords
+(a missing "function" keyword made one lemma block swallow the
+find_timestamp function; restored).
+
+- [x] Round 1: 148 lemmas + 6 diagnostic commands (find_theorems/
+      thm/term; value kept) deleted across 30 files. Repairs on the
+      way: Termination.thy fully reverted (user prefers it
+      untouched), find_SomeD'' and BAPPEND_BENQ_BHD' restored
+      (regex bug), find_timestamp function block restored (keyword
+      bug). Gate GREEN: LP 14284 + Batch 7777 fully processed, zero
+      errors, all edited files individually clean.
+- [ ] Round 2: rerun the sweep after round 1 (lemmas whose only
+      users were deleted in round 1), delete, gate, report.
+
 ## Operational notes for continuing this work
 
 - Isabelle MCP: the harness-level mcp tools may be missing; a working

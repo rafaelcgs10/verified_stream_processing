@@ -29,9 +29,6 @@ corec builder_op where
     (let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st)
    )\<close>
 
-thm builder_op.code[of fb inps ops os logic]
-
-
 lemma
   "builder_op fb inps ops os logic =
 Choice

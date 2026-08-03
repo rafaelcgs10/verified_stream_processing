@@ -89,17 +89,6 @@ lemma is_empty_antichain_plus:
   "is_empty_antichain B \<Longrightarrow>
    antichain A + B = antichain A"
   by (metis Set.is_empty_iff antichain_add_commute antichain_sum_empty_2 empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
-lemma is_empty_antichain_plus':
-  "is_empty_antichain A \<Longrightarrow>
-   A + antichain B = antichain B"
-  by (metis Set.is_empty_iff antichain_sum_empty_2 empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
-lemma antichain_sum_eq:
-  "finite A \<Longrightarrow> incomparable A \<Longrightarrow>
-   antichain A + antichain A = antichain A"
-  apply (subst plus_antichain.abs_eq)
-  apply (clarsimp simp add:  eq_onp_def)+
-  apply (metis (no_types, lifting) basic_trans_rules(20) in_minimal_antichain incomparable_def order_antisym_conv subsetI)
-  done
 lemma incomparable_singleton[simp]:
   "incomparable {a}"
   unfolding incomparable_def by auto
@@ -208,27 +197,8 @@ lemma in_frontier_minusD:
    (\<exists> y. y \<in>\<^sub>A frontier A \<and> y \<le> x)"
   using frontier_below_eq_frontier_minus less_eq_antichain_def by blast
 
-lemma frontier_below_eq_frontier_plus_neg_alt:
-  "(\<forall> t. zcount N t \<le> 0) \<Longrightarrow>
-   (frontier M) \<le> (frontier (N + M))"
-  by (simp add: add.commute frontier_below_eq_frontier_plus_neg)
 
-lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus:
-  "(frontier N) \<le> (frontier M) \<Longrightarrow>
-   (frontier N) \<le> (frontier (N + M))"
-  unfolding less_eq_antichain_def
-  apply safe
-  apply (metis trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier dual_order.trans)
-  done
 
-lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus_gen:
-  "(frontier N) \<le> (frontier M) \<Longrightarrow>
-   (frontier C) \<le> (frontier N) \<Longrightarrow>
-   frontier C \<le> frontier (N + M)"
-  unfolding less_eq_antichain_def
-  apply safe
-  apply (metis trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier dual_order.trans)
-  done
 
 
 lemma frontier_below_eq_frontier_plus_pos:
@@ -237,11 +207,6 @@ lemma frontier_below_eq_frontier_plus_pos:
   unfolding less_eq_antichain_def
   by (metis add.commute less_add_same_cancel1 member_frontier_pos_zmset order_le_less_trans trivial_dataflow_topology_interpretation.obtain_frontier_elem zcount_union)
 
-lemma frontier_add_zmset:
-  "frontier M \<le> frontier N \<Longrightarrow>
-   frontier (add_zmset x M) \<le> frontier N"
-  using frontier_below_eq_frontier_plus_pos
-  by (metis add_zmset_add_single dual_order.refl dual_order.trans zcount_single zero_less_one_class.zero_le_one)
 
 lemma frontier_le_add_singleton:
   "(\<forall>t'. zcount A t' > 0 \<longrightarrow> t' \<le> t) \<Longrightarrow>
@@ -275,19 +240,6 @@ lemma frontier_le_add:
   apply auto
   by (metis order.trans trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier)
 
-lemma frontier_linorder:
-  "frontier (A :: ('a :: linorder) zmultiset) = (if {t. zcount A t > 0} = {} then {}\<^sub>A else antichain {Min {t. zcount A t > 0}})"
-  apply (auto split: if_splits simp add: empty_antichain_def minimal_antichain_def frontier.abs_eq)
-  apply (rule arg_cong[where f=antichain])
-  apply safe
-    apply simp_all
-  subgoal
-    by (metis Min_eqI finite_zcount_pos mem_Collect_eq verit_comp_simplify1(3))
-  subgoal
-    using \<open>\<And>xa x. 0 < zcount A x \<Longrightarrow> 0 < zcount A xa \<Longrightarrow> \<forall>y. 0 < zcount A y \<longrightarrow> \<not> y < xa \<Longrightarrow> xa = Min {t. 0 < zcount A t}\<close> order_zmset_exists_foundation by blast
-  subgoal
-    by (metis Min_le finite_zcount_pos linorder_not_le mem_Collect_eq)
-  done
 
 lemma frontier_singleton:
   "frontier {#x#}\<^sub>z = antichain {x}"
@@ -443,15 +395,6 @@ lemma froniter_add_justified:
     done
   done *)
 
-lemma frontier_add_le_alt3:
-  "frontier B \<le> frontier C \<Longrightarrow>
-   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
-   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
-   frontier (A + B) \<le> frontier (A + C)"
-  unfolding less_eq_antichain_def
-  apply auto
-  apply (metis add.commute frontier_add_le frontier_below_eq_frontier_plus_pos less_eq_antichain_def)
-  done
 
 lemma frontier_le_remove_l:
   "frontier A \<le> frontier C \<Longrightarrow>
@@ -589,17 +532,6 @@ lemma frontier_less_equal_sumE:
   using frontier_less_equal_add_cases apply blast
   done
 
-lemma frontier_less_equal_subset_sumI:
-  "finite S \<Longrightarrow>
-   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
-   S' \<subseteq> S \<Longrightarrow>
-   frontier_less_equal (frontier (\<Sum>loc\<in>S'. f loc)) t \<Longrightarrow>
-   frontier_less_equal (frontier (\<Sum>loc\<in>S. f loc)) t"
-  apply (induct S arbitrary:S' rule: finite_induct)
-  apply (clarsimp simp add: frontier_less_equal_addI sum_nonneg zcount_sum)+
-  apply (smt (verit, del_insts) Set.set_insert frontier_less_equal_addI frontier_less_equal_add_cases insert_subset rev_finite_subset subset_insert sum.insert_if sum_nonneg
-      zcount_sum)
-  done
 
 lemma in_frontierI:
   "zcount M t > 0 \<Longrightarrow>
@@ -632,27 +564,6 @@ lemma frontier_lt_minus_add:
   apply (smt (z3) dual_order.strict_trans2 in_frontier_iff nless_le trivial_dataflow_topology_interpretation.obtain_elem_frontier)
   done
 
-lemma frontier_sum_le_alt:
-  "finite S \<Longrightarrow>
-   S' \<subseteq> S \<Longrightarrow>
-   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
-   frontier (\<Sum>loc\<in>S. f loc) \<le> frontier (\<Sum>loc\<in>S'. f loc)"
-    apply (induct S arbitrary: S' rule: finite_induct)
-   apply simp_all
-  apply (clarsimp simp add: subset_insert_iff split: if_splits)
-  subgoal for x F S'
-    apply (drule meta_spec)+
-    apply (drule meta_mp)
-     apply assumption
-    apply (subst (asm) sum_diff)
-      apply simp_all
-     apply (meson infinite_remove infinite_super)
-    apply (rule frontier_lt_minus_add)
-    apply (simp_all add: sum_nonneg zcount_sum)
-    done
-  subgoal for x F S'
-    by (meson frontier_le_remove_left)
-  done
 
 lemma frontier_lt_subseq:
   "N \<subseteq>#\<^sub>z M \<Longrightarrow>
@@ -667,24 +578,6 @@ lemma frontier_lt_subseq:
 
 
 
-lemma frontier_sum_le_alt2:
-  "finite S \<Longrightarrow>
-   S' \<subseteq> S \<Longrightarrow>
-   (\<forall> l \<in> S. \<forall> t. f' l \<subseteq>#\<^sub>z f l) \<Longrightarrow>
-   frontier (\<Sum>loc\<in>S. f loc) \<le> frontier (\<Sum>loc\<in>S. f' loc)"
-    apply (induct S arbitrary: S' rule: finite_induct)
-   apply simp_all
-  apply (clarsimp simp add: subset_insert_iff split: if_splits)
-  subgoal for x F S'
-    apply (drule meta_spec)+
-    apply (drule meta_mp)
-     apply assumption
-    using frontier_lt_subseq 
-    apply (metis subset_zmset.add_mono trivial_dataflow_topology_interpretation.sum_mono_subseteq)
-    done
-  subgoal for x F S'
-    by (simp add: frontier_lt_subseq subset_zmset.add_mono trivial_dataflow_topology_interpretation.sum_mono_subseteq)
-  done
 
 section \<open>Frontiers of Sums\<close>
 
@@ -755,58 +648,12 @@ lemma frontier_sum_eq:
     done
   done
 
-lemma in_frontier_SumD:
-  "t \<in>\<^sub>A frontier (\<Sum>loc\<in>A. f loc) \<Longrightarrow>
-   zcount (f a) t > 0 \<Longrightarrow>
-   (\<forall> loc \<in> A. \<forall> y. zcount (f loc) y \<ge> 0) \<Longrightarrow>
-   a \<in> A \<Longrightarrow>
-   t \<in>\<^sub>A frontier (f a)"
-    apply transfer
-    unfolding minimal_antichain_def
-    apply clarsimp
-    apply (smt (verit, ccfv_SIG) sum.infinite sum_nonneg_leq_bound zcount_sum)
-    done
 
-lemma in_frontier_Sum_all_not_lt:
-  "t \<in>\<^sub>A frontier (\<Sum>loc\<in>A. f loc) \<Longrightarrow>
-   (\<forall> loc \<in> A. \<forall> y. zcount (f loc) y \<ge> 0) \<Longrightarrow>
-   (\<forall> loc\<in>A. \<forall> t'. zcount (f loc) t' > 0 \<longrightarrow> \<not> t' < t)"
-    apply transfer'
-    unfolding minimal_antichain_def
-    apply clarsimp
-    apply (smt (verit, ccfv_SIG) sum.infinite sum_nonneg_leq_bound zcount_sum)
-    done
 
 lemma zcount_gt_0_in_frontierD:
   "0 < zcount M t \<Longrightarrow> \<exists>s\<le>t. s \<in>\<^sub>A frontier M"
   by (metis trivial_dataflow_topology_interpretation.obtain_elem_frontier)
 
-lemma in_frontier_SumI:
-  "finite A \<Longrightarrow>
-   t \<in>\<^sub>A frontier (f a) \<Longrightarrow>
-   a \<in> A \<Longrightarrow>
-   (\<forall> x \<in> A. \<forall> t'. zcount (f x) t' \<ge> 0) \<Longrightarrow>
-   (\<forall> x \<in> A. \<forall> t'. x \<noteq> a \<longrightarrow> zcount (f x) t' > 0 \<longrightarrow> \<not> t' < t) \<Longrightarrow>
-   t \<in>\<^sub>A frontier (sum f A)"
-  apply (induct A rule: finite_induct)
-   apply simp_all
-  apply (clarsimp simp add: sum_nonneg zcount_sum)
-  subgoal 
-    apply (elim disjE)
-    subgoal
-      apply hypsubst_thin
-      apply (rule in_frontier_sumI1)
-         apply auto
-       apply (metis sum_pos_ex_elem_pos zcount_sum)
-      apply (simp add: sum_nonneg zcount_sum)
-      done
-    subgoal
-      apply (rule in_frontier_sumI2)
-         apply auto
-      apply (simp add: sum_nonneg zcount_sum)
-      done
-    done
-  done
 
 
 lemma in_frontier_sumEx:
@@ -864,14 +711,6 @@ lemma frontier_less_equal_frontier_sum_iff:
   done
 
 
-lemma frontier_less_equal_add_frontier_le:
-  "\<forall> t \<in>#\<^sub>z X. frontier_less_equal (frontier A) t \<Longrightarrow>
-   frontier A \<le> frontier (A + X)"
-  unfolding frontier_less_equal_def less_eq_antichain_def
-  apply auto
-  subgoal for t
-    by (metis frontier_less_equal_def frontier_less_equal_iff2 in_frontier_addD pos_zcount_in_zmset)
-  done
 
 
 lemma frontier_less_equal_add_frontier_le_alt:
@@ -884,16 +723,6 @@ lemma frontier_less_equal_add_frontier_le_alt:
     by (metis antisym_conv1 frontier_comparable_False frontier_less_equal_add_cases_stronger frontier_less_equal_def frontier_less_equal_iff2 order_trans rel_simps(70) zcount_ne_zero_iff)
   done
 
-lemma frontier_add_update_zmultiset_le:
-  "zcount A t + m > 0 \<Longrightarrow>
-   (frontier (A + update_zmultiset {#}\<^sub>z t m)) = frontier A + frontier {#t#}\<^sub>z"
-  apply transfer'
-  apply (auto simp add: zcount_update_zmultiset minimal_antichain_def)
-  subgoal for A m x y
-    by force
-  subgoal
-    by (metis basic_trans_rules(21) order_zmset_exists_foundation)
-  done
 
 lemma set_antichain_frontier_add_update_zmultiset_le:
   "0 < zcount A t + m \<Longrightarrow>

@@ -55,31 +55,7 @@ lemma zero_in_graph_path_weight[simp,intro]:
     done
   done
 
-lemma sum_zmset_filter_graph_to_nxt:
-  assumes GR: "graph_summar_nt su (graph_to_nxt su) os"
-  shows "graph_to_nxt su (nid, p) = Some (nid', p') \<Longrightarrow>
-   (\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(p'', ab). graph_to_nxt su (fst x, p'') = Some (nid', p') \<and> snd x = p'') (produ (os (fst x)))))) =
-   zmset (map snd (filter (\<lambda> (p', _, _). p' = p) (produ (os nid))))"
-  apply (rule sum_eq_singleton[where a="(nid, p)"])
-  apply simp_all
-  subgoal
-    apply (rule arg_cong[where f=zmset])
-    apply (rule map_cong)
-    apply (rule filter_cong)
-    apply auto
-    done
-  subgoal
-    apply (auto simp add: filter_empty_conv intro!: zmset_emptyI)
-    using GR[unfolded graph_summar_nt_def]
-    apply (metis domI inj_on_eq_iff prod.inject)+
-    done
-  done
 
-lemma sum_zmset_filter_graph_to_nxt_no_connection:
-  "(\<forall> nid p. graph_to_nxt su (nid, p) \<noteq> Some (nid', p')) \<Longrightarrow>
-   (\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(p'', ab). graph_to_nxt su (fst x, p'') = Some (nid', p') \<and> snd x = p'') (produ (os (fst x)))))) =
-   {#}\<^sub>z"
-  by (auto simp add: filter_empty_conv intro!: zmset_emptyI comm_monoid_add_class.sum.neutral)
 
 lemma zmset_filter_graph_to_nxt:
   assumes GR: "graph_summar_nt su (graph_to_nxt su) os"
@@ -94,41 +70,6 @@ lemma zmset_filter_graph_to_nxt:
   apply (metis (no_types, opaque_lifting) domI inj_onD snd_conv)
   done
 
-lemma sum_zmset_map_filter_graph_to_nxt:
-  assumes GR: "graph_summar_nt su (graph_to_nxt su) os"
-  shows
-    "finite A \<Longrightarrow>
-   nid \<in> A \<Longrightarrow>
-   graph_to_nxt su (nid, p) = Some (nid', p') \<Longrightarrow>
-   (\<Sum>x\<in>A.
-            zmset
-             (map snd (filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt su (x, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) (produ (os x)))))) =
-    zmset (map snd (filter (\<lambda> (p', _, _). p' = p) (produ (os nid))))"
-  apply (rule sum_eq_singleton[where a="nid"])
-  apply simp_all
-  apply (subst zmset_filter_graph_to_nxt[OF GR])
-  apply assumption
-  apply simp_all
-  apply (auto simp add: Misc.set_map_filter filter_empty_conv intro!: zmset_emptyI split: option.splits)
-  using GR[unfolded graph_summar_nt_def]
-  apply (metis (no_types, lifting) Pair_inject domIff graph_to_nxt_not_Ex_op_conn in_op_conn_graph_to_nxt_iff inj_onD op_conn.simps)
-  done
-
-lemma zmset_filter_graph_to_nxt_no_connection:
-  "(\<forall> nid p. graph_to_nxt su (nid, p) \<noteq> Some (nid', p')) \<Longrightarrow>
-   zmset (map snd (filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt su (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) xs))) =
-   {#}\<^sub>z"
-  apply (induct xs)
-  apply simp_all
-  apply (auto simp add: split: option.splits)
-  done
-
-lemma sum_minus_zero:
-  "finite A \<Longrightarrow>
-   (\<forall> x\<in>A. G x = (0 :: _ :: group_add)) \<Longrightarrow>
-   (\<Sum>x\<in>A. F x - G x) =
-   (\<Sum>x\<in>A. F x)"
-  by auto
 
 
 

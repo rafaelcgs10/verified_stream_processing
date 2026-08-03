@@ -328,20 +328,4 @@ lemma dataplane_tracker_inv_channel_ifrontierD:
   unfolding dataplane_tracker_inv_def chnls_imp_front_inv_def
   by fastforce
 
-lemma dataplane_tracker_inv_channel_propagated_exit_scopeI:
-  assumes prop_all: \<open>propagate_all (summ sg) (pt_tr sg) = Some c\<close>
-    and topo: \<open>dataflow_topology (summ sg) (-+-)\<close>
-    and reach: \<open>reachable_locations (summ sg) = UNIV\<close>
-    and inv: \<open>dataplane_tracker_inv os cbufs sg\<close>
-    and msg: \<open>(d, \<tau>) \<in> set ((outputs_at_target (summ sg) os >> cbufs) (nid, p))\<close>
-  shows \<open>frontier_less_equal (exit_scope myfst (frontier (c_imp c (Loc nid (Trg p))))) (myfst \<tau>)\<close>
-proof -
-  have prop_inv: \<open>propagation_inv (summ sg) (pt_tr sg)\<close>
-    using inv unfolding dataplane_tracker_inv_def by auto
-  have chn_front:
-    \<open>frontier_less_equal (ifrontier (summ sg) (-+-) (pt_tr sg) (Loc nid (Trg p))) \<tau>\<close>
-    by (rule dataplane_tracker_inv_channel_ifrontierD[OF inv msg])
-  show ?thesis
-    by (rule propagated_ifrontier_exit_scopeI[OF prop_all topo reach prop_inv chn_front])
-qed
 end

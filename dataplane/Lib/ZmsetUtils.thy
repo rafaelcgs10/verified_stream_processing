@@ -71,12 +71,6 @@ lemma to_zmset_empty[simp]:
    apply (simp_all flip: to_zmset_correct)
   by (metis add_zmset_to_zmset list.simps(2) mset_pos_empty mset_zero_iff to_zmset_correct zmset_of_inverse)
 
-lemma add_zmset_minus_to_zmset_if:
-  "add_zmset x (- to_zmset xs) = (if x ∈ set xs then - to_zmset (remove1 x xs) else - to_zmset xs + {# x #}⇩z)"
-  apply (induct xs)
-  apply (auto simp add: add_zmset_neg_add_zmset_if)
-  apply (metis add_zmset_neg minus_diff_eq verit_eq_simplify(25))
-  done
 
 lemma zmset_of_replicate_mset[simp]:
   "zmset_of (replicate_mset m t) = to_zmset (replicate m t)"
@@ -112,11 +106,7 @@ lemma zcount_del_zmset[simp]:
   "zcount (del_zmset b A) a = (if b = a then zcount A a - 1 else zcount A a)"
   by transfer auto
 
-lemma uminus_add_zmset: "- add_zmset z M = del_zmset z (- M)"
-  by (auto simp: zmultiset_eq_iff)
 
-lemma add_del_zmset: "add_zmset x (del_zmset y M) = (if x = y then M else del_zmset y (add_zmset x M))"
-  by (auto simp: zmultiset_eq_iff)
 
 lemma del_zmset_commute[simp]:
   "del_zmset a (del_zmset b M) = del_zmset b (del_zmset a M)"
@@ -185,12 +175,6 @@ lemma minus_zmset:
   apply (smt (verit, del_insts) Executable.update_zmultiset_plus ZmsetUtils.update_zmultiset_plus add.commute add.inverse_distrib_swap add_cancel_left_left minus_unique)
   done
 
-lemma zmset_minus:
-  "zmset xs - zmset ys = zmset (xs @ map (λ (x, m). (x, -m)) ys)"
-  apply (induct xs arbitrary: ys)
-   apply (clarsimp simp add: minus_zmset)+
-  apply (metis add_uminus_conv_diff minus_zmset)
-  done
 
 lemma zmset_concat:
   "zmset (concat xs) = sum_list (map zmset xs)"
@@ -242,11 +226,6 @@ lemma zcount_zmset_le_0I:
   by (induct xs)
     (auto simp add: zcount_update_zmultiset)
 
-lemma zcount_zmset_eq_0I:
-  "(∀ (t', m) ∈ set xs. t' ≠ t) ⟹
-   zcount (zmset xs) t = 0"
-  by (induct xs)
-    (auto simp add: zcount_update_zmultiset)
 
 lemma gt_0_zcount_msetD:
   "0 < zcount (zmset (map snd (filter ((=) p ∘ fst) xs))) t ⟹
@@ -384,9 +363,6 @@ lemma pos_zcount_image_zmset_inj:
     done
   done
 
-lemma to_zmset_concat:
-  "to_zmset (concat xs) = sum_list (map to_zmset xs)"
-  by (induct xs) auto
 
 lemma zcount_image_zmset_image_zmset[simp]:
   "zcount (Auxiliary.image_zmset f (Auxiliary.image_zmset g (M t))) t = zcount {#f (g xa). xa ∈#⇩z M t#} t"
@@ -416,11 +392,6 @@ lemma zcount_zimageD:
 lemma zcount_to_zmset_gt_0[simp]:
   "zcount (to_zmset xs) t > 0 ⟷ t ∈ set xs"
   by (induct xs) (simp_all add: to_zmset_nenneg)
-lemma sum_le_0I:
-  "finite A ⟹ (∀ x∈A. f x ≤ (0 :: int)) ⟹ (∑x∈A. f x)≤ 0"
-  apply (induct A rule: finite_induct)
-   apply simp_all
-  done
 
 lemma in_frontier_minusI:
   "t ∈⇩A frontier A ⟹

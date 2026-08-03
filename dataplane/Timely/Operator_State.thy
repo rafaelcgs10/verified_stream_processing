@@ -869,10 +869,6 @@ lemma op_state_base_CONSUMES[simp]:
   unfolding op_state_base_def fold_consumes
   by (rule operator_state_eqI) (simp_all add: fun_eq_iff)
 
-lemma op_state_base_obtain_progress:
-  \<open>op_state_base (fst (obtain_progress os)) = fst (obtain_progress (op_state_base os))\<close>
-  unfolding op_state_base_def obtain_progress_def
-  by (rule operator_state_eqI) simp_all
 
 lemma op_state_base_front_initia_update[simp]:
 

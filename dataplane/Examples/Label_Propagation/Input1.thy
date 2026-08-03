@@ -186,15 +186,7 @@ lemma outpu_fst_label_prop_input1_batched[simp]:
       (filter (\<lambda>(x, cap). out cap = p) (snd (label_prop_input1_batched os msgs))))\<close>
   by (induct msgs arbitrary: os) (auto simp: case_prod_beta append_assoc fun_eq_iff)
 
-lemma inter_fst_label_prop_input1_batched:
-  \<open>inter (fst (label_prop_input1_batched os msgs)) =
-    inter (fold (\<lambda>(d, t) os. label_prop_input1_step_state os d t) msgs os)\<close>
-  by (induct msgs arbitrary: os) (auto simp: case_prod_beta split: prod.splits)
 
-lemma ocaps_fst_label_prop_input1_batched:
-  \<open>ocaps (fst (label_prop_input1_batched os msgs)) =
-    ocaps (fold (\<lambda>(d, t) os. label_prop_input1_step_state os d t) msgs os)\<close>
-  by (induct msgs arbitrary: os) (auto simp: case_prod_beta split: prod.splits)
 
 lemma produ_fst_label_prop_input1_batched[simp]:
   \<open>produ (fst (label_prop_input1_batched os msgs)) =
@@ -411,12 +403,6 @@ lemma label_prop_input1_loop_updates_initia_label:
   by (auto split: prod.splits)
 
 
-lemma label_prop_input1_loop_updates_front_label:
-  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-  shows \<open>front os_label_prop' = front os_label_prop\<close>
-  using step
-  unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
-  by (auto split: prod.splits)
 
 
 lemma label_prop_input1_loop_updates_initia_os2:
@@ -427,20 +413,8 @@ lemma label_prop_input1_loop_updates_initia_os2:
   by (auto split: prod.splits)
 
 
-lemma label_prop_input1_loop_updates_front_os2:
-  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-  shows \<open>front (os 2) = front (os' 2)\<close>
-  using step
-  unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
-  by (auto split: prod.splits)
 
 
-lemma label_prop_input1_loop_updates_intsum_os2:
-  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-  shows \<open>intsum (os 2) = intsum (os' 2)\<close>
-  using step
-  unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
-  by (auto split: prod.splits)
 
 
 lemma label_prop_input1_loop_updates_intsum_label:
@@ -475,44 +449,14 @@ lemma label_prop_input1_loop_updates_de1_label:
   by (auto split: prod.splits)
 
 
-lemma label_prop_input1_loop_updates_de2_label:
-  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-  shows \<open>de2 os_label_prop = de2 os_label_prop'\<close>
-  using step
-  unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
-  by (auto split: prod.splits)
 
 
-lemma label_prop_input1_loop_updates_en1_os2:
-  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-  shows \<open>en1 (os 2) = en1 (os' 2)\<close>
-  using step
-  unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
-  by (auto split: prod.splits)
 
 
-lemma label_prop_input1_loop_updates_en2_os2:
-  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-  shows \<open>en2 (os 2) = en2 (os' 2)\<close>
-  using step
-  unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
-  by (auto split: prod.splits)
 
 
-lemma label_prop_input1_loop_updates_de1_os2:
-  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-  shows \<open>de1 (os 2) = de1 (os' 2)\<close>
-  using step
-  unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
-  by (auto split: prod.splits)
 
 
-lemma label_prop_input1_loop_updates_de2_os2:
-  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-  shows \<open>de2 (os 2) = de2 (os' 2)\<close>
-  using step
-  unfolding label_prop_input1_loop_updates_def Let_def fold_consumes
-  by (auto split: prod.splits)
 
 
 section \<open>Label-propagation input-1 batch facts\<close>
@@ -837,37 +781,6 @@ qed
 
 
 
-lemma label_prop_input1_batched_produced_memberD:
-  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-  assumes \<open>(p, pt, n) \<in> set (map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-    (snd (label_prop_input1_batched os msgs)))\<close>
-  obtains
-    \<open>p = 1\<close>
-    \<open>n = 1\<close>
-    \<open>myfst pt \<in> set (timestamps os)\<close>
-    \<open>MyPair (myfst pt) 0 \<le> pt\<close>
-proof -
-  obtain x cap where batch_member: \<open>(x, cap) \<in> set (snd (label_prop_input1_batched os msgs))\<close>
-    and triple_eq: \<open>(p, pt, n) = (case cap of Cap t p \<Rightarrow> (p, t, 1))\<close>
-    using assms by auto
-  obtain pre d t post os_pre where os_pre_eq:
-    \<open>os_pre = fst (label_prop_input1_batched os pre)\<close>
-    and step_member: \<open>(x, cap) \<in> set (label_prop_input1_step_batch os_pre d t)\<close>
-    using batch_member by (elim label_prop_input1_batched_batch_memberD)
-  obtain cur_t where cur_t_pre: \<open>cur_t \<in> set (timestamps os_pre)\<close>
-    and cap_eq: \<open>cap = Cap (MyPair cur_t (mysnd t)) 1\<close>
-    using step_member by (elim label_prop_input1_step_batch_memberD)
-  have cur_t: \<open>cur_t \<in> set (timestamps os)\<close>
-    using cur_t_pre os_pre_eq by simp
-  have fields: \<open>p = 1\<close> \<open>n = 1\<close> \<open>pt = MyPair cur_t (mysnd t)\<close>
-    using triple_eq cap_eq by simp_all
-  have pt_ts: \<open>myfst pt \<in> set (timestamps os)\<close>
-    using fields cur_t by simp
-  have pt_ge: \<open>MyPair (myfst pt) 0 \<le> pt\<close>
-    using fields by simp
-  show ?thesis
-    using that[OF fields(1) fields(2) pt_ts pt_ge] .
-qed
 
 
 
@@ -1345,23 +1258,6 @@ next
 qed
 
 
-lemma label_prop_input1_batched_batch_time_not_leD:
-  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-  assumes time_not_le: \<open>\<forall>(d, t)\<in>set msgs. \<not> myfst t \<le> q\<close>
-    and member: \<open>(x, cap) \<in> set (snd (label_prop_input1_batched os msgs))\<close>
-  shows \<open>\<not> myfst (time cap) \<le> q\<close>
-proof -
-  obtain pre d t post os_pre where msgs_eq: \<open>msgs = pre @ (d, t) # post\<close>
-    and step_member: \<open>(x, cap) \<in> set (label_prop_input1_step_batch os_pre d t)\<close>
-    using member by (elim label_prop_input1_batched_batch_memberD)
-  obtain cur_t where time_le: \<open>myfst t \<le> cur_t\<close>
-    and cap_eq: \<open>cap = Cap (MyPair cur_t (mysnd t)) (1 :: 2)\<close>
-    using step_member by (elim label_prop_input1_step_batch_memberD)
-  have msg_not_le: \<open>\<not> myfst t \<le> q\<close>
-    using time_not_le msgs_eq by auto
-  show ?thesis
-    using msg_not_le time_le cap_eq by auto
-qed
 
 
 
@@ -2034,101 +1930,8 @@ proof -
 qed
 
 
-lemma labels_stable_label_prop_input1_loop_updates_emptyI:
-  fixes os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-    and os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
-  assumes UPDATES: \<open>(cbufs', os_label_prop', os') =
-      label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-    and INV: \<open>label_prop_upd_inv os_label_prop\<close>
-    and stable: \<open>labels_stable (all_edges os_label_prop q) (min_label os_label_prop q)\<close>
-    and wf_upd: \<open>wf_label_prop_updates os_label_prop
-        (set (input os_label_prop 1) \<union>
-         set (cbufs (1, 1) @ outpu (os 2) 1 @
-              map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-                (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
-    and out_empty: \<open>outpu os_label_prop' 1 = []\<close>
-  shows \<open>labels_stable (all_edges os_label_prop' q) (min_label os_label_prop' q)\<close>
-proof -
-  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
-    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
-  let ?base = \<open>os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>\<close>
-  let ?consumed = \<open>CONSUMES 1 ?msgs ?base\<close>
-  have os_label_prop'_eq:
-    \<open>os_label_prop' = fst (label_prop_input1_batched ?consumed (input ?consumed 1))\<close>
-    using UPDATES
-    unfolding label_prop_input1_loop_updates_def Let_def
-    by (auto split: prod.splits)
-  have wf_base_msgs: \<open>wf_label_prop_updates ?base (set ?msgs)\<close>
-    using wf_upd[unfolded wf_label_prop_updates_un]
-    unfolding wf_label_prop_updates_def by simp
-  have inv_consumed: \<open>label_prop_upd_inv ?consumed\<close>
-    by (rule label_prop_upd_inv_CONSUMES_port1I[OF _ wf_base_msgs])
-      (use INV in simp)
-  have stable_consumed: \<open>labels_stable (all_edges ?consumed q) (min_label ?consumed q)\<close>
-    using stable by simp
-  have wf_consumed: \<open>wf_label_prop_updates ?consumed (set (input ?consumed 1))\<close>
-    using wf_upd
-    unfolding wf_label_prop_updates_def by (simp add: input_CONSUMES Un_commute)
-  have consumed_out_empty: \<open>outpu ?consumed 1 = []\<close>
-    by (simp add: fold_consumes)
-  have filter_empty:
-    \<open>filter (\<lambda>(x, cap). out cap = (1 :: 2))
-      (snd (label_prop_input1_batched ?consumed (input ?consumed 1))) = []\<close>
-    using out_empty os_label_prop'_eq consumed_out_empty
-    by (simp add: outpu_fst_label_prop_input1_batched_eq)
-  have batch_empty:
-    \<open>snd (label_prop_input1_batched ?consumed (input ?consumed 1)) = []\<close>
-    by (rule snd_label_prop_input1_batched_empty_if_filter_out1_empty[OF filter_empty])
-  have stable_final:
-    \<open>labels_stable
-      (all_edges (fst (label_prop_input1_batched ?consumed (input ?consumed 1))) q)
-      (min_label (fst (label_prop_input1_batched ?consumed (input ?consumed 1))) q)\<close>
-    by (rule labels_stable_fst_label_prop_input1_batched_input_emptyI
-        [OF inv_consumed stable_consumed wf_consumed batch_empty])
-  show ?thesis
-    using os_label_prop'_eq stable_final by simp
-qed
 
 
-lemma labels_stable_label_prop_input1_loop_updatesI:
-  fixes os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-    and os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
-  assumes UPDATES: \<open>(cbufs', os_label_prop', os') =
-      label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-    and stable: \<open>labels_stable (all_edges os_label_prop q) (min_label os_label_prop q)\<close>
-    and time_not_le: \<open>\<forall>(d, t)\<in>set (input os_label_prop 1) \<union>
-        set (cbufs (1, 1) @ outpu (os 2) 1 @
-          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-            (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)).
-      \<not> myfst t \<le> q\<close>
-  shows \<open>labels_stable (all_edges os_label_prop' q) (min_label os_label_prop' q)\<close>
-proof -
-  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
-    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
-  let ?base = \<open>os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>\<close>
-  let ?consumed = \<open>CONSUMES 1 ?msgs ?base\<close>
-  have os_label_prop'_eq:
-    \<open>os_label_prop' = fst (label_prop_input1_batched ?consumed (input ?consumed 1))\<close>
-    using UPDATES
-    unfolding label_prop_input1_loop_updates_def Let_def
-    by (auto split: prod.splits)
-  have stable_consumed: \<open>labels_stable (all_edges ?consumed q) (min_label ?consumed q)\<close>
-    using stable by simp
-  have time_not_le_consumed:
-    \<open>\<forall>(d, t)\<in>set (input ?consumed 1). \<not> myfst t \<le> q\<close>
-    using time_not_le by (simp add: input_CONSUMES Un_commute)
-  have stable_batched:
-    \<open>labels_stable
-      (all_edges (fst (label_prop_input1_batched ?consumed (input ?consumed 1))) q)
-      (min_label (fst (label_prop_input1_batched ?consumed (input ?consumed 1))) q)\<close>
-    by (rule labels_stable_fst_label_prop_input1_batchedI[OF stable_consumed time_not_le_consumed])
-  show ?thesis
-    using os_label_prop'_eq stable_batched by simp
-qed
 
 
 lemma label_prop_input1_loop_updates_sum_measure_decrease_if_label_output_nonempty:
@@ -2200,11 +2003,6 @@ qed
 
 
 
-lemma label_prop_input1_loop_updates_timestmaps:
-  "label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os') \<Longrightarrow>
-   timestamps os_label_prop' = timestamps os_label_prop"
-  unfolding label_prop_input1_loop_updates_def
-  by clarsimp
 
 subsection \<open>Frame facts for label_prop_input1_loop_updates\<close>
 
@@ -2457,85 +2255,10 @@ lemma label_prop_input1_loop_updates_os2_state:
   by (simp split: prod.splits)
 
 
-lemma label_prop_input1_loop_updates_consu_os2:
-  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
-    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
-  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
-  shows \<open>consu (os' 2) = consu (os 2) @
-    map (\<lambda>(d, t). ((1 :: 2), t, (1 :: int))) (cbufs (2, 1) @ outpu os_label_prop 1)\<close>
-proof -
-  have os2_eq: \<open>os' 2 =
-    drop_caps
-      (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2))
-        (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1))
-          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
-      (map (\<lambda>t. Cap t 1)
-        (ocaps (os 2) 1 @
-          map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- MyPair 0 (Suc 0))
-            (cbufs (2, 1) @ outpu os_label_prop 1)))
-      \<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>\<close>
-    by (rule label_prop_input1_loop_updates_os2_state[OF step])
-  show ?thesis
-    unfolding os2_eq
-    by (simp add: produces_def drop_caps_def fold_consumes split_beta)
-qed
 
 
-lemma label_prop_input1_loop_updates_produ_os2:
-  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
-    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
-  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
-  shows \<open>produ (os' 2) = produ (os 2) @
-    map (\<lambda>(d, t). ((1 :: 2), t -+- MyPair 0 (Suc 0), (1 :: int)))
-      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
-proof -
-  have os2_eq: \<open>os' 2 =
-    drop_caps
-      (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2))
-        (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1))
-          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
-      (map (\<lambda>t. Cap t 1)
-        (ocaps (os 2) 1 @
-          map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- MyPair 0 (Suc 0))
-            (cbufs (2, 1) @ outpu os_label_prop 1)))
-      \<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>\<close>
-    by (rule label_prop_input1_loop_updates_os2_state[OF step])
-  show ?thesis
-    unfolding os2_eq
-    by (simp add: produces_def drop_caps_def fold_consumes split_beta)
-qed
 
 
-lemma label_prop_input1_loop_updates_inter_os2:
-  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
-    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
-  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
-  shows \<open>inter (os' 2) = inter (os 2) @
-    concat (map (\<lambda>(d, t). concat (map (\<lambda>p'. map (\<lambda>t'. ((p' :: 2), t + t', (1 :: int)))
-      (intsum (os 2) 1 p')) enum_class.enum))
-      (cbufs (2, 1) @ outpu os_label_prop 1)) @
-    map (\<lambda>t. ((1 :: 2), t, -(1 :: int))) (ocaps (os 2) 1) @
-    map (\<lambda>(d, t). ((1 :: 2), t -+- MyPair 0 (Suc 0), -(1 :: int)))
-      (cbufs (2, 1) @ outpu os_label_prop 1)\<close>
-proof -
-  have os2_eq: \<open>os' 2 =
-    drop_caps
-      (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2))
-        (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1))
-          (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
-      (map (\<lambda>t. Cap t 1)
-        (ocaps (os 2) 1 @
-          map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- MyPair 0 (Suc 0))
-            (cbufs (2, 1) @ outpu os_label_prop 1)))
-      \<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>\<close>
-    by (rule label_prop_input1_loop_updates_os2_state[OF step])
-  show ?thesis
-    unfolding os2_eq
-    by (simp add: produces_def drop_caps_def fold_consumes split_beta)
-qed
 
 
 lemma label_prop_input1_loop_updates_label_batched:
@@ -2557,62 +2280,8 @@ lemma label_prop_input1_loop_updates_label_batched:
   by (auto split: prod.splits)
 
 
-lemma label_prop_input1_loop_updates_outpu_label_1_batched:
-  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
-    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-    and os_label_prop_consumed :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
-  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
-    and consumed_def: \<open>os_label_prop_consumed =
-      CONSUMES 1
-        (cbufs (1, 1) @ outpu (os 2) 1 @
-          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-            (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
-        (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
-  shows \<open>outpu os_label_prop' 1 =
-    map (\<lambda>(x, cap). (x, capability.time cap))
-      (filter (\<lambda>(x, cap). out cap = (1 :: 2))
-        (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))))\<close>
-proof -
-  have batched: \<open>os_label_prop' =
-    fst (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1))\<close>
-    by (rule label_prop_input1_loop_updates_label_batched[OF step consumed_def])
-  have consumed_out_empty: \<open>outpu os_label_prop_consumed 1 = []\<close>
-    using consumed_def by (simp add: fold_consumes)
-  show ?thesis
-    using batched consumed_out_empty
-    by (simp add: outpu_fst_label_prop_input1_batched_eq)
-qed
 
 
-lemma label_prop_input1_loop_updates_produ_label:
-  fixes os :: \<open>3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state\<close>
-    and os_label_prop :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-    and os_label_prop_consumed :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf\<close>
-  assumes step: \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs', os_label_prop', os')\<close>
-    and consumed_def: \<open>os_label_prop_consumed =
-      CONSUMES 1
-        (cbufs (1, 1) @ outpu (os 2) 1 @
-          map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-            (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
-        (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
-  shows \<open>produ os_label_prop' = produ os_label_prop @
-    map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-      (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1)))\<close>
-proof -
-  have \<open>produ (fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))) = produ os_label_prop @
-    map (\<lambda>(x, cap). case cap of Cap t p \<Rightarrow> (p, t, 1))
-      (snd (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1)))\<close>
-    using consumed_def
-    by (rule produ_fst_snd_label_prop_input1_loop_updates
-        [where os_label_prop_consumed = os_label_prop_consumed
-          and cbufs = cbufs
-          and os_label_prop = os_label_prop
-          and os = os])
-  then show ?thesis
-    using step by simp
-qed
 
 
 lemma fst_label_prop_input1_loop_updates_update[simp]:

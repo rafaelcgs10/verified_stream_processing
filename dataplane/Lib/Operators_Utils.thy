@@ -254,18 +254,6 @@ lemma wsteps_append[simp]:
     done
   done
 
-lemma step_tau_wtraced:
-  "step Tau op op' \<Longrightarrow>
-   \<not> wfinished op' \<Longrightarrow>
-   wtraced op' ios \<Longrightarrow>
-   wtraced op ios"
-  apply (coinduction arbitrary: op ios)
-  subgoal for op ios
-    apply (erule wtraced.cases)
-     apply simp_all
-    apply blast
-    done
-  done
 
 lemma step_taus_wtraced:
   "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
@@ -351,10 +339,6 @@ lemma p2rel_relcompp:
   by force
 
 
-lemma wsim_set_wsim_ex:
-  "P \<leadsto>\<^sup>^<((p2rel (\<approx>)) O (p2rel X) O (p2rel (~)))> Q \<longleftrightarrow> wsim ((~) OO (conversep X) OO (\<approx>)) Q P"
-  using wsim_set_wsim[where P=P and Q=Q and R="(\<approx>) OO X OO (~)", simplified]
-  by (simp add: p2rel_relcompp relcompp_assoc converse_relcompp)
 
 lemma strongAppend:
   assumes PSimQ: "P \<leadsto>\<^sup>^<Rel> Q"
@@ -395,9 +379,6 @@ lemma weakBisimWeakCoinduct[consumes 1, case_names cSim cSym]:
   apply (metis (mono_tags, lifting) conversep_wbc predicate2I rel2pD rel2p_inv(2) rev_predicate2D wbisim_cong.intros(1) wsim_conversep_mono wsim_set_wsim)+
   done
 
-lemma rel2p_converse_simp:
-  "rel2p (Rel\<inverse>) = conversep (rel2p Rel)"
-  unfolding rel2p_def by force
 
 lemma wbisim_wstep_Tau_stronger:
   assumes "wsimulation_canonical R"
@@ -473,25 +454,6 @@ lemma p2rel_converse[simp]:
   "(p2rel R)\<inverse> = p2rel (conversep R)"
   by auto
 
-lemma wsim_set_wbisim_l:
-  assumes "P' \<leadsto>\<^sup>^<(p2rel (\<approx>) O X)> Q" 
-    and p: "P \<approx> P'" 
-  shows "P \<leadsto>\<^sup>^<(p2rel (\<approx>) O X)> Q"
-proof -
-  let ?Y = "p2rel (\<approx>) O X"
-  show ?thesis
-  proof -
-    have "(p2rel (\<approx>)) O ?Y \<subseteq> ?Y" using wbisim_trans by fastforce
-    then show ?thesis 
-      using assms apply -
-      apply (rule wsimTransitive)
-      prefer 3
-      apply assumption
-      apply simp_all
-      apply (metis wbisim.cases wbisim_converse wsim_set_wsim)+
-      done
-  qed
-qed
 
 lemma sim_set_bisim_r:
   assumes "P \<leadsto>[(X O p2rel (~))] Q" 
@@ -515,46 +477,14 @@ lemma simWeakSim:
   apply (meson sim_set_def step_wstep)
   done
 
-lemma wsim_set_bisim_r:
-  assumes "P \<leadsto>[(X O p2rel (~))] Q" 
-    and p: "Q ~ Q'" 
-  shows "P \<leadsto>\<^sup>^<(X O p2rel (\<approx>))> Q'"
-  using assms apply -
-  apply (rule simWeakSim)
-  apply (drule sim_set_bisim_r)
-  apply assumption
-  apply (smt (verit, ccfv_threshold) bisim_wbisim in_p2_rel_simp relcomp.simps sim_set_def) 
-  done
 
 
-lemma wsim_set_bisim_l:
-  assumes "P' \<leadsto>\<^sup>^<(p2rel (~) O X)> Q" 
-    and p: "P ~ P'" 
-  shows "P \<leadsto>\<^sup>^<(p2rel (~) O X)> Q"
-proof -
-  let ?Y = "p2rel (~) O X"
-  show ?thesis
-  proof -
-    have "(p2rel (~)) O ?Y \<subseteq> ?Y" using bisim_trans by fastforce
-    then show ?thesis 
-      using assms apply -
-      apply (rule wsimTransitive)
-      prefer 3
-      apply assumption
-      apply simp_all
-      apply (metis bisim.cases bisim_converse simWeakSim sim_set_sim)
-      done
-  qed
-qed
 
 lemma wbisim_absorb_bisim_l:
   "(X O p2rel (~)) O p2rel (\<approx>) \<subseteq> X O p2rel (\<approx>)"
   by (smt (verit) bisim_wbisim in_p2_rel_simp relcomp.simps relcompE subset_iff wbisim_trans)
 
 
-lemma wbisim_absorb_bisim_r:
-  "X O p2rel (\<approx>) O p2rel (~) \<subseteq> X O p2rel (\<approx>)"
-  by (smt (verit) bisim_wbisim in_p2_rel_simp relcomp.simps relcompE subset_iff wbisim_trans)
 
 lemma wbisim_wsim_setD:
   "Q' \<approx> Q \<Longrightarrow> Q' \<leadsto>\<^sup>^<(p2rel (\<approx>))> Q \<and> Q \<leadsto>\<^sup>^<(p2rel (\<approx>))> Q'"
@@ -594,22 +524,8 @@ lemma wsim_set_wbisim_bisim_r_l:
 qed
 
 
-lemma weakBisimWeakUpto_rSim_aux:
-  assumes eq1: "P \<approx> P'" 
-    and eq2: "Q' ~ Q"
-    and inn: "(P', Q') \<in> X" 
-    and rSim: "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> Q"
-  shows "P \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (~))> Q"
-  using assms wsim_set_wbisim_bisim_r_l by blast
 
 
-lemma weakBisimWeakUpto_rSym_aux:
-  assumes eq1: "P ~ P'" 
-    and eq2: "Q' \<approx> Q"
-    and inn: "(P', Q') \<in> X" 
-    and rSym: "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> P"
-  shows "Q \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (~))> P"
-  using assms wsim_set_wbisim_bisim_r_l bisim_sym wbisim_sym by blast
 
 lemma weakBisimWeakUpto_rSim:
   "(P', Q') \<in> p2rel (\<approx>) O X O p2rel (~) \<Longrightarrow>
@@ -621,12 +537,6 @@ lemma weakBisimWeakUpto_rSim:
   using wbisim_absorb_bisim_l apply fastforce
   done
 
-lemma wsim_set_def_converse_wbisim_cong:
-  "P \<leadsto>\<^sup>^<converse X> Q \<Longrightarrow> P \<leadsto>\<^sup>^<p2rel (wbisim_cong (rel2p X))> Q"
-  unfolding wsim_set_def
-  apply safe
-  apply (metis converse.cases in_p2_rel_simp rel2p_def wbisim_cong.wbc_base wbisim_cong.wbc_sym)
-  done
 
 lemma wsim_set_def_disjI:
   "P \<leadsto>\<^sup>^<Y> Q \<or> P \<leadsto>\<^sup>^<X> Q \<Longrightarrow> P \<leadsto>\<^sup>^<(Y \<union> X)> Q"
@@ -719,22 +629,6 @@ proof -
   qed
 qed
 
-lemma weakBisimUpto[case_names cSim cSym, consumes 1]:
-  assumes p: "(P, Q) \<in> X"
-    and rSim: "\<And>R S. (R, S) \<in> X \<Longrightarrow> R \<leadsto>\<^sup>^<(p2rel (\<approx>) O (X \<union> p2rel (\<approx>)) O p2rel (~))> S"
-    and rSym: "\<And>R S. (R, S) \<in> X \<Longrightarrow> S \<leadsto>\<^sup>^<(p2rel (\<approx>) O (converse X \<union> p2rel (\<approx>)) O p2rel (~))> R"
-  shows "P \<approx> Q"
-proof -
-  from p have "(P, Q) \<in> X \<union> p2rel (\<approx>)" by simp
-  thus ?thesis
-    apply(coinduct rule: weakBisimWeakUpto)
-    apply(auto dest: rSim rSym)
-    unfolding wsim_set_def
-    apply (metis (no_types, opaque_lifting) UnI1 bisim_refl in_p2_rel_simp inf_sup_aci(5) p2rel_relcompp relcomppI wbisim_refl wbisim_sym wbisim_wstep_alt)
-    apply (metis rSym converse_add_simps(3) p2rel_converse wbisim_converse weakSimE)
-    apply (smt (verit, ccfv_SIG) UnI2 bisim_refl converse_iff in_p2_rel_simp relcomp.relcompI wbisim_refl wbisim_wstep_alt)
-    done
-qed
 
 lemma weakBisimWeakUptoBisim[case_names SIM1 SIM2, consumes 1]:
   assumes p: "R op1 op2"
@@ -856,17 +750,6 @@ lemma steps_comp_op_L_Inp:
    apply force+
   done
 
-lemma steps_comp_op_R_Inp:
-  "steps (map (Inp p) xs) op2 op2' \<Longrightarrow>
-   p \<notin> ran wire \<Longrightarrow>
-   buf = buf' \<Longrightarrow>
-   op1 = op1' \<Longrightarrow>
-   ys = map (Inp (Inr p)) xs \<Longrightarrow>
-   steps ys (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
-  apply hypsubst_thin
-  apply (induct xs arbitrary: op2 op2' rule: rev_induct)
-   apply force+
-  done
 
 
 section \<open>Buffer congruence for composition and loop operators\<close>

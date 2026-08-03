@@ -196,7 +196,6 @@ corec opt_dataflow_op where
 term show_myprod_frontier
 term show_loc
 
-term "fold (+)"
 
 definition "show_all_frontiers cimp = fold (+) (map (\<lambda> loc. STR ''Frontier: '' + show_loc loc +  STR '' = '' + show_myprod_frontier (frontier (cimp loc)) + STR ''; '') Enum.enum) (STR '''')"
 

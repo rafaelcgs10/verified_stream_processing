@@ -79,7 +79,6 @@ abbreviation tscomp_op ( "_ \<sqdot>\<^bsub>_\<^esub> _" [81, 80, 80] 80) where
 abbreviation tscomp_op0 (infixr "\<sqdot>" 80) where
   "tscomp_op0 op1 op2 \<equiv> Comp (\<lambda> (nid, p). if nid = 0 then Some (0, p) else None) op1 op2"
 
-term "n3 \<sqdot> n4 \<sqdot>\<^bsub>1\<^esub> n5"
 
 abbreviation G :: "(5, 2, (2, nat) shared_state + (2 \<Rightarrow> nat antichain), (nat \<times> nat) \<times> nat, nat) dataflow_tree" where
   "G \<equiv> Comp [(0, 0) \<mapsto> (0, 0)] n1 (Loop [(3, 1) \<mapsto> (0, 1)] ((Comp [(0, 0) \<mapsto> (0, 0)] n2 (Comp [(0, 0) \<mapsto> (0, 0)] n3 (Comp [(0, 1) \<mapsto> (0, 1)] n4 n5)))))"

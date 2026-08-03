@@ -83,7 +83,6 @@ fun dataflow_tree_to_graph_aux where
                  else summary l1 l2)
                  else Code.abort (STR ''Summary out of bounds'') (\<lambda> _. [])))"
 
-term "trace (STR ''outs: '')"
 
 (* (if node l2 = n' + offset \<and> q = idp (port l2) then trace (STR ''Found loop!'') [0] else [])) *)
 

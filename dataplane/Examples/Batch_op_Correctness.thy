@@ -1474,7 +1474,6 @@ next
             clarsimp del: disjCI simp flip: cin.rep_eq split: event.splits llist.splits option.splits sum.splits prod.splits if_splits
             ; hypsubst_thin?)
         subgoal for nid d t
-          thm SIM2(9,11,12)
           apply (clarsimp simp flip: cin.rep_eq simp add: image_iff SIM2(9,11,12))
           subgoal
             apply (subst (asm) disj_assoc[symmetric])

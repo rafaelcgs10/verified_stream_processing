@@ -627,20 +627,6 @@ lemma zmset_filter_extract_progress_Trg_consumes_alt:
   unfolding extract_progress_def obtain_progress_def
   apply simp
   by (simp add: add.left_commute update_zmultiset_one(1))
-lemma zmset_filter_extract_progress_Trg_consumes_diff_p:
-  "p \<noteq> p' \<Longrightarrow>
-   zmset (map snd (filter (\<lambda>(l, _, _). Loc nid (Trg p') = l) (extract_progress nid nt (snd (obtain_progress (consumes (os nid) p t d)))))) = 
-   zmset (map snd (filter (\<lambda>(l, _, _). Loc nid (Trg p') = l) (extract_progress nid nt (snd (obtain_progress (os nid))))))"
-  unfolding extract_progress_def obtain_progress_def
-  apply simp
-  done
-lemma zmset_filter_extract_progress_Trg_consumes_diff_nid:
-  "nid \<noteq> nid' \<Longrightarrow>
-   zmset (map snd (filter (\<lambda>(l, _, _). Loc nid' (Trg p') = l) (extract_progress nid nt (snd (obtain_progress (consumes (os nid) p t d)))))) = 
-   zmset (map snd (filter (\<lambda>(l, _, _). Loc nid' (Trg p') = l) (extract_progress nid nt (snd (obtain_progress (os nid))))))"
-  unfolding extract_progress_def obtain_progress_def
-  apply simp
-  done
 lemma zmset_filter_extract_progress_Trg_consumes_diff:
   "nid' = nid \<longrightarrow> p' \<noteq> p \<Longrightarrow>
    zmset (map snd (filter (\<lambda>(l, _, _). Loc nid' (Trg p') = l) (extract_progress nid nt (snd (obtain_progress (consumes (os nid) p t d)))))) = 
@@ -831,57 +817,6 @@ lemma frontier_less_equal_ifrontier_from_Src:
           unfolding extract_progress_def obtain_progress_def
           apply (simp add: Misc.set_map_filter image_iff split_beta split: option.splits prod.splits)
           apply (metis split_pairs)
-          done
-        subgoal
-          apply simp
-          apply (rule frontier_less_equal_ifrontier_trans_alt2[OF D])
-            apply assumption+
-          apply auto
-          done
-        done
-      done
-    done
-  done
-lemma frontier_less_equal_ifrontier_from_Trg:
-  assumes D: "dataflow_topology su (-+-)"
-  shows  "frontier_less_equal
-     (frontier (c_pts (change_multiplicities su (extract_progress nid nt (snd (obtain_progress (os nid)))) c) (Loc nid (Trg p)))) t \<Longrightarrow>
-   s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<Longrightarrow>
-   extract_prog_changes_above_impl_inv su nt c os \<Longrightarrow>
-   frontier_less_equal (ifrontier su (-+-) c l) (t -+- s)"
-  apply (subst (asm) frontier_less_equal_iff2)
-  apply clarsimp
-  subgoal for t'
-    apply (simp add: c_pts_change_multiplicities)
-    apply (drule in_frontier_addD)
-    apply (elim disjE exE)
-    subgoal
-      apply clarsimp
-      apply (rule frontier_less_equal_ifrontierI[OF D, of s "Loc nid (Trg p)", simplified])
-       apply assumption
-      unfolding frontier_less_equal_iff2
-      subgoal for t''
-        apply (rule exI[of _ t''])
-        apply auto
-        done
-      done
-    subgoal
-      apply clarsimp
-      apply (subst (asm) obtain_progress_def)
-      apply (subst (asm) extract_progress_def)
-      apply (drule zcount_zmset_gt_0_set_Ex)
-      apply (clarsimp simp add: image_iff filter_map split_beta comp_def List.map_filter_def split: option.splits)
-      unfolding extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def
-      apply (drule spec[of _ nid])
-      apply (drule spec[of _ "[]"])
-      apply simp
-      apply clarsimp
-      subgoal for t'' m
-        apply (drule bspec[of _ _ "(Loc nid (Trg p), t', m)"])
-        subgoal
-          unfolding extract_progress_def obtain_progress_def
-          apply (simp add: Misc.set_map_filter image_iff split_beta split: option.splits prod.splits)
-          using split_pairs apply (metis (lifting))
           done
         subgoal
           apply simp
@@ -1091,23 +1026,6 @@ lemma input_ocaps_inv_produces[simp]:
 
 (* add_caps only enlarges ocaps (and leaves input/intsum untouched),
    so any required witness remains present. *)
-lemma input_ocaps_inv_add_capsI:
-  assumes inv: "input_ocaps_inv os"
-  shows "input_ocaps_inv (add_caps os caps)"
-  unfolding input_ocaps_inv_def
-proof (intro allI ballI)
-  fix p1 p2 t s
-  assume t_in: "t \<in> snd ` set (input (add_caps os caps) p1)"
-    and s_in: "s \<in> set (intsum (add_caps os caps) p1 p2)"
-  have t_in': "t \<in> snd ` set (input os p1)"
-    using t_in unfolding add_caps_def by simp
-  have s_in': "s \<in> set (intsum os p1 p2)"
-    using s_in unfolding add_caps_def by simp
-  have "t -+- s \<in> set (ocaps os p2)"
-    using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
-  then show "t -+- s \<in> set (ocaps (add_caps os caps) p2)"
-    unfolding add_caps_def by auto
-qed
 
 lemma inputs_ocaps_inv_consumes:
   assumes \<open>input_ocaps_inv os\<close>
@@ -1133,33 +1051,6 @@ qed
 (* Adding and then dropping the same caps leaves ocaps unchanged (as multisets,
    hence as sets); input and intsum are untouched throughout, so input_ocaps_inv
    transfers directly. *)
-lemma input_ocaps_inv_drop_add_capsI:
-  assumes inv: "input_ocaps_inv os"
-  shows "input_ocaps_inv (drop_caps (add_caps os caps) caps)"
-  unfolding input_ocaps_inv_def
-proof (intro allI ballI)
-  fix p1 p2 t s
-  assume t_in: "t \<in> snd ` set (input (drop_caps (add_caps os caps) caps) p1)"
-    and s_in: "s \<in> set (intsum (drop_caps (add_caps os caps) caps) p1 p2)"
-  have t_in': "t \<in> snd ` set (input os p1)"
-    using t_in unfolding drop_caps_def add_caps_def by simp
-  have s_in': "s \<in> set (intsum os p1 p2)"
-    using s_in unfolding drop_caps_def add_caps_def by simp
-  have orig: "t -+- s \<in> set (ocaps os p2)"
-    using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
-  have ocaps_mset:
-    "mset (ocaps (drop_caps (add_caps os caps) caps) p2) = mset (ocaps os p2)"
-    unfolding drop_caps_def add_caps_def by simp
-  then have set_eq:
-    "set (ocaps (drop_caps (add_caps os caps) caps) p2) = set (ocaps os p2)"
-    by (metis set_mset_mset)
-  show "t -+- s \<in> set (ocaps (drop_caps (add_caps os caps) caps) p2)"
-    using orig set_eq by simp
-qed
-
-(* Same as input_ocaps_inv_drop_add_capsI, but with produces interposed between
-   add_caps and drop_caps. produces only modifies outpu and produ, so input,
-   intsum, and ocaps remain untouched. *)
 lemma input_ocaps_inv_drop_produces_add_capsI:
   assumes inv: "input_ocaps_inv os"
   shows "input_ocaps_inv (drop_caps (produces (add_caps os caps) batch) caps)"
@@ -1260,17 +1151,6 @@ lemma input_ocaps_inv_empty_inputsI:
   shows \<open>input_ocaps_inv os\<close>
   using assms unfolding input_ocaps_inv_def by simp
 
-lemma extract_prog_two_12:
-  shows \<open>extract_progress (1 :: 3) eds (snd (obtain_progress os1)) @
-    extract_progress (2 :: 3) eds (snd (obtain_progress os2)) =
-    extract_prog [1 :: 3, 2] eds (\<lambda>nid. if nid = 1 then os1 else os2)\<close>
-  by (simp add: extract_prog_def)
 
-lemma extract_prog_three_fold:
-  shows  \<open>extract_progress 0 eds (snd (obtain_progress os0)) @
-   extract_progress 1 eds (snd (obtain_progress os1)) @
-   extract_progress 2 eds (snd (obtain_progress os2)) =
-   extract_prog [0 :: 3, 1, 2] eds (\<lambda> nid. if nid = 0 then os0 else if nid = 1 then os1 else os2)\<close>
-  by (simp add: extract_prog_def)
 
 end

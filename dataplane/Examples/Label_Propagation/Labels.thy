@@ -68,56 +68,6 @@ proof -
 qed
 
 
-lemma wf_label_prop_updates_loop_updates_monoI:
-  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
-  assumes step: \<open>(cbufs', os_label_prop', os') = loop_updates cbufs os_label_prop os\<close>
-    and H: \<open>wf_label_prop_updates os_label_prop S\<close>
-  shows \<open>wf_label_prop_updates os_label_prop' S\<close>
-  using step H
-proof (induct cbufs os_label_prop os arbitrary: cbufs' os_label_prop' os' S rule: loop_updates.induct)
-  case (1 cbufs os_label_prop os)
-  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
-    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
-  let ?good = \<open>label_prop_upd_inv os_label_prop \<and>
-    (\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
-    wf_label_prop_updates os_label_prop (set (input os_label_prop 1) \<union> set ?msgs)\<close>
-  show ?case
-  proof (cases ?good)
-    case False
-    have loop_eq:
-      \<open>loop_updates cbufs os_label_prop os =
-        (cbufs((2, 1) := [], (1, 1) := []), os_label_prop, os)\<close>
-      by (subst loop_updates.simps) (simp only: False if_False)
-    show ?thesis
-      using "1.prems" loop_eq by simp
-  next
-    case True
-    note good = True
-    obtain cbufs1 os_label_prop1 os1 where step1:
-      \<open>label_prop_input1_loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
-      by (cases \<open>label_prop_input1_loop_updates cbufs os_label_prop os\<close>) auto
-    have wf1: \<open>wf_label_prop_updates os_label_prop1 S\<close>
-      by (rule wf_label_prop_updates_label_prop_input1_loop_updates_monoI[OF step1[symmetric] "1.prems"(2)])
-    show ?thesis
-    proof (cases \<open>outpu os_label_prop1 1 = []\<close>)
-      case True
-      have loop_eq: \<open>loop_updates cbufs os_label_prop os = (cbufs1, os_label_prop1, os1)\<close>
-        by (subst loop_updates.simps) (use good step1 True in simp)
-      show ?thesis
-        using "1.prems"(1) loop_eq wf1 by simp
-    next
-      case False
-      have loop_eq: \<open>loop_updates cbufs os_label_prop os = loop_updates cbufs1 os_label_prop1 os1\<close>
-        by (subst loop_updates.simps) (use good step1 False in simp)
-      have step_rec: \<open>(cbufs', os_label_prop', os') = loop_updates cbufs1 os_label_prop1 os1\<close>
-        using "1.prems"(1) loop_eq by simp
-      show ?thesis
-        by (rule "1.hyps"[OF good step1[symmetric] refl refl False step_rec wf1])
-    qed
-  qed
-qed
 
 
 
@@ -326,21 +276,6 @@ definition label_prop_covered_inv where
       (\<exists> s t' l'. (Inl (a, l'), MyPair s t') \<in> msgs \<and> s \<le> t \<and> l' \<le> min_label os t b))\<close>
 
 
-lemma label_prop_covered_inv_unstable_msgD:
-  assumes covered: \<open>label_prop_covered_inv os msgs\<close>
-    and t_in: \<open>t \<in> set (timestamps os)\<close>
-    and unstable: \<open>\<not> labels_stable (all_edges os t) (min_label os t)\<close>
-  shows \<open>\<exists>a l' s t'. (Inl (a, l'), MyPair s t') \<in> msgs \<and> s \<le> t\<close>
-proof -
-  from unstable obtain a b where
-    edge: \<open>(a, b) \<in> all_edges os t \<union> (all_edges os t)\<inverse>\<close> and
-    not_le: \<open>\<not> min_label os t a \<le> min_label os t b\<close>
-    unfolding labels_stable_def by blast
-  from covered t_in edge not_le obtain s t' l' where
-    \<open>(Inl (a, l'), MyPair s t') \<in> msgs\<close> \<open>s \<le> t\<close>
-    unfolding label_prop_covered_inv_def by fast
-  then show ?thesis by blast
-qed
 
 
 lemma label_prop_covered_inv_produces[simp]:
@@ -372,9 +307,6 @@ lemma label_prop_covered_inv_input_tl[simp]:
   by simp
 
 
-lemma label_prop_covered_inv_mono:
-  "label_prop_covered_inv os M \<Longrightarrow> M \<subseteq> M' \<Longrightarrow> label_prop_covered_inv os M'"
-  unfolding label_prop_covered_inv_def by fast
 
 
 lemma label_prop_covered_inv_msgs_transportI:
@@ -411,9 +343,6 @@ lemma label_prop_covered_inv_consumes[simp]:
   by simp_all
 
 
-lemma label_prop_label_batch_out:
-  "(x, cap) \<in> set (label_prop_label_batch os os2 t1 v new_l et) \<Longrightarrow> out cap = 1"
-  by (auto simp add: label_prop_label_batch_def label_prop_neighbor_batch_def Let_def split: if_splits)
 
 
 

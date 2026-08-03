@@ -340,22 +340,6 @@ coinductive set_op_trace where
     set_op_trace S2 (cinsert (p, x) S') op' lxs \<Longrightarrow>
     set_op_trace S1 S' op (LCons (VOut p x) lxs)"
 
-lemma set_op_trace_intros_2':
-  "wstep (Out p' x') op op' \<Longrightarrow>
-   S2 = cinsert (p', x') S1 \<Longrightarrow> (p, x) |\<in>| cDiff S2 S' \<Longrightarrow> 
-   set_op_trace S2 (cinsert (p, x) S') op' lxs \<Longrightarrow>
-  ios = LCons (VOut p x) lxs \<Longrightarrow>
-  set_op_trace S1 S' op ios"
-  apply hypsubst_thin
-  apply (rule set_op_trace.intros(2)[where xs="[(p', x')]", simplified])
-     apply simp
-     apply blast
-    apply (rule refl)+
-    apply (clarsimp del: disjCI simp flip: cin.rep_eq; hypsubst_thin?)+
-  using cinsert_code apply fastforce
-    apply (clarsimp del: disjCI simp flip: cin.rep_eq; hypsubst_thin?)
-  apply (metis cinsert_code cinsert_is_cUn cis_empty_code(1) cis_empty_def)
-  done
 
 lemma wstep_exec_VOut_sound:
   "(VOut p x, op') |\<in>| wsteps_exec op \<Longrightarrow>
@@ -1008,20 +992,6 @@ lemma wstep_set_spec_op_eq_step[simp]:
   apply (smt (verit, ccfv_threshold) converse_rtranclpE relcompp_apply rtranclp_reflclp_absorb set_spec_op_no_Tau_step step_set_spec_op_elim sup2CI)
   done
 
-lemma set_op_bisim_set_spec_op:
-  "set_op S S' \<oslash> ~ set_spec_op S S'"
-  apply (coinduction arbitrary: S S' rule: bisim_coinduct_upto'')
-  subgoal for io op1'
-    apply (elim step_set_op_elim)
-      apply simp_all
-      apply (metis (mono_tags, lifting) bc_base cin.rep_eq step_set_spec_op_intro_Out)
-    done
-  subgoal for io op1'
-    apply (elim step_set_spec_op_elim)
-    apply simp
-    apply (metis (mono_tags, lifting) bc_base cin.rep_eq step_set_op_intro_Out)
-    done
-  done
 
 definition "set_spec_op_trace S S' ios =
   (ldistinct ios \<and> (cset_of_llist ios \<le> cimage (\<lambda> (p, x). VOut p x) (S - S')) \<and> llength ios = eccard (S - S'))"
@@ -1040,14 +1010,6 @@ lemma set_spec_op_trace_alt_no_repeat:
     by (metis cinsertCI llist.distinct(1) llist.inject set_spec_op_trace_alt.cases)
   done
 
-lemma set_spec_op_trace_alt_no_VInp:
-  "VInp p x \<in> lset lxs \<Longrightarrow> set_spec_op_trace_alt S S' lxs \<Longrightarrow> False"
-  apply (induct lxs arbitrary: S S' rule: lset_induct)
-  subgoal for lxs
-    using set_spec_op_trace_alt.cases by auto
-  subgoal
-    by (metis llist.distinct(1) llist.inject set_spec_op_trace_alt.cases)
-  done
 
 
 lemma set_spec_op_trace_alt_in_cDiff:
@@ -1260,9 +1222,6 @@ lemma wtraced_set_spec_op_correctness:
   "wtraced (set_spec_op S S') ios \<longleftrightarrow> set_spec_op_trace S S' ios"
   using wtraced_set_spec_op_completeness wtraced_set_spec_op_soundness by force
 
-lemma wtraces_set_spec_op:
-  "wtraces (set_spec_op S S') = {ios. set_spec_op_trace S S' ios}"
-  unfolding wtraces_def using wbisim_sym wbisim_wtraced wtraced_set_spec_op_correctness by blast
 
 
 lemma set_op_soundness:

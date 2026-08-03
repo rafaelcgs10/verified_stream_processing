@@ -121,10 +121,6 @@ lemma label_prop_upd_inv_fold_consumes_port0[simp]:
   "label_prop_upd_inv (fold (\<lambda>(d, t) os. consumes os 0 t d) xs os) = label_prop_upd_inv os"
   unfolding fold_consumes by simp
 
-lemma label_prop_upd_inv_fold_consumes_port0I:
-  assumes inv: \<open>label_prop_upd_inv os\<close>
-  shows \<open>label_prop_upd_inv (fold (\<lambda>(d, t) os. consumes os 0 t d) xs os)\<close>
-  using inv by simp
 
 definition wf_label_prop_updates where
   \<open>wf_label_prop_updates os S \<longleftrightarrow> (\<forall>(d, t) \<in> S. myfst t \<in> set (timestamps os)
@@ -355,19 +351,6 @@ proof -
   qed
 qed
 
-lemma labels_inv_insert_update_neighborI:
-  assumes inv: "labels_inv A l"
-    and v2_label: "v2 \<in> edge_vertices A \<or> l v2 = v2"
-  shows "labels_inv (insert (v1, v2) A) (l(v1 := l v2))"
-proof (rule labels_inv_insert_updateI)
-  show "labels_inv A l"
-    by (rule inv)
-  show "l v2 \<in> cc_of (insert (v1, v2) A) v1"
-    using inv v2_label
-    by (auto simp: labels_inv_def)
-  show "v2 \<notin> edge_vertices A \<Longrightarrow> l v2 \<in> cc_of (insert (v1, v2) A) v2"
-    using v2_label by (auto simp: cc_of_def reachable_def edge_vertices_def Field_def)
-qed
 
 lemma labels_inv_insert_symmetric_update_neighborI:
   assumes inv: "labels_inv A l"
@@ -442,12 +425,6 @@ proof -
   qed
 qed
 
-lemma labels_inv_insert_symmetric_min_label_updateI:
-  assumes inv: "labels_inv (all_edges os t) (min_label os t)"
-    and v2_label: "v2 \<in> edge_vertices (all_edges os t) \<or> min_label os t v2 = v2"
-    and update_eq: "min_label os' t = (min_label os t)(l1 := min_label os t v2)"
-  shows "labels_inv (insert (l1, v2) (insert (v2, l1) (all_edges os t))) (min_label os' t)"
-  using labels_inv_insert_symmetric_update_neighborI[OF inv v2_label] update_eq by simp
 
 lemma min_label_Cons_timestamp_label_update_eq:
   fixes t :: "'t::order"
@@ -483,12 +460,6 @@ proof (rule ext)
   qed
 qed
 
-lemma min_label_Cons_timestamp_label_update_eq_no_t_in:
-  fixes t :: "'t::order"
-  assumes new_le: "l \<le> min_label (os\<lparr>timestamps := T\<rparr>) t v"
-  shows "min_label (os\<lparr>timestamps := t # T, label := (label os)(t := (label os t)(v := l))\<rparr>) t =
-    (min_label (os\<lparr>timestamps := T\<rparr>) t)(v := l)"
-  using new_le by (rule min_label_Cons_timestamp_label_update_eq)
 
 lemma min_label_le_current_labelI:
   fixes t :: "'t::order"
@@ -527,24 +498,6 @@ proof -
 
 qed
 
-lemma min_label_eq_self_if_not_edge_vertices:
-  fixes t :: "'t::order"
-  assumes inv: "label_prop_upd_inv os"
-    and absent_label_self:
-    "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> t \<Longrightarrow>
-        v \<notin> set (vertices os t') \<Longrightarrow> label os t' v = v"
-    and current_default: "t \<notin> set (timestamps os) \<Longrightarrow> label os t v = v"
-    and not_edge: "v \<notin> edge_vertices (all_edges os t)"
-  shows "min_label os t v = v"
-proof (rule min_label_eq_self_if_not_all_vertices)
-  show "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> t \<Longrightarrow>
-    v \<notin> set (vertices os t') \<Longrightarrow> label os t' v = v"
-    by (rule absent_label_self)
-  show "t \<notin> set (timestamps os) \<Longrightarrow> label os t v = v"
-    by (rule current_default)
-  show "v \<notin> all_vertices os t"
-    using not_edge edge_vertices_all_edges[OF inv] by simp
-qed
 
 lemma edge_vertices_all_edges_subset_all_vertices:
   "edge_vertices (all_edges os t) \<subseteq> all_vertices os t"
@@ -635,35 +588,6 @@ qed
 
 
 
-lemma min_label_input0_update_mem:
-  fixes q t1 :: "'t::order"
-  assumes timestamps_eq: "timestamps os' = t1 # timestamps os"
-    and label_eq: "label os' = (label os)(t1 := (label os t1)(v := l))"
-  shows "min_label os' q x \<in>
-    (if t1 \<le> q
-     then insert (if x = v then l else label os t1 x)
-       (insert (label os q x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> q}))
-     else insert (label os q x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> q}))"
-proof -
-  let ?New = "insert (label os' q x) ((\<lambda>r. label os' r x) ` {r \<in> set (timestamps os'). r \<le> q})"
-  let ?Old = "insert (label os q x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> q})"
-  have min_in: "min_label os' q x \<in> ?New"
-    unfolding min_label_def by (intro Min_in) auto
-  show ?thesis
-  proof (cases "t1 \<le> q")
-    case True
-    have "?New \<subseteq> insert (if x = v then l else label os t1 x) ?Old"
-      using True timestamps_eq label_eq by auto
-    then show ?thesis
-      using True min_in by auto
-  next
-    case False
-    have "?New \<subseteq> ?Old"
-      using False timestamps_eq label_eq by auto
-    then show ?thesis
-      using False min_in by auto
-  qed
-qed
 
 
 lemma min_label_input0_update_cases:
@@ -786,42 +710,10 @@ next
 qed
 
 
-lemma labels_inv_min_label_any_queryI:
-  fixes q :: "'t::order"
-
-assumes stored_valid:
-  "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> q \<Longrightarrow>
-      v \<in> edge_vertices (all_edges os q) \<Longrightarrow>
-      label os t' v \<in> cc_of (all_edges os q) v"
-  and current_valid:
-  "\<And>v. v \<in> edge_vertices (all_edges os q) \<Longrightarrow>
-        label os q v \<in> cc_of (all_edges os q) v"
-shows "labels_inv (all_edges os q) (min_label os q)"
-
-  unfolding labels_inv_def
-proof safe
-  fix v
-  assume v_edge: "v \<in> edge_vertices (all_edges os q)"
-  let ?S = "insert (label os q v) ((\<lambda>t'. label os t' v) ` {t' \<in> set (timestamps os). t' \<le> q})"
-  have "Min ?S \<in> ?S"
-    by (intro Min_in) auto
-  then show "min_label os q v \<in> cc_of (all_edges os q) v"
-    using stored_valid[OF _ _ v_edge] current_valid[OF v_edge]
-    unfolding min_label_def by auto
-qed
 
 
 
 
-lemma all_vertices_insert:
-  assumes "vertices os' = (vertices os)(t := [v1, v2] @ vertices os t)"
-    and "timestamps os' = (t :: _ :: order) # timestamps os"
-    and "label_prop_upd_inv os"
-  shows "all_vertices os' t = insert v1 (insert v2 (all_vertices os t))"
-  using assms apply -
-  using label_prop_upd_inv_vertices_timestamps_iff[OF assms(3)]
-  unfolding all_vertices_def
-  by (force split: if_splits)
 
 lemma all_edges_eq:
   fixes t :: "'t::order"
@@ -1188,37 +1080,6 @@ proof -
 qed
 
 
-lemma all_edges_eq_if:
-  fixes t :: "'t::order"
-  assumes V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
-    and sync: "label_prop_upd_inv
-    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
-     input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
-     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
-     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
-     timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
-
-shows "all_edges
-   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
-    input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
-    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
-    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
-    timestamps = t # T, graph = G(t := (map_entry v1 (Cons v2) (G t))(v2 := v1 # (G t v2))),
-    vertices = V', label = label_state\<rparr> t' =
-   (if t \<le> t'
-    then insert (v1, v2) (insert (v2, v1) (all_edges
-   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
-    input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
-    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
-    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
-    timestamps = T, graph = G, vertices = V, label = label_sync\<rparr> t'))
-    else all_edges
-   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
-    input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
-    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
-    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
-     timestamps = T, graph = G, vertices = V, label = label_sync\<rparr> t')"
-  by (simp add: all_edges_eq_le all_edges_eq_not_le assms(1,2))
 
 
 
@@ -1316,9 +1177,7 @@ definition label_propagation_op_logic where
     (case ocaps os 1 of [] \<Rightarrow> {||} | _ \<Rightarrow> {| release_caps os 1 |}))\<close>
 
 term components_from_labels
-term "all_vertices os t "
 
-term "components_from_labels (all_edges os t) (\<lambda> v. min_label os t v)"
 
 (* @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)) *)
 definition label_propagation_op where
@@ -2876,27 +2735,6 @@ proof -
 qed
 
 
-lemma labels_inv_input1_preserved_record_update:
-  fixes q t1 :: "'t::order"
-  assumes labels: "\<And>q. labels_inv (all_edges os q) (min_label os q)"
-    and inv: "label_prop_upd_inv os"
-    and pending: "(d, t) \<in> set (input os 1)"
-    and msg: "de1 os d = (v, l)"
-    and t1_def: "t1 = myfst t"
-    and update:
-      "os' = label_prop_label_record_update os t1 v (min (min_label os t1 v) l)"
-    and wf_upd: \<open>wf_label_prop_updates os (set (input os 1))\<close>
-  shows "labels_inv (all_edges os' q) (min_label os' q)"
-proof (rule labels_inv_input1_preserved[OF labels inv pending msg t1_def _ _ _ _ wf_upd])
-  show "timestamps os' = timestamps os"
-    using update by simp
-  show "graph os' = graph os"
-    using update by simp
-  show "vertices os' = vertices os"
-    using update by simp
-  show "label os' = (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))"
-    using update unfolding label_prop_label_record_update_def by simp
-qed
 
 lemma labels_inv_input1_preserved_record_update_tl:
   fixes q t1 :: "'t::order"

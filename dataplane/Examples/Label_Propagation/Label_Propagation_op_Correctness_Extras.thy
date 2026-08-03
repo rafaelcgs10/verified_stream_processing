@@ -1080,12 +1080,6 @@ lemma cfilter_False:
   "\<forall> x. x |\<in>| A \<longrightarrow> \<not> P x \<Longrightarrow>
    cfilter P A = {||}"
   by auto
-lemma cfilter_True:
-  "\<forall> x. x |\<in>| A \<longrightarrow> P x \<Longrightarrow>
-   cfilter P A = A"
-  by auto
-
-(* FIXME: move me *)
 lemma MyPair_zero_zero_sum[simp]:
   "MyPair (0 :: nat) (0 :: nat) + a = a"
   by (simp add: zero_myprod_def)

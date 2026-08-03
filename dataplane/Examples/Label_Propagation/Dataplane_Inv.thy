@@ -318,60 +318,6 @@ qed
 subsection \<open>Progress comparison for loop_updates\<close>
 
 
-lemma loop_updates_final_dataplane_tracker_inv_for_progress:
-  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
-    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
-    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
-    and T :: \<open>nat list\<close>
-    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
-    and V :: \<open>nat \<Rightarrow> nat list\<close>
-    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
-  assumes label_prop_extension:
-    \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
-        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
-    and D: \<open>dataflow_topology (summ sg) (-+-)\<close>
-    and GR: \<open>graph_summar_nt (summ sg) (nxt sg) (os(1 := op_state_base os_label_prop))\<close>
-    and Nxt: \<open>nxt sg = graph_to_nxt (summ sg)\<close>
-    and Summ: \<open>summ sg = antichain_from_list \<circ>\<circ> raw_summary\<close>
-    and Intsum: \<open>\<forall>n. intsum ((os(1 := op_state_base os_label_prop)) n) =
-        (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
-    and IOC1: \<open>input_ocaps_inv os_label_prop\<close>
-    and IOC2: \<open>input_ocaps_inv (os 2)\<close>
-    and INV: \<open>label_prop_upd_inv os_label_prop\<close>
-    and LABELS: \<open>\<forall>t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
-    and WF: \<open>wf_label_prop_updates os_label_prop
-      (set (input os_label_prop 1) \<union>
-       set (cbufs (1, 1) @ outpu (os 2) 1 @
-            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<close>
-    and DATAPLANE: \<open>dataplane_tracker_inv os cbufs sg\<close>
-  shows \<open>dataplane_tracker_inv
-    ((snd (snd (loop_updates cbufs os_label_prop os)))
-      (1 := op_state_base (fst (snd (loop_updates cbufs os_label_prop os)))))
-    (fst (loop_updates cbufs os_label_prop os)) sg\<close>
-proof -
-  let ?res = \<open>loop_updates cbufs os_label_prop os\<close>
-  have step: \<open>(fst ?res, fst (snd ?res), snd (snd ?res)) = ?res\<close>
-    by (cases ?res) simp
-  have base_label_prop: \<open>op_state_base os_label_prop = os 1\<close>
-    using label_prop_extension
-    unfolding op_state_base_def
-    by (simp add: operator_state.defs)
-  have base_inv: \<open>dataplane_tracker_inv (os(1 := op_state_base os_label_prop)) cbufs sg\<close>
-    using DATAPLANE by (simp add: base_label_prop)
-  have ext_base:
-    \<open>os_label_prop = operator_state.extend (op_state_base os_label_prop)
-      \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
-        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T,
-        graph = G, vertices = V, label = L\<rparr>\<close>
-    using label_prop_extension
-    by (simp add: op_state_base_def operator_state.defs)
-  show ?thesis
-    by (rule loop_updates_preserves_dataplane_tracker_inv
-        [OF step D GR Nxt base_inv ext_base Summ Intsum IOC1 IOC2 INV LABELS WF])
-
-qed
 
 
 
@@ -520,81 +466,8 @@ proof -
 qed
 
 
-lemma dataplane_buffer_consu_produ_balance:
-  fixes os :: "3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state"
-    and cbufs :: "3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf"
-    and sg :: "(3, 2, (nat, nat) myprod) subgraph"
-  assumes D: "dataplane_tracker_inv os cbufs sg"
-    and Nxt: "nxt sg = nt"
-    and conn_eq: "(outputs_at_target (summ sg) os >> cbufs) (2, 1)
-                  = outpu (os 1) 1 @ cbufs (2, 1)"
-    and nt_1_1: "nt (1::3, 1::2) = Some ((2::3), (1::2))"
-    and nt_1_0: "nt ((1::3), (0::2)) = None"
-    and nt_2_0: "nt ((2::3), (0::2)) = None"
-    and nt_2_1: "nt ((2::3), (1::2)) = Some ((1::3), (1::2))"
-    and nt_0_0: "nt ((0::3), (0::2)) = None"
-    and nt_0_1: "nt ((0::3), (1::2)) = None"
-  shows "to_zmset (map snd (outpu (os 1) 1)) + to_zmset (map snd (cbufs (2, 1)))
-       + zmset (map (\<lambda>(p, t, m). (t, m))
-                  (filter (\<lambda>(p, _, _). p = (1::2)) (consu (os 2))))
-       = c_pts (pt_tr sg) (Loc (2::3) (Trg (1::2)))
-       + zmset (map (\<lambda>(p, t, m). (t, m))
-                  (filter (\<lambda>(p, _, _). p = (1::2)) (produ (os 1))))"
-proof -
-  have buffer_balance:
-    "to_zmset (map snd (outpu (os 1) 1)) + to_zmset (map snd (cbufs (2, 1)))
-     = c_pts (change_multiplicities (summ sg)
-                (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) (Loc 2 (Trg 1))"
-    using D conn_eq by (rule dataplane_tracker_inv_buffer_balance_aux)
-  also have "c_pts (change_multiplicities (summ sg)
-                (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) (Loc 2 (Trg 1))
-           = c_pts (pt_tr sg) (Loc 2 (Trg 1))
-           + zmset (map snd (filter (\<lambda>(l', _, _). Loc 2 (Trg 1) = l')
-                  (extract_prog Enum.enum (nxt sg) os)))"
-    by (simp add: c_pts_change_multiplicities)
-  also have "zmset (map snd (filter (\<lambda>(l', _, _). Loc 2 (Trg 1) = l')
-                  (extract_prog Enum.enum (nxt sg) os)))
-           = zmset (map (\<lambda>(p, t, m). (t, m))
-                      (filter (\<lambda>(p, _, _). p = 1) (produ (os 1))))
-           - zmset (map (\<lambda>(p, t, m). (t, m))
-                      (filter (\<lambda>(p, _, _). p = 1) (consu (os 2))))"
-    using nt_1_1 nt_1_0 nt_2_0 nt_2_1 nt_0_0 nt_0_1
-    unfolding Nxt[symmetric]
-    by (rule extract_prog_at_loc_2_trg_1)
-  finally show ?thesis by simp
-qed
 
 
-lemma dataplane_tracker_inv_buffer_balance:
-  fixes os :: "3 \<Rightarrow> (2, 'd, (nat, nat) myprod) operator_state"
-    and cbufs :: "3 \<times> 2 \<Rightarrow> ('d \<times> (nat, nat) myprod) buf"
-    and sg :: "(3, 2, (nat, nat) myprod) subgraph"
-  assumes D: "dataplane_tracker_inv os cbufs sg"
-    and conn_eq: "(outputs_at_target (summ sg) os >> cbufs) (2, 1)
-                  = outpu (os 1) 1 @ cbufs (2, 1)"
-  shows "to_zmset (map snd (outpu (os 1) 1)) + to_zmset (map snd (cbufs (2, 1)))
-       = c_pts (change_multiplicities (summ sg) 
-                  (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) (Loc 2 (Trg 1))"
-proof -
-  from D obtain caps where
-    Trg: "Trg_caps_inv caps (outputs_at_target (summ sg) os >> cbufs)" and
-    cp: "c_pts_inv (change_multiplicities (summ sg)
-            (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) caps"
-    unfolding dataplane_tracker_inv_def by blast
-  have caps_eq:
-    "caps (Loc 2 (Trg 1)) = to_zmset (map snd ((outputs_at_target (summ sg) os >> cbufs) (2, 1)))"
-    using Trg unfolding Trg_caps_inv_def by blast
-  have caps_simp:
-    "caps (Loc 2 (Trg 1)) = to_zmset (map snd (outpu (os 1) 1)) + to_zmset (map snd (cbufs (2, 1)))"
-    using caps_eq conn_eq by (simp add: to_zmset_append)
-  have c_pts_eq:
-    "c_pts (change_multiplicities (summ sg)
-              (extract_prog Enum.enum (nxt sg) os) (pt_tr sg)) (Loc 2 (Trg 1))
-     = caps (Loc 2 (Trg 1))"
-    using cp unfolding c_pts_inv_def by simp
-  show ?thesis
-    using caps_simp c_pts_eq by simp
-qed
 
 
 
