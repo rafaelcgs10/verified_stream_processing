@@ -244,6 +244,22 @@ Principle: Timely/ holds the Timely Dataflow infrastructure only.
       mid-recheck. The gate then completed GREEN: LP 14284 and
       Batch 7779 commands fully processed, zero errors. Phase 8 done.
 
+## Phase 9: leftover lemma moves
+
+- [x] Set_op FIXME resolved: the eight generic weak-step lemmas at the
+      top of Examples/Set_op.thy (wsteps_step_tau, wfinished_step_taus,
+      wsteps_append, step_tau_wtraced, step_taus_wtraced,
+      wsteps_not_finished_wtraced, wsteps_wtraced,
+      wtraced_not_LNil_not_wfinished) moved to Lib/Operators_Utils.thy
+      under a new "Weak Step and Weak Trace Laws" section (before the
+      simulation material). All their constants and cited facts come
+      from Nondeterministic_Dataflow.Operator, which Operators_Utils
+      already imports. Set_op's leading section retitled to "The Set
+      Operator". Note the moved rules are simp/intro, so importers of
+      Operators_Utils (Builder_Op, Dataflow_Op) now see them. Gate
+      GREEN: LP 14284 + Batch 7779 + Set_op 2203 + Operators_Utils
+      1828 commands fully processed, zero errors.
+
 ## Operational notes for continuing this work
 
 - Isabelle MCP: the harness-level mcp tools may be missing; a working
@@ -277,8 +293,6 @@ Principle: Timely/ holds the Timely Dataflow infrastructure only.
   via MCP write_file, keep MCP timeouts short, the user's jEdit check
   is the final say). Isabelle theory names must be unique across the
   whole session (folders do not namespace them).
-- Remaining open items beyond Phase 8: Phase 7 (Input1 split) is
-  deferred, see above; the Dataplane ROOT session entry is still
-  malformed/empty (optional fix); Set_op.thy line ~10 has a
-  "FIXME: move me" comment about generic wsteps lemmas that could go
-  to Lib/Operators_Utils.
+- Remaining open items: Phase 7 (Input1 split) is deferred, see
+  above; the Dataplane ROOT session entry is still malformed/empty
+  (optional fix). The Set_op FIXME is resolved (Phase 9).
