@@ -331,20 +331,12 @@ instance myprod :: (complete_lattice, complete_lattice) complete_lattice
   by standard (simp_all add: less_eq_myprod_def Inf_myprod_def Sup_myprod_def
     INF_lower SUP_upper le_INF_iff SUP_le_iff bot_myprod_def top_myprod_def)
 
-lemma myfst_Inf: "myfst (Inf A) = (INF x\<in>A. myfst x)"
-  by (simp add: Inf_myprod_def)
 
 
-lemma myfst_Sup: "myfst (Sup A) = (SUP x\<in>A. myfst x)"
-  by (simp add: Sup_myprod_def)
 
 
-lemma mysnd_Inf: "mysnd (Inf A) = (INF x\<in>A. mysnd x)"
-  by (simp add: Inf_myprod_def)
 
 
-lemma mysnd_Sup: "mysnd (Sup A) = (SUP x\<in>A. mysnd x)"
-  by (simp add: Sup_myprod_def)
 
 
 

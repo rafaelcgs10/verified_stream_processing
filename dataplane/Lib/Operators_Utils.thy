@@ -455,27 +455,7 @@ lemma p2rel_converse[simp]:
   by auto
 
 
-lemma sim_set_bisim_r:
-  assumes "P \<leadsto>[(X O p2rel (~))] Q" 
-    and p: "Q ~ Q'" 
-  shows "P \<leadsto>[(X O p2rel (~))] Q'"
-proof -
-  let ?Y = "X O p2rel (~)"
-  show ?thesis
-  proof -
-    have "?Y O (p2rel (~)) \<subseteq> ?Y" using bisim_trans by fastforce
-    then show ?thesis 
-      using assms by (smt (verit, ccfv_threshold) basic_trans_rules(24) bisim.simps bisim_refl in_p2_rel_simp relcomp.intros sim_def sim_set_def subrelI)
-  qed
-qed
 
-lemma simWeakSim:
-  assumes "P \<leadsto>[Rel] Q"
-  shows "P \<leadsto>\<^sup>^<Rel> Q"
-  using assms
-  apply(rule_tac weakSimI, auto)
-  apply (meson sim_set_def step_wstep)
-  done
 
 
 

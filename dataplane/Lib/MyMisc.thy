@@ -37,9 +37,6 @@ lemma int_sum_minus_cases:
 lemma sum_singleton:
   "sum f {t} = f t"
   by auto
-lemma sum_eq_singleton:
-  "finite A \<Longrightarrow> f a = b \<Longrightarrow> a \<in> A \<Longrightarrow> (\<forall> c \<in> A. c \<noteq> a \<longrightarrow> f c = 0) \<Longrightarrow> sum f A = b"
-  by (metis Diff_iff sum_singleton empty_subsetI insert_iff insert_subset sum.mono_neutral_right)
 lemma gt_0_plusD:
   "0 < a + b \<Longrightarrow> 0 < a \<or> 0 < (b :: int)"
   by auto

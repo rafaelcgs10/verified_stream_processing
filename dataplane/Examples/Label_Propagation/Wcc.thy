@@ -203,24 +203,7 @@ lemma labels_invD:
   shows "l v \<in> cc_of v"
   using assms unfolding labels_inv_def by simp
 
-lemma labels_inv_reachable:
-  assumes "labels_inv l" and "v \<in> edge_vertices"
-  shows "reachable v (l v)"
-  using labels_invD[OF assms] by (rule cc_ofD)
 
-lemma labels_inv_same_label_reachable:
-  assumes "labels_inv l" and "x \<in> edge_vertices" and "y \<in> edge_vertices" and "l x = l y"
-  shows "reachable x y"
-proof -
-  have "reachable x (l x)"
-    using assms(1,2) by (rule labels_inv_reachable)
-  then have "reachable x (l y)"
-    using assms(4) by simp
-  moreover have "reachable (l y) y"
-    using labels_inv_reachable[OF assms(1,3)] by (rule reachable_sym)
-  ultimately show ?thesis
-    by (rule reachable_trans)
-qed
 
 
 subsection \<open>Stable Labels\<close>
@@ -372,23 +355,7 @@ lemma reachable_empty[simp]:
   unfolding reachable_def
   by simp
 
-lemma reachable_Un_mono_left:
-  "reachable A x y \<Longrightarrow> reachable (A \<union> B) x y"
-proof -
-  have "A \<union> A\<inverse> \<subseteq> (A \<union> B) \<union> (A \<union> B)\<inverse>"
-    by auto
-  then show "reachable A x y \<Longrightarrow> reachable (A \<union> B) x y"
-    unfolding reachable_def using rtrancl_mono by blast
-qed
 
-lemma reachable_Un_mono_right:
-  "reachable B x y \<Longrightarrow> reachable (A \<union> B) x y"
-proof -
-  have "B \<union> B\<inverse> \<subseteq> (A \<union> B) \<union> (A \<union> B)\<inverse>"
-    by auto
-  then show "reachable B x y \<Longrightarrow> reachable (A \<union> B) x y"
-    unfolding reachable_def using rtrancl_mono by blast
-qed
 
 lemma reachable_insert_edge[simp]:
   "reachable (insert (x, y) E) x y"

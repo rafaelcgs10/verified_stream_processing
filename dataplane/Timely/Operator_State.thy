@@ -810,22 +810,6 @@ lemma input_CONSUMES:
   \<open>input (CONSUMES p xs os) = (input os)(p := input os p @ xs)\<close>
   unfolding fold_consumes by simp
 
-lemma ocaps_release_caps_empty_inputs:
-  assumes empty: \<open>\<And>p' s. s \<in> set (intsum os p' p) \<Longrightarrow> input os p' = []\<close>
-  shows \<open>ocaps (release_caps os p) p = []\<close>
-proof -
-  have justifications_empty:
-    \<open>concat (map (\<lambda>(p', s). map (((+) s) \<circ> snd) (input os p'))
-      (concat (map (\<lambda>p'. map (\<lambda>s. (p', s)) (intsum os p' p)) enum_class.enum))) = []\<close>
-    using empty
-    by (auto simp: concat_eq_Nil_conv)
-  have cap_times:
-    \<open>map time (filter (\<lambda>cap. out cap = p) (map (\<lambda>t. Cap t p) xs)) = xs\<close> for xs
-    by (induct xs) simp_all
-  show ?thesis
-    unfolding release_caps_def drop_caps_def Let_def
-    by (simp add: justifications_empty cap_times del: filter_True)
-qed
 
 definition op_state_base where
   \<open>op_state_base os = \<lparr>

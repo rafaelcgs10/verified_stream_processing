@@ -140,13 +140,6 @@ lemma remove_last_append_singleton[simp]:
   apply (metis append.right_neutral distinct.simps(2) distinct_singleton list.set_intros(1) remove_last_append_if remove_last_not_in_set_Cons)
   done
 
-lemma remove_last_append_diff_singleton:
-  "x \<noteq> y \<Longrightarrow> remove_last y (xs @ [x]) = remove_last y xs @ [x]"
-  apply (induct y "xs @ [x]" rule: remove_last.induct)
-  apply simp_all
-  apply (subst remove_last_append_if)
-  apply simp
-  done
 
 
 lemma remove_last_append_in_set:
@@ -379,16 +372,6 @@ lemma distinct_insort_union[simp]:
     (simp_all add: insort_union_def distinct_insort insort_insert_key_def)
 
 
-lemma set_foldl_union_with:
-  "set (foldl (union_with List.union) g gs y) = (\<Union>f\<in>set (g # gs). set (f y))"
-proof (induction gs arbitrary: g)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons h hs)
-  then show ?case
-    by (auto simp: union_with_def)
-qed
 
 
 lemma list_diff_append_mset_cancel:

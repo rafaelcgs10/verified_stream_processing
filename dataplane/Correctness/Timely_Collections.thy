@@ -527,14 +527,6 @@ proof -
     by (cases e) (auto intro: that simp add: cin.rep_eq cset_of_llist.rep_eq)
 qed
 
-lemma ts_lsetI:
-  assumes \<open>Data t d \<in> lset lxs\<close>
-  shows \<open>t |\<in>| ts lxs\<close>
-  unfolding ts_def
-  apply (subst cimage_iff)
-  apply (rule_tac x=\<open>Data t d\<close> in cBexI)
-  apply simp
-  using assms by (simp add: cin.rep_eq cset_of_llist.rep_eq)
 
 
 lemma icoll_empty_if_no_data_le:

@@ -5,67 +5,10 @@ imports
   Input0
 begin
 
-lemma wf_label_prop_updates_label_prop_input1_step_state_monoI:
-  assumes H: \<open>wf_label_prop_updates os S\<close>
-  shows \<open>wf_label_prop_updates (label_prop_input1_step_state os d t) S\<close>
-proof (rule wf_label_prop_updates_os_mono[OF H])
-  show \<open>de1 os = de1 (label_prop_input1_step_state os d t)\<close>
-    unfolding label_prop_input1_step_state_def label_prop_label_record_update_def input_tl_def
-    by (simp add: Let_def)
-  show \<open>set (timestamps os) \<subseteq> set (timestamps (label_prop_input1_step_state os d t))\<close>
-    by simp
-  show \<open>\<forall>t'. set (vertices os t') \<subseteq> set (vertices (label_prop_input1_step_state os d t) t') \<and>
-    (\<forall>v. set (graph os t' v) \<subseteq> set (graph (label_prop_input1_step_state os d t) t' v))\<close>
-    unfolding label_prop_input1_step_state_def label_prop_label_record_update_def input_tl_def
-    by (auto simp: Let_def split: if_splits)
-  show \<open>S = S\<close>
-    by simp
-qed
 
 
-lemma wf_label_prop_updates_fst_label_prop_input1_batched_monoI:
-  assumes H: \<open>wf_label_prop_updates os S\<close>
-  shows \<open>wf_label_prop_updates (fst (label_prop_input1_batched os xs)) S\<close>
-  using H
-proof (induct xs arbitrary: os)
-  case Nil
-  then show ?case
-    by simp
-next
-  case (Cons x xs)
-  obtain d t where x_eq: \<open>x = (d, t)\<close>
-    by (cases x)
-  have step: \<open>wf_label_prop_updates (label_prop_input1_step_state os d t) S\<close>
-    by (rule wf_label_prop_updates_label_prop_input1_step_state_monoI[OF Cons.prems])
-  have rec: \<open>wf_label_prop_updates (fst (label_prop_input1_batched (label_prop_input1_step_state os d t) xs)) S\<close>
-    by (rule Cons.hyps[OF step])
-  show ?case
-    using rec unfolding x_eq
-    by (cases \<open>label_prop_input1_batched (label_prop_input1_step_state os d t) xs\<close>) simp
-qed
 
 
-lemma wf_label_prop_updates_label_prop_input1_loop_updates_monoI:
-  fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
-    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
-  assumes step: \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
-    and H: \<open>wf_label_prop_updates os_label_prop S\<close>
-  shows \<open>wf_label_prop_updates os_label_prop' S\<close>
-proof -
-  let ?msgs = \<open>cbufs (1, 1) @ outpu (os 2) 1 @
-    map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
-      (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)\<close>
-  let ?cons = \<open>CONSUMES 1 ?msgs (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>)\<close>
-  have os_label_prop'_eq:
-    \<open>os_label_prop' = fst (label_prop_input1_batched ?cons (input ?cons 1))\<close>
-    using step unfolding label_prop_input1_loop_updates_def Let_def
-    by (simp split: prod.splits)
-  have cons_wf: \<open>wf_label_prop_updates ?cons S\<close>
-    using H by simp
-  show ?thesis
-    unfolding os_label_prop'_eq
-    by (rule wf_label_prop_updates_fst_label_prop_input1_batched_monoI[OF cons_wf])
-qed
 
 
 

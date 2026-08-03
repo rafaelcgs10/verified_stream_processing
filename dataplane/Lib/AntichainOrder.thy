@@ -265,15 +265,6 @@ lemma frontier_le_singletons:
    frontier {#t#}\<^sub>z \<le> frontier {#t'#}\<^sub>z"
   by (metis (no_types, opaque_lifting) frontier_le_singletonD less_eq_antichain_def member_frontier_pos_zmset nless_le zcount_single)
 
-lemma frontier_add_le:
-  "frontier B \<le> frontier C \<Longrightarrow>
-   frontier (A + B) \<le> frontier B \<Longrightarrow>
-   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
-   frontier (A + B) \<le> frontier (A + C)"
-  unfolding less_eq_antichain_def
-  apply auto
-  apply (smt (verit, ccfv_threshold) order.trans trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_union)
-  done
 
 lemma frontier_add_add_le:
   "frontier B \<le> frontier B' \<Longrightarrow>
@@ -552,29 +543,8 @@ lemma frontier_sum_le:
   apply (simp add: frontier_add_add_le sum_nonneg zcount_sum)
   done
 
-lemma frontier_lt_minus_add:
-  "(\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
-   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
-   frontier A \<le> frontier (C - B) \<Longrightarrow> frontier (B + A) \<le> frontier C"
-  unfolding less_eq_antichain_def
-  apply auto
-  apply transfer'
-  unfolding incomparable_def minimal_antichain_def
-  apply auto
-  apply (smt (z3) dual_order.strict_trans2 in_frontier_iff nless_le trivial_dataflow_topology_interpretation.obtain_elem_frontier)
-  done
 
 
-lemma frontier_lt_subseq:
-  "N \<subseteq>#\<^sub>z M \<Longrightarrow>
-   frontier M \<le> frontier N"
-  unfolding less_eq_antichain_def
-  apply clarsimp
-  apply transfer'
-  unfolding incomparable_def minimal_antichain_def
-  apply (metis (no_types, lifting) ext frontier.rep_eq in_frontier_iff member_antichain.rep_eq minimal_antichain_def order.strict_trans2 subseteq_zmset_def
-      trivial_dataflow_topology_interpretation.obtain_elem_frontier)
-  done
 
 
 

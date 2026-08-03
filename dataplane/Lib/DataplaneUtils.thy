@@ -64,19 +64,6 @@ section ‹Concatenations of Lazy Lists›
 
 text ‹Heads and tails of concatenated, zipped lazy lists.›
 
-lemma lhd_concat_ldropWhile:
-  "lfinite (ltakeWhile ((=) []) lxs) ⟹
-   ∃ xs lxs'. ldropWhile ((=) []) lxs = LCons (x # xs) lxs' ⟹
-   lhd (lconcat lxs) = x"
-  apply (induct "ltakeWhile ((=) []) lxs"  arbitrary: lxs rule: lfinite_induct)
-  subgoal
-    apply (simp add: lconcat_correct split: prod.splits)
-    apply (smt (z3) ldropWhile_LNil ldropWhile_simps(2) lhd_LCons lhd_lconcat llist.map_disc_iff llist.map_sel(1) llist_of.simps(2) lnull_def not_lnull_conv)
-    done
-  subgoal for lxs
-    apply (cases lxs; simp split: if_splits)
-    done
-  done
 
 
 

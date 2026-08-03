@@ -57,18 +57,6 @@ lemma zero_in_graph_path_weight[simp,intro]:
 
 
 
-lemma zmset_filter_graph_to_nxt:
-  assumes GR: "graph_summar_nt su (graph_to_nxt su) os"
-  shows "graph_to_nxt su (nid, p) = Some (nid', p') \<Longrightarrow>
-   zmset (map snd (filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt su (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) xs))) =
-   zmset (map snd (filter (\<lambda> (p', _, _). p' = p) xs))"
-  apply (rule arg_cong[where f=zmset])
-  apply (induct xs)
-  apply simp_all
-  apply (auto simp add: split: option.splits)
-  using GR[unfolded graph_summar_nt_def]
-  apply (metis (no_types, opaque_lifting) domI inj_onD snd_conv)
-  done
 
 
 

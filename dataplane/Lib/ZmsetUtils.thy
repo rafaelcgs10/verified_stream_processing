@@ -31,21 +31,12 @@ lemma neg_neg_multiset:
   "- (A :: _ zmultiset) - B = - (A + B)"
   by (metis add.commute diff_minus_eq_add minus_diff_eq)
 
-lemma add_zmset_neg:
-  "add_zmset a (- M) = (add_zmset a {#}⇩z) - M"
-  by simp
 
 lemma to_zmset_append[simp]:
   "to_zmset (xs @ ys) = to_zmset xs + to_zmset ys"
   by (induct xs arbitrary: ys rule: to_zmset.induct)
     auto
 
-lemma add_zmset_neg_add_zmset_if:
-  "add_zmset a (- (add_zmset b M)) = (if a = b then - M else - (add_zmset b (M - {# a #}⇩z)))"
-  apply (auto split: if_splits)
-   apply (metis add_zmset_diff_bothsides add_zmset_neg verit_minus_simplify(3))
-  apply (metis arith_simps(56) diff_add_zmset_swap minus_diff_eq)
-  done
 
 lemma add_zmset_to_zmset:
   "add_zmset x (to_zmset xs) = to_zmset (x # xs)"
@@ -168,12 +159,6 @@ lemma zmset_append[simp]:
    apply auto
   done
 
-lemma minus_zmset:
-  "- zmset ys = zmset (map (λ(x, m). (x, - m)) ys)"
-  apply (induct ys rule: rev_induct)
-   apply clarsimp+
-  apply (smt (verit, del_insts) Executable.update_zmultiset_plus ZmsetUtils.update_zmultiset_plus add.commute add.inverse_distrib_swap add_cancel_left_left minus_unique)
-  done
 
 
 lemma zmset_concat:

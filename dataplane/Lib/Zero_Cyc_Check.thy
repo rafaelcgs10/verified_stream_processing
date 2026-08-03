@@ -35,29 +35,6 @@ lemma remove_non_zero_weights_is_graph:
   by (smt (verit, del_insts))
 
 
-lemma remove_non_zero_sum_path_weights_zero:
-  assumes G: "Graph.graph weights"
-    and P: "graph.path (remove_non_zero_weights weights) loc loc' xs"
-  shows "graph.sum_path_weights xs = 0"
-  using P apply (induct rule: graph.path.induct [where weights="remove_non_zero_weights weights"])
-  subgoal apply (simp add: G remove_non_zero_weights_is_graph) done
-  subgoal apply (simp add: P) done
-  subgoal apply simp done
-  subgoal
-    apply (subst map_append)
-    apply (subst foldr_append)
-    apply (simp)
-    apply (simp add: antichain_from_list_def split: if_splits)
-    subgoal 
-      apply (subst (asm) member_antichain.abs_eq)
-      subgoal
-        apply (simp add: eq_onp_def incomparable_def)
-        done
-      subgoal apply fastforce done
-      done
-    subgoal apply (metis empty_antichain_def mem_antichain_nonempty) done
-    done
-  done
 
 
 lemma empty_path_inversion:
@@ -386,19 +363,10 @@ definition no_self_loop_checker  where
   "no_self_loop_checker g = (set (map set_antichain (map ((\<lambda> loc . (g loc loc))) Enum.enum)) = {{}})"
 
 
-lemma range_is_set_enum: "range f = set (map f Enum.enum)"
-  apply (simp add: UNIV_enum)
-  done
 
 
-lemma set_image2: "(\<lambda> x . f x x) ` (UNIV::'a::enum set) = {y} \<Longrightarrow> f x x = y"
-  by blast
 
-lemma set_image_sigleton: "{f x} = f ` {x}"
-  by fastforce
 
-lemma set_antichain_image_inject:"set_antichain ` s1 = set_antichain ` s2 = (s1 = s2)"
-  by (metis inj_on_def inj_on_image inj_on_inverseI insert_iff set_antichain_inverse)
 
 definition graph_checker :: "('a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::{canonically_ordered_monoid_add, ordered_ab_semigroup_monoid_add_imp_le} antichain) \<Rightarrow> bool" where
   "graph_checker weights \<equiv> Enum.enum_all (\<lambda> loc . is_empty_antichain (weights loc loc))"
