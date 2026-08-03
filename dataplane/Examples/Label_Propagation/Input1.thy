@@ -1208,35 +1208,6 @@ lemma labels_inv_fst_label_prop_input1_batched_inputI:
 
 
 
-lemma label_prop_label_batch_empty_neighborD:
-  fixes os updated_os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-  assumes batch_empty: \<open>label_prop_label_batch os updated_os event_t v l event_time = []\<close>
-    and cur_t_in: \<open>cur_t \<in> set (timestamps os)\<close>
-    and event_le: \<open>event_t \<le> cur_t\<close>
-    and neighbor: \<open>v' \<in> set (neighbors os cur_t v)\<close>
-  shows \<open>min_label os cur_t v \<le> l \<or> min_label updated_os cur_t v' \<le> l\<close>
-proof (rule ccontr)
-  assume not_thesis: \<open>\<not> (min_label os cur_t v \<le> l \<or> min_label updated_os cur_t v' \<le> l)\<close>
-  then have old_gt: \<open>l < min_label os cur_t v\<close>
-    and updated_gt: \<open>l < min_label updated_os cur_t v'\<close>
-    by auto
-  have filter_nonempty:
-    \<open>filter (\<lambda>v'. l < min_label updated_os cur_t v') (neighbors os cur_t v) \<noteq> []\<close>
-  proof -
-    have \<open>v' \<in> set (filter (\<lambda>v'. l < min_label updated_os cur_t v')
-        (neighbors os cur_t v))\<close>
-      using neighbor updated_gt by simp
-    then show ?thesis
-      by (cases \<open>filter (\<lambda>v'. l < min_label updated_os cur_t v')
-          (neighbors os cur_t v)\<close>) auto
-  qed
-  have nonempty: \<open>label_prop_label_batch os updated_os event_t v l event_time \<noteq> []\<close>
-    unfolding label_prop_label_batch_def label_prop_neighbor_batch_def
-    using cur_t_in event_le old_gt filter_nonempty
-    by (auto simp add: concat_eq_Nil_conv)
-  show False
-    using batch_empty nonempty by blast
-qed
 
 
 

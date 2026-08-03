@@ -430,8 +430,20 @@ find_timestamp function; restored).
       (regex bug), find_timestamp function block restored (keyword
       bug). Gate GREEN: LP 14284 + Batch 7777 fully processed, zero
       errors, all edited files individually clean.
-- [ ] Round 2: rerun the sweep after round 1 (lemmas whose only
-      users were deleted in round 1), delete, gate, report.
+- [x] Rounds 2-6: the deletion cascade (each round frees lemmas whose
+      only users were deleted the round before) was rerun to near
+      convergence: round 2 = 44, round 3 = 5, round 4 = 4, round 5 = 2,
+      round 6 = 2 lemmas. Each round gated GREEN on both chains. Total:
+      206 lemmas + 7 diagnostic commands deleted across 32 files,
+      3209 lines removed (dataplane non-Attic .thy went 51799 -> 48590
+      lines, a 6.2% reduction). Scratch theory UnusedScan.thy removed.
+      Termination.thy left untouched by user request (99 of its lemmas
+      are reported unused but not deleted). The final sweep still lists
+      ~2 more candidates in the LP tail; the user chose to stop the
+      cascade here rather than fully drain it. To resume later: recreate
+      UnusedScan.thy importing the four leaf theories with
+      "unused_thms Operator - <leaves>", run analyze_unused.py +
+      delete_unused.py in job tmp, gate, repeat.
 
 ## Operational notes for continuing this work
 

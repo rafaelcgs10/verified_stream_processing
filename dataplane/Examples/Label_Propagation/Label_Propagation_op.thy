@@ -3053,28 +3053,6 @@ lemma min_label_mono_time:
   unfolding min_label_def
   by (intro Min.boundedI) auto
 
-lemma all_edges_sym:
-  assumes inv: \<open>label_prop_upd_inv os\<close>
-  shows \<open>sym (all_edges os q)\<close>
-  unfolding sym_def
-proof (intro allI impI)
-  fix x y
-  assume xy: \<open>(x, y) \<in> all_edges os q\<close>
-  then have x_all: \<open>x \<in> all_vertices os q\<close>
-    and y_all: \<open>y \<in> all_vertices os q\<close>
-    and y_neigh: \<open>y \<in> set (neighbors os q x)\<close>
-    unfolding all_edges_def by auto
-  obtain t where t_in: \<open>t \<in> set (timestamps os)\<close>
-    and t_le: \<open>t \<le> q\<close>
-    and y_graph: \<open>y \<in> set (graph os t x)\<close>
-    using y_neigh unfolding set_neighbors by auto
-  have x_graph: \<open>x \<in> set (graph os t y)\<close>
-    using inv y_graph unfolding label_prop_upd_inv_def sym_def by blast
-  have x_neigh: \<open>x \<in> set (neighbors os q y)\<close>
-    using t_in t_le x_graph unfolding set_neighbors by auto
-  show \<open>(y, x) \<in> all_edges os q\<close>
-    using x_all y_all x_neigh unfolding all_edges_def by auto
-qed
 
 lemma finite_all_vertices:
   shows \<open>finite (all_vertices os t)\<close>
