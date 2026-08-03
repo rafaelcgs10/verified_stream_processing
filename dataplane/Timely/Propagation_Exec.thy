@@ -36,6 +36,8 @@ definition "propagate_all_locale summary df c0 = (while_option (Not o (worklist_
 definition "propagate_all summary c0 = (while_option (Not o (worklist_is_empty summary))
                                         (take_step summary PR) c0)"
 
+definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
+
 lemma take_step_fast_code[simp]:
   "take_step_locale df x = take_step (antichain_from_list oo (dataflow_tree_to_graph df)) x"
   unfolding take_step_locale_def

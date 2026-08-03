@@ -2,7 +2,7 @@ theory General
 
 imports
   "../Timely_Stream"
-  "../Timely/Ifrontier"
+  Ifrontier
 begin
 
 

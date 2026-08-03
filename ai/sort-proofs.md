@@ -339,6 +339,69 @@ earlier phases to the Timely files.
       only BNA_Operators, so it cannot be affected by the trim).
       Confirm these three after the next Isabelle restart.
 
+## Phase 11: Timely = infrastructure only
+
+Rationale (grounded in the Rust implementation at
+github.com/TimelyDataflow/timely-dataflow): the Timely folder should
+mirror the mechanism modules (progress/frontier, change_batch,
+operate, reachability, subgraph; dataflow/operators/generic,
+stream). Proof-only files are verification artifacts with no Rust
+counterpart and belong with Correctness. Mapping: Operator_State ~
+operate.rs + change_batch.rs, Propagation_Exec ~ reachability.rs,
+Tree_Compile ~ graph building + summaries, Builder_Op ~ generic
+builder + Notificator (notifier_op), Dataflow_Op ~ subgraph.rs,
+Timely_Stream (top level) ~ stream.rs. Renames to match Rust naming
+deliberately deferred to the planned Rust-matching task.
+
+Changes (committed after gate):
+- Ifrontier.thy, Propagation_Properties.thy -> Correctness/ (their
+  only importers were Correctness/General resp. Propagates+Progress;
+  imports switched to bare in-folder names).
+- Progress_Extraction.thy -> Correctness/ after relocating the
+  change_multiplicities definition into Propagation_Exec (before
+  take_step_fast_code). Verified: Dataflow_Op used the definition
+  but none of the file's lemmas; CM_equiv is file-internal.
+  Rename to Change_Multiplicities.thy declined by user for now.
+- Dataflow_Op imports Propagation_Exec + Operator_State instead of
+  Progress_Extraction (needs extract_progress from Operator_State).
+- Timely now: Operator_State, Propagation_Exec, Tree_Compile,
+  Builder_Op, Dataflow_Op.
+
+### Phase 11 progress
+
+- [x] Disk edits + git mv applied.
+- [ ] Isabelle restart (file moves), then gate (both chains +
+      Dataflow_Op + the three moved files + Correctness), commit.
+
+## value [GHC] failures: root cause and fix (pending gate)
+
+The 4 tolerated value [GHC] errors (Batch_op x2, Collatz x2) were
+NOT a ghc_setup problem. Root cause: LList_Haskell_Setup's
+code_printing maps nat to the hand-written Haskell newtype Cset.Nat,
+and "constant Nat" was meant to map the integer-backed constructor
+Code_Target_Nat.Nat. Pre-phase-8 that resolution worked only via an
+accidental transitive import (Timely_Infrastructure ->
+Zero_Cyc_Check -> DFS_Framework -> ... -> Code_Target_Numeral).
+The phase 8a import trim severed it, so "Nat" resolved to HOL's
+bootstrap predicate Nat.Nat; the real constructors stayed unmapped
+and GHC failed with "Not in scope: data constructor Nat"
+(or Zero_nat/Suc in reduced contexts).
+
+Fix applied to Lib/LList_Haskell_Setup.thy: import
+"HOL-Library.Code_Target_Numeral" explicitly and map
+"constant Code_Target_Nat.Nat" instead of "constant Nat".
+Verified outside jEdit by a minimal repro session (job tmp
+ghcrepro2, built on the Nondeterministic_Dataflow heap):
+value [GHC] "(3::nat)+4" and value [GHC] "ltaken 3 (llist_of ...)"
+fail exactly like the project before the fix and pass after it.
+Confirm the real 4 commands go green at the next jEdit gate.
+
+Side discovery: the repo's .thy files use literal Unicode symbols
+(including cartouches), which jEdit accepts but "isabelle build"
+rejects ("Malformed command syntax") - batch builds of dataplane
+are impossible without a symbol-conversion pass; that is why the
+repro copied and converted the three Lib files.
+
 ## Operational notes for continuing this work
 
 - Isabelle MCP: the harness-level mcp tools may be missing; a working

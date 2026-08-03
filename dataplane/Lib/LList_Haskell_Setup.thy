@@ -3,6 +3,7 @@ theory LList_Haskell_Setup
 imports
   Coinductive.Coinductive_List
   CsetUtils
+  "HOL-Library.Code_Target_Numeral"
 begin
 
 
@@ -69,7 +70,7 @@ code_printing
     (Haskell) "Cset.Cset _"
   | type_constructor nat \<rightharpoonup>
     (Haskell) "Cset.Nat"
-  | constant Nat \<rightharpoonup>
+  | constant Code_Target_Nat.Nat \<rightharpoonup>
     (Haskell) "Cset.Nat"
   | constant cset_of_llist \<rightharpoonup>
     (Haskell) "Cset.Cset"

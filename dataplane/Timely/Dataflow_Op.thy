@@ -1,7 +1,8 @@
 theory Dataflow_Op
 
 imports
-  Progress_Extraction
+  Propagation_Exec
+  Operator_State
   "../Lib/Operators_Utils"
 begin
 

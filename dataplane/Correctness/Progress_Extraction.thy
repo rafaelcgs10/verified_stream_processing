@@ -1,15 +1,13 @@
 theory Progress_Extraction
 
 imports
-  Propagation_Exec
-  Operator_State
+  "../Timely/Propagation_Exec"
+  "../Timely/Operator_State"
 begin
 
 section \<open>Progress Extraction\<close>
 
 subsection \<open>Laws of change_multiplicities\<close>
-
-definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
 
 lemma change_multiplicities_append:
   "change_multiplicities su (xs @ ys) = (\<lambda> c. change_multiplicities su ys (change_multiplicities su xs c))"

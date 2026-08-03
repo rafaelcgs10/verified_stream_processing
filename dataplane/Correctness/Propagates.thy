@@ -2,7 +2,7 @@ theory Propagates
 
 imports
   General
-  "../Timely/Propagation_Properties"
+  Propagation_Properties
 begin
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
