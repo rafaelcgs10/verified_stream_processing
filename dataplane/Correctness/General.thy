@@ -386,6 +386,7 @@ lemma graph_summar_nt:
     done
   subgoal for nid nid' p p'
     unfolding dataflow_tree_to_graph_def
+    apply (cases "dataflow_tree_to_graph_aux 0 dt")
     apply (simp split: if_splits prod.splits)
     using dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection
     apply (metis in_antichain_from_listD in_set_simps(3))

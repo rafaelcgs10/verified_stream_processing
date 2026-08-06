@@ -113,17 +113,6 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
     apply (safe; hypsubst_thin?)
     subgoal
       apply (subst (asm) weights_to_graph_fun_to_next)
-      apply (rule FalseE)
-      apply simp
-      unfolding implementation_graph_checker_def enum_location_def enum_num1_def Enum.enum_prod_def enum_class.enum_all
-      apply simp
-      apply code_simp
-      done
-    subgoal
-      unfolding no_self_loop_checker_is_graph_checker graph_checker_def
-      by (clarsimp simp add: image_iff split_beta split: prod.splits if_splits port.splits)
-    subgoal
-      apply (subst (asm) weights_to_graph_fun_to_next)
       apply simp
       apply code_simp
       apply eval

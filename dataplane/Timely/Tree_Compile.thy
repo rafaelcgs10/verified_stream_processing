@@ -101,8 +101,6 @@ definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,
   let s = antichain_from_list oo raw_s in
   let ints = (\<lambda> n p1 p2. raw_s (Loc n (Trg p1)) (Loc n (Src p2))) in
   if \<not> has_zero_cyc s \<and>
-     no_self_loop_checker s \<and>
-     implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s)) \<and>
      CARD ('id) = nodes_count df \<and>
      (\<forall> l1 l2. incomparable (set (raw_s l1 l2))) \<and>
      (\<forall> nid p1 p2. distinct (ints nid p1 p2)) \<and>
@@ -128,6 +126,19 @@ lemma compile_dataflow_tree_aux_same_loc:
     done
   done
 
+lemma implementation_graph_checker_weights_to_graph_fun[simp]:
+  "implementation_graph_checker (weights_to_graph_fun g)"
+  unfolding implementation_graph_checker_correct weights_to_graph_fun_def
+  by (simp add: enum_class.enum_distinct)
+
+lemma graph_checker_compiled:
+  assumes "dataflow_tree_to_graph_aux n df = (m, raw_s)"
+  shows "graph_checker (antichain_from_list oo raw_s)"
+  unfolding graph_checker_def comp_def
+  apply (subst all_code[symmetric])
+  apply (simp add: compile_dataflow_tree_aux_same_loc[OF assms[symmetric]] antichain_from_list_is_empty)
+  done
+
 lemma enum_dataflow_topology_compile_dataflow[simp]:
   "enum_dataflow_topology (antichain_from_list oo (dataflow_tree_to_graph (df :: (_, _, _, _, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree))) (+)"
   apply standard
@@ -145,6 +156,7 @@ lemma enum_dataflow_topology_compile_dataflow[simp]:
     subgoal
       apply (rule decide_graph_construction[where t=0, simplified, rotated])
           apply assumption+
+       apply (rule graph_checker_compiled, assumption)
       apply simp_all
       done
     subgoal
@@ -270,6 +282,16 @@ abbreviation AF where
 
 notation "AF" (infixl \<open>-++-\<close> 65)
 
+
+subsection \<open>Compiled Summaries Form a Dataflow Topology\<close>
+
+text \<open>Every summary produced by compiling a dataflow tree satisfies the
+  \<^locale>\<open>dataflow_topology\<close> assumptions. This discharges, once and for all, the
+  goals of the form \<^term>\<open>dataflow_topology (summ sg) (-+-)\<close> that recur
+  throughout the correctness proofs.\<close>
+
+lemmas dataflow_topology_dataflow_tree_to_graph[simp] =
+  dataflow_topology_from_tree.dataflow_topology_axioms
 
 
 end

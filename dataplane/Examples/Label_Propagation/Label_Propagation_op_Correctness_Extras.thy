@@ -253,18 +253,6 @@ lemma dataflow_tree_to_graph_raw_summary[simp]:
         apply code_simp
         by eval
       subgoal
-        apply simp
-        apply (elim conjE)
-        apply hypsubst_thin
-        apply code_simp
-        done
-      subgoal
-        apply simp
-        apply (elim conjE)
-        apply hypsubst_thin
-        apply code_simp
-        done
-      subgoal
         by simp
       subgoal for l1 l2
         apply simp
