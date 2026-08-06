@@ -135,7 +135,6 @@ lemma initia_input_tl[simp]: "initia (input_tl os p) = initia os"
   unfolding input_tl_def by simp
 
 abbreviation "send_output op p x \<equiv> Write op (Some p) (Inr x)"
-abbreviation "send_progress op st \<equiv> Write op None (Inl (Inl st))"
 
 definition "obtain_progress os = (os\<lparr> consu := [], inter := [], produ := [] \<rparr>, \<lparr> cons = consu os, inte = inter os, prod = produ os\<rparr>)"
 

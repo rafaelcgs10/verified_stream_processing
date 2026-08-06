@@ -31,31 +31,31 @@ abbreviation eval_builder_op_aux where
   | builder_ReadData_aux p \<Rightarrow> Read (Some p) (\<lambda>x. case x of
       Inr (d, t) \<Rightarrow> b (consumes os p t d)
     | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))
-  | builder_Progress_aux \<Rightarrow> (let (os', st) = obtain_progress os in send_progress (b os') st))\<close>
+  | builder_Progress_aux \<Rightarrow> (let (os', st) = obtain_progress os in Write (b os') None (Inl (Inl st))))\<close>
 
 (* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/dataflow/operators/generic/builder_rc.rs#L27 *)
 corec builder_op where
-  \<open>builder_op fb ips ops os logic =
-  Choice (cimage (eval_builder_op_aux (\<lambda>os'. builder_op fb ips ops os' logic) os) (cUn (cUn (cUn (cUn
+  \<open>builder_op fb tps sps os logic =
+  Choice (cimage (eval_builder_op_aux (\<lambda>os'. builder_op fb tps sps os' logic) os) (cUn (cUn (cUn (cUn
     (if initia os then cimage builder_Silent_aux (logic os) else {||})
-    (cimage builder_Write_aux (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
+    (cimage builder_Write_aux (cfilter (\<lambda>p. outpu os p \<noteq> []) sps)))
     (if fb then {|builder_ReadFrontier_aux|} else {||}))
-    (cimage builder_ReadData_aux ips))
+    (cimage builder_ReadData_aux tps))
     {|builder_Progress_aux|}))\<close>
 
 lemma builder_op_code:
-  \<open>builder_op fb ips ops os logic = Choice (cUn (cUn (cUn (cUn
-    (if initia os then cimage (\<lambda>os'. Silent (builder_op fb ips ops os' logic)) (logic os) else {||})
+  \<open>builder_op fb tps sps os logic = Choice (cUn (cUn (cUn (cUn
+    (if initia os then cimage (\<lambda>os'. Silent (builder_op fb tps sps os' logic)) (logic os) else {||})
     (cimage (\<lambda>p. case outpu os p of
-       x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
-     (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
+       x # xs \<Rightarrow> send_output (builder_op fb tps sps (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
+     (cfilter (\<lambda>p. outpu os p \<noteq> []) sps)))
     (if fb then {|Read None (\<lambda>x. case x of
-       Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic
+       Inl (Inr f) \<Rightarrow> builder_op fb tps sps (os\<lparr>front := f, initia := True\<rparr>) logic
      | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>))|} else {||}))
     (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
-       Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic
-     | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) ips))
-    {|let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st|})\<close>
+       Inr (d, t) \<Rightarrow> builder_op fb tps sps (consumes os p t d) logic
+     | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) tps))
+    {|let (os', st) = obtain_progress os in Write (builder_op fb tps sps os' logic) None (Inl (Inl st))|})\<close>
   apply (subst builder_op.code)
   apply (auto simp add: cset.map_comp o_def cimage_cUn cimage_cinsert split: list.splits)
   done
@@ -64,19 +64,19 @@ subsection \<open>Rules for @{const builder_op}\<close>
 
 
 lemma step_builder_op_elim:
-  assumes \<open>step io (builder_op fb ips ops os logic) op\<close>
+  assumes \<open>step io (builder_op fb tps sps os logic) op\<close>
   obtains (read_end_None) x where \<open>io = Inp None x\<close> \<open>is_Inr x \<or> is_Inl x \<and> is_Inl (projl x)\<close> \<open>op = \<oslash>\<close>
   | (read_frontier) f where \<open>io = Inp None (Inl (Inr f))\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close> \<open>fb\<close>
-  | (read_end_Some) p x where \<open>io = Inp (Some p) x\<close> \<open>p |\<in>| ips\<close> \<open>is_Inl x\<close> \<open>op = \<oslash>\<close>
-  | (read_data) p d t where \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| ips\<close>
-    \<open>op = builder_op fb ips ops (consumes os p t d) logic\<close>
+    \<open>op = builder_op fb tps sps (os\<lparr>front := f, initia := True\<rparr>) logic\<close> \<open>fb\<close>
+  | (read_end_Some) p x where \<open>io = Inp (Some p) x\<close> \<open>p |\<in>| tps\<close> \<open>is_Inl x\<close> \<open>op = \<oslash>\<close>
+  | (read_data) p d t where \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| tps\<close>
+    \<open>op = builder_op fb tps sps (consumes os p t d) logic\<close>
   | (write_state) os' st where \<open>io = Out None (Inl (Inl st))\<close> \<open>(os', st) = obtain_progress os\<close>
-    \<open>op = builder_op fb ips ops os' logic\<close>
-  | (write_data) p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
+    \<open>op = builder_op fb tps sps os' logic\<close>
+  | (write_data) p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| sps\<close> \<open>outpu os p = x # xs\<close>
+    \<open>op = builder_op fb tps sps (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
   | (silent) os' where \<open>io = Tau\<close> \<open>initia os\<close>
-    \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb ips ops os' logic\<close>
+    \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb tps sps os' logic\<close>
 proof (cases io)
   case (Inp p x)
   show ?thesis
@@ -98,12 +98,12 @@ proof (cases io)
       show ?thesis
       proof (cases \<open>initia os\<close>)
         case True
-        hence \<open>fb \<and> op = builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
+        hence \<open>fb \<and> op = builder_op fb tps sps (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
           using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
         thus ?thesis using read_frontier Inp None frontier True by blast
       next
         case False
-        hence \<open>fb \<and> op = builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
+        hence \<open>fb \<and> op = builder_op fb tps sps (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
           using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
         thus ?thesis using read_frontier Inp None frontier False by blast
       qed
@@ -115,12 +115,12 @@ proof (cases io)
     thus ?thesis
     proof cases
       case unexpected
-      hence \<open>p' |\<in>| ips \<and> op = \<oslash>\<close> using assms Inp Some by (subst (asm) builder_op.code)
+      hence \<open>p' |\<in>| tps \<and> op = \<oslash>\<close> using assms Inp Some by (subst (asm) builder_op.code)
           (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits sum.splits)
       thus ?thesis using read_end_Some Inp Some unexpected by simp
     next
       case data
-      hence \<open>p' |\<in>| ips \<and> op = builder_op fb ips ops (consumes os p' t d) logic\<close> using assms Inp Some
+      hence \<open>p' |\<in>| tps \<and> op = builder_op fb tps sps (consumes os p' t d) logic\<close> using assms Inp Some
         by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
       thus ?thesis using read_data Inp Some data by blast
     qed
@@ -131,7 +131,7 @@ next
   proof (cases p)
     case None
     obtain os' st where os'_st: \<open>(os', st) = obtain_progress os\<close> unfolding obtain_progress_def by blast
-    hence \<open>x = Inl (Inl st) \<and> op = builder_op fb ips ops os' logic\<close> using assms Out None
+    hence \<open>x = Inl (Inl st) \<and> op = builder_op fb tps sps os' logic\<close> using assms Out None
       by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
     thus ?thesis using write_state Out None os'_st by blast
   next
@@ -141,7 +141,7 @@ next
       apply (subst (asm) builder_op.code)
       apply (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
       done
-    have \<open>p' |\<in>| ops \<and> op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p' := xs)\<rparr>) logic\<close>
+    have \<open>p' |\<in>| sps \<and> op = builder_op fb tps sps (os\<lparr>outpu := (outpu os)(p' := xs)\<rparr>) logic\<close>
       using assms Out Some x'_xs by (subst (asm) builder_op.code)
         (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
     thus ?thesis using write_data Out Some x'_xs by blast
@@ -153,9 +153,9 @@ next
     apply (subst (asm) builder_op.code)
     apply (auto split: if_splits list.splits prod.splits)
     done
-  moreover obtain os' where \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb ips ops os' logic\<close>
+  moreover obtain os' where \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb tps sps os' logic\<close>
   proof -
-    have \<open>Silent op |\<in>| choices (builder_op fb ips ops os logic)\<close> using Tau assms step_choicesE by blast
+    have \<open>Silent op |\<in>| choices (builder_op fb tps sps os logic)\<close> using Tau assms step_choicesE by blast
     thus ?thesis using that
       by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized neq_Nil_conv drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits)
   qed
@@ -164,23 +164,23 @@ qed
 
  lemma step_builder_op_Read_None[intro]:
   assumes \<open>io = Inp None (Inl (Inr f))\<close> \<open>fb\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
-  shows \<open>step io (builder_op fb ips ops os logic) op\<close>
+    \<open>op = builder_op fb tps sps (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
+  shows \<open>step io (builder_op fb tps sps os logic) op\<close>
 proof -
-  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f,initia := True\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
-  have \<open>Read None ?g |\<in>| choices (builder_op fb ips ops os logic)\<close> using assms
+  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op fb tps sps (os\<lparr>front := f,initia := True\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
+  have \<open>Read None ?g |\<in>| choices (builder_op fb tps sps os logic)\<close> using assms
     by (subst (2) builder_op.code) force
   moreover have \<open>?g (Inl (Inr f)) = op\<close> using assms by simp
   ultimately show ?thesis using assms(1) by blast
 qed
 
 lemma step_builder_op_Read_Some[intro]:
-  assumes \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| ips\<close>
-    \<open>op = builder_op fb ips ops (consumes os p t d) logic\<close>
-  shows \<open>step io (builder_op fb ips ops os logic) op\<close>
+  assumes \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| tps\<close>
+    \<open>op = builder_op fb tps sps (consumes os p t d) logic\<close>
+  shows \<open>step io (builder_op fb tps sps os logic) op\<close>
 proof -
-  let ?f = \<open>\<lambda>x. case x of Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic | Inl _ \<Rightarrow> \<oslash>\<close>
-  have \<open>Read (Some p) ?f |\<in>| choices (builder_op fb ips ops os logic)\<close> using assms(2,3)
+  let ?f = \<open>\<lambda>x. case x of Inr (d, t) \<Rightarrow> builder_op fb tps sps (consumes os p t d) logic | Inl _ \<Rightarrow> \<oslash>\<close>
+  have \<open>Read (Some p) ?f |\<in>| choices (builder_op fb tps sps os logic)\<close> using assms(2,3)
     by (subst (2) builder_op.code) fastforce
   moreover have \<open>?f (Inr (d, t)) = op\<close> using assms by simp
   ultimately show ?thesis using assms(1) by blast
@@ -188,25 +188,25 @@ qed
 
 lemma step_builder_op_Write_None[intro]:
   \<open>io = Out None (Inl (Inl st)) \<Longrightarrow>
-  (os', st) = obtain_progress os \<Longrightarrow> op = builder_op fb ips ops os' logic \<Longrightarrow>
-  step io (builder_op fb ips ops os logic) op\<close>
+  (os', st) = obtain_progress os \<Longrightarrow> op = builder_op fb tps sps os' logic \<Longrightarrow>
+  step io (builder_op fb tps sps os logic) op\<close>
   by (subst builder_op.code) (auto simp add: has_progress_def obtain_progress_def)
 
 lemma step_builder_op_Write_Some[intro]:
-  assumes \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
-  shows \<open>step io (builder_op fb ips ops os logic) op\<close>
+  assumes \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| sps\<close> \<open>outpu os p = x # xs\<close>
+    \<open>op = builder_op fb tps sps (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
+  shows \<open>step io (builder_op fb tps sps os logic) op\<close>
   using assms
 proof -
-  have \<open>send_output op p x |\<in>| choices (builder_op fb ips ops os logic)\<close> using assms(2-)
+  have \<open>send_output op p x |\<in>| choices (builder_op fb tps sps os logic)\<close> using assms(2-)
     by (subst builder_op.code) force
   thus ?thesis using assms(1) by blast
 qed
 
 lemma steps_builder_op_Write_Some[intro]:
-  assumes \<open>p |\<in>| ops\<close> \<open>outpu os p = xs @ ys\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := ys)\<rparr>) logic\<close> \<open>zs = map (\<lambda> x. Out (Some p) (Inr x)) xs\<close>
-  shows \<open>steps zs (builder_op fb ips ops os logic) op\<close>
+  assumes \<open>p |\<in>| sps\<close> \<open>outpu os p = xs @ ys\<close>
+    \<open>op = builder_op fb tps sps (os\<lparr>outpu := (outpu os)(p := ys)\<rparr>) logic\<close> \<open>zs = map (\<lambda> x. Out (Some p) (Inr x)) xs\<close>
+  shows \<open>steps zs (builder_op fb tps sps os logic) op\<close>
   using assms apply -
   apply hypsubst_thin
   apply (induct xs arbitrary: os logic op ys rule: rev_induct)
@@ -215,9 +215,9 @@ lemma steps_builder_op_Write_Some[intro]:
   done
 
 lemma steps_builder_op_Read_Some[intro]:
-  assumes \<open>p |\<in>| ips\<close> 
-    \<open>op = builder_op fb ips ops (fold (\<lambda> (d, t) os. consumes os p t d) xs os) logic\<close>
-  shows \<open>steps (map (\<lambda> x. Inp (Some p) (Inr x)) xs) (builder_op fb ips ops os logic) op\<close>
+  assumes \<open>p |\<in>| tps\<close> 
+    \<open>op = builder_op fb tps sps (fold (\<lambda> (d, t) os. consumes os p t d) xs os) logic\<close>
+  shows \<open>steps (map (\<lambda> x. Inp (Some p) (Inr x)) xs) (builder_op fb tps sps os logic) op\<close>
   using assms apply -
   apply (induct xs arbitrary: os op)
    apply auto[1]
@@ -226,10 +226,10 @@ lemma steps_builder_op_Read_Some[intro]:
 
 lemma step_builder_op_Silent[intro]:
   assumes \<open>io = Tau\<close> \<open>initia os\<close> \<open>os' |\<in>| logic os\<close>
-    \<open>op = builder_op fb ips ops os' logic\<close>
-  shows \<open>step io (builder_op fb ips ops os logic) op\<close>
+    \<open>op = builder_op fb tps sps os' logic\<close>
+  shows \<open>step io (builder_op fb tps sps os logic) op\<close>
 proof -
-  have \<open>Silent op |\<in>| choices (builder_op fb ips ops os logic)\<close> using assms(2-)
+  have \<open>Silent op |\<in>| choices (builder_op fb tps sps os logic)\<close> using assms(2-)
     by (subst builder_op.code) auto
   thus ?thesis using assms(1) by blast
 qed
@@ -237,8 +237,8 @@ qed
 lemma step_builder_op_n_Silents[intro]:
   assumes 
     \<open>os' |\<in>| ((\<lambda> oss. (cUnion (cimage logic (cfilter (\<lambda> os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) oss)))) ^^ n) {| os |}\<close>
-    \<open>op = builder_op fb ips ops os' logic\<close>
-  shows \<open>(step Tau ^^ n) (builder_op fb ips ops os logic) op\<close>
+    \<open>op = builder_op fb tps sps os' logic\<close>
+  shows \<open>(step Tau ^^ n) (builder_op fb tps sps os logic) op\<close>
   using assms apply -
   apply (induct n arbitrary: os os' op)
   subgoal
@@ -262,10 +262,10 @@ subsection \<open>Inputs of builder_op\<close>
 
 
 lemma inputs_builder_op:
-  assumes \<open>sub_op (Read p f) (builder_op fb ips ops os logic) n\<close>
-  shows \<open>p = None \<or> (\<exists>ip. p = Some ip \<and> ip |\<in>| ips)\<close>
+  assumes \<open>sub_op (Read p f) (builder_op fb tps sps os logic) n\<close>
+  shows \<open>p = None \<or> (\<exists>ip. p = Some ip \<and> ip |\<in>| tps)\<close>
   using assms
-proof (induct p \<open>builder_op fb ips ops os logic\<close> arbitrary: fb ips ops os logic rule: sub_op_Read_induct)
+proof (induct p \<open>builder_op fb tps sps os logic\<close> arbitrary: fb tps sps os logic rule: sub_op_Read_induct)
   case (Read1 f p)
   then show ?case
     by (subst (asm) builder_op.code) (auto split: if_splits option.splits list.splits sum.splits)
@@ -292,12 +292,12 @@ next
 qed
 
 lemma inputs_builder_op_le:
-  \<open>inputs (builder_op fb ips ops os logic) \<subseteq> {p. p = None \<or> (\<exists>ip. p = Some ip \<and> ip |\<in>| ips)}\<close>
+  \<open>inputs (builder_op fb tps sps os logic) \<subseteq> {p. p = None \<or> (\<exists>ip. p = Some ip \<and> ip |\<in>| tps)}\<close>
   using inputs_builder_op inputs_sub_op_Read subsetI
   by (metis (mono_tags, lifting) mem_Collect_eq)
 
 lemma inputs_builder_op_le_alt[dest!]:
-  \<open>p \<in> inputs (builder_op fb ips ops os logic) \<Longrightarrow> p = None \<or> (\<exists>ip. p = Some ip \<and> ip |\<in>| ips)\<close>
+  \<open>p \<in> inputs (builder_op fb tps sps os logic) \<Longrightarrow> p = None \<or> (\<exists>ip. p = Some ip \<and> ip |\<in>| tps)\<close>
   using set_mp[OF inputs_builder_op_le, simplified] by fastforce
 
 
@@ -305,7 +305,7 @@ subsection \<open>The Notifier Operator\<close>
 
 (* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/dataflow/operators/generic/notificator.rs#L17 *)
 definition notifier_op where
-  "notifier_op ips ops os logic = (builder_op True ips ops os
+  "notifier_op tps sps os logic = (builder_op True tps sps os
    (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))))"
 
 end
