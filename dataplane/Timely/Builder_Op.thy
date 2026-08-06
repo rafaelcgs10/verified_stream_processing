@@ -9,51 +9,55 @@ begin
 (* All timely operators are defined using this function. The logic is passed as argument. This is the only corec we need *)
 section \<open>Builder Operator\<close>
 
+(* The auxiliary datatype describes the five kinds of nondeterministic choices
+   of builder_op. It lets the corecursive definition present all choices as a
+   single flat cset of descriptors, which yields the clean code equation
+   builder_op_code below. *)
+datatype (discs_sels) ('os, 'p) builder_op_aux =
+    builder_Silent_aux 'os
+  | builder_Write_aux 'p
+  | builder_ReadFrontier_aux
+  | builder_ReadData_aux 'p
+  | builder_Progress_aux
+
+abbreviation eval_builder_op_aux where
+  \<open>eval_builder_op_aux b os aux \<equiv> (case aux of
+    builder_Silent_aux os' \<Rightarrow> Silent (b os')
+  | builder_Write_aux p \<Rightarrow> (case outpu os p of
+      x # xs \<Rightarrow> send_output (b (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>)) p x)
+  | builder_ReadFrontier_aux \<Rightarrow> Read None (\<lambda>x. case x of
+      Inl (Inr f) \<Rightarrow> b (os\<lparr>front := f, initia := True\<rparr>)
+    | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>))
+  | builder_ReadData_aux p \<Rightarrow> Read (Some p) (\<lambda>x. case x of
+      Inr (d, t) \<Rightarrow> b (consumes os p t d)
+    | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))
+  | builder_Progress_aux \<Rightarrow> (let (os', st) = obtain_progress os in send_progress (b os') st))\<close>
+
 (* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/dataflow/operators/generic/builder_rc.rs#L27 *)
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
-  (choice5
-    (if initia os then
-      Choice (cimage (\<lambda>os. Silent (builder_op fb ips ops os logic)) (logic os))
-    else \<oslash>)
-    (Choice (cimage (\<lambda>p. case outpu os p of
-      x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
-      (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
-    (if fb then Read None (\<lambda>x. case x of
-      Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic
-    | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>))
-     else \<oslash>)
-    ((Choice (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
-      Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic
-    | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) ips)))
-    (let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st)
-   )\<close>
+  Choice (cimage (eval_builder_op_aux (\<lambda>os'. builder_op fb ips ops os' logic) os) (cUn (cUn (cUn (cUn
+    (if initia os then cimage builder_Silent_aux (logic os) else {||})
+    (cimage builder_Write_aux (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
+    (if fb then {|builder_ReadFrontier_aux|} else {||}))
+    (cimage builder_ReadData_aux ips))
+    {|builder_Progress_aux|}))\<close>
 
-lemma
-  "builder_op fb inps ops os logic =
-Choice
- ((\<lambda>b. case b of
-        None \<Rightarrow>
-          Choice
-           ((\<lambda>b. if b then if initia os then Choice ((\<lambda>os. Silent (builder_op fb inps ops os logic)) |`| logic os) else \<oslash>
-                  else Choice ((\<lambda>p. case outpu os p of x # xs \<Rightarrow> trace (STR ''Writing output'') (send_output (builder_op fb inps ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)) |`| cfilter (\<lambda>p. outpu os p \<noteq> []) ops)) |`|
-            {|True, False|})
-        | Some True \<Rightarrow>
-            Choice
-             ((\<lambda>b. if b
-                    then if fb
-                         then Read None
-                               (\<lambda>x. case x of Inl (Inl aa) \<Rightarrow> Code.abort STR ''Builder_op breaks contract'' (\<lambda>_. \<oslash>) | Inl (Inr f) \<Rightarrow> trace (STR ''Readingfrontier'') (builder_op fb inps ops (os\<lparr>front := f, initia := True\<rparr>) logic)
-                                     | Inr b \<Rightarrow> Code.abort STR ''Builder_op breaks contract'' (\<lambda>_. \<oslash>))
-                         else \<oslash>
-                    else Choice
-                          ((\<lambda>p. Read (Some p) (\<lambda>x. case x of Inl x \<Rightarrow> Code.abort STR ''Builder_op breaks contract'' (\<lambda>_. \<oslash>) | Inr (d, t) \<Rightarrow> builder_op fb inps ops (trace (STR ''Reading data'') (consumes os p t d)) logic)) |`| inps)) |`|
-              {|True, False|})
-        | Some False \<Rightarrow> let (os', st) = obtain_progress os in trace (STR ''Reporting progress'') (send_progress (builder_op fb inps ops os' logic) st)) |`|
-  {|None, Some True, Some False|})"
-  unfolding trace_simp
+lemma builder_op_code:
+  \<open>builder_op fb ips ops os logic = Choice (cUn (cUn (cUn (cUn
+    (if initia os then cimage (\<lambda>os'. Silent (builder_op fb ips ops os' logic)) (logic os) else {||})
+    (cimage (\<lambda>p. case outpu os p of
+       x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
+     (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
+    (if fb then {|Read None (\<lambda>x. case x of
+       Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic
+     | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>))|} else {||}))
+    (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
+       Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic
+     | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) ips))
+    {|let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st|})\<close>
   apply (subst builder_op.code)
-  apply simp
+  apply (auto simp add: cset.map_comp o_def cimage_cUn cimage_cinsert split: list.splits)
   done
 
 subsection \<open>Rules for @{const builder_op}\<close>

@@ -55,6 +55,8 @@ abbreviation "pull i f \<equiv> (Read (Some i)
     (Inr (d, t)) \<Rightarrow> Write (f (d, Cap t 0)) None (Inl (Inl \<lparr>  cons = [(i, t, 1)], inte = [(i, t, 1)], prod = [] \<rparr>))
    | _ \<Rightarrow> \<oslash>))"
 
+(* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/subgraph.rs#L605
+   and https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/operate.rs#L185 *)
 record ('p, 'd, 't) operator_state =
   intsum :: "'p \<Rightarrow> 'p \<Rightarrow> 't list"
   consu :: "('p \<times> 't \<times> int) list"
