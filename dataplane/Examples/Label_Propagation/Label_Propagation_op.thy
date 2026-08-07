@@ -1258,21 +1258,6 @@ lemma all_edges_delay_cap[simp]:
   unfolding delay_cap_def all_edges_def all_vertices_def neighbors_def
   by auto
 
-lemma all_edges_mint_cap[simp]:
-  "all_edges (mint_cap os p t') = all_edges os"
-  unfolding mint_cap_def all_edges_def all_vertices_def neighbors_def
-  by auto
-
-lemma all_edges_mint[simp]:
-  "all_edges (snd (mint os caps p t')) = all_edges os"
-  by (cases "t' \<in> set (caps p)")
-    (simp_all add: mint_def)
-
-lemma all_edges_produce[simp]:
-  "all_edges (produce os cap batch) = all_edges os"
-  unfolding produce_def all_edges_def all_vertices_def neighbors_def
-  by (auto split: if_splits)
-
 lemma all_edges_consume[simp]:
   "all_edges (consume os p t' len) = all_edges os"
   unfolding consume_def all_edges_def all_vertices_def neighbors_def
@@ -1333,15 +1318,6 @@ lemma label_prob_ty2_check_add_caps[simp]:
 lemma label_prob_ty2_check_delay_cap[simp]:
   "label_prob_ty2_check (delay_cap os cap incr) bufs = label_prob_ty2_check os bufs"
   unfolding label_prob_ty2_check_def delay_cap_def by auto
-
-lemma label_prob_ty2_check_mint_cap[simp]:
-  "label_prob_ty2_check (mint_cap os p t') bufs = label_prob_ty2_check os bufs"
-  unfolding label_prob_ty2_check_def mint_cap_def by auto
-
-lemma label_prob_ty2_check_mint[simp]:
-  "label_prob_ty2_check (snd (mint os caps p t')) bufs = label_prob_ty2_check os bufs"
-  by (cases "t' \<in> set (caps p)")
-    (simp_all add: mint_def)
 
 lemma label_prob_ty2_check_consume[simp]:
   "label_prob_ty2_check (consume os p t' len) bufs = label_prob_ty2_check os bufs"
@@ -1428,21 +1404,6 @@ lemma min_label_delay_cap[simp]:
   unfolding delay_cap_def min_label_def
   by (auto cong: if_cong)
 
-lemma min_label_mint_cap[simp]:
-  "min_label (mint_cap os p t') = min_label os"
-  unfolding mint_cap_def min_label_def
-  by (auto cong: if_cong)
-
-lemma min_label_mint[simp]:
-  "min_label (snd (mint os caps p t')) = min_label os"
-  by (cases "t' \<in> set (caps p)")
-    (simp_all add: mint_def)
-
-lemma min_label_produce[simp]:
-  "min_label (produce os cap batch) = min_label os"
-  unfolding produce_def min_label_def
-  by (auto split: if_splits cong: if_cong)
-
 lemma min_label_consume[simp]:
   "min_label (consume os p t' len) = min_label os"
   unfolding consume_def min_label_def
@@ -1504,22 +1465,10 @@ lemma labels_inv_delay_cap[simp]:
   unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def delay_cap_def
   by auto
 
-lemma labels_inv_produce[simp]:
-  "labels_inv (all_edges (produce os cap batch) t) (min_label (produce os cap batch) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def produce_def
-  by auto
-
 lemma labels_inv_consume[simp]:
   "labels_inv (all_edges (consume os p t' len) t) (min_label (consume os p t' len) t) =
    labels_inv (all_edges os t) (min_label os t)"
   unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def consume_def
-  by auto
-
-lemma labels_inv_mint_cap[simp]:
-  "labels_inv (all_edges (mint_cap os p t') t) (min_label (mint_cap os p t') t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def mint_cap_def
   by auto
 
 lemma labels_inv_add_cap[simp]:
@@ -1553,15 +1502,6 @@ lemma labels_inv_obtain_progress[simp]:
   unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def obtain_progress_def
   by auto
 
-lemma labels_inv_mint[simp]:
-  "labels_inv (all_edges (snd (mint os caps p t')) t) (min_label (snd (mint os caps p t')) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding mint_def
-  by auto
-
-
-
-
 lemma label_prop_upd_inv_produces[simp]:
   "label_prop_upd_inv (produces os batch) \<longleftrightarrow> label_prop_upd_inv os"
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def produces_def
@@ -1573,11 +1513,6 @@ lemma label_prop_upd_inv_drop_caps[simp]:
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def drop_caps_def
   by (simp add: set_neighbors)
 
-lemma label_prop_upd_inv_produce[simp]:
-  "label_prop_upd_inv (produce os cap batch) \<longleftrightarrow> label_prop_upd_inv os"
-  by (cases "batch = []")
-    (simp_all add: produce_def label_prop_upd_inv_def all_vertices_def all_edges_def set_neighbors)
-
 lemma label_prop_upd_inv_consume[simp]:
   "label_prop_upd_inv (consume os p t len) \<longleftrightarrow> label_prop_upd_inv os"
   by (cases "len = 0")
@@ -1586,11 +1521,6 @@ lemma label_prop_upd_inv_consume[simp]:
 lemma label_prop_upd_inv_delay_cap[simp]:
   "label_prop_upd_inv (delay_cap os cap incr) \<longleftrightarrow> label_prop_upd_inv os"
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def delay_cap_def
-  by (simp add: set_neighbors)
-
-lemma label_prop_upd_inv_mint_cap[simp]:
-  "label_prop_upd_inv (mint_cap os p t) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def mint_cap_def
   by (simp add: set_neighbors)
 
 lemma label_prop_upd_inv_add_cap[simp]:
@@ -1617,13 +1547,6 @@ lemma label_prop_upd_inv_upd_outpu[simp]:
   "label_prop_upd_inv (os\<lparr>outpu := xs\<rparr>) = label_prop_upd_inv os"
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def obtain_progress_def
   by (simp add: set_neighbors)
-
-
-lemma label_prop_upd_inv_mint[simp]:
-  "label_prop_upd_inv (snd (mint os caps p t)) \<longleftrightarrow> label_prop_upd_inv os"
-  by (cases "t \<in> set (caps p)")
-    (simp_all add: mint_def mint_cap_def label_prop_upd_inv_def all_vertices_def all_edges_def set_neighbors)
-
 
 lemma label_prop_upd_inv_release_caps[simp]:
   "label_prop_upd_inv (release_caps os p) \<longleftrightarrow> label_prop_upd_inv os"

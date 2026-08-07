@@ -1097,7 +1097,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (intro conjI)
                         apply (simp_all add: SIM1)
             subgoal
-              unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def drop_caps_def add_cap_def BTL_def BHD_def produce_def
+              unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def drop_caps_def add_cap_def BTL_def BHD_def produces_def
               by (simp add: map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def filter_True filter_False list_emb_Nil2 BULK_BENQ_right_empty BULK_BENQ_left_empty)
             subgoal
               unfolding inputs_at_target_def
@@ -1168,11 +1168,11 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (intro conjI)
                         apply (simp_all add: SIM1)
             subgoal
-              unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def add_cap_def BTL_def BHD_def produce_def
+              unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def add_cap_def BTL_def BHD_def produces_def
               by (simp add: map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def )
             subgoal
-              unfolding inputs_at_target_def produce_def
-              apply (clarsimp simp add: BULK_BENQ_def  produce_def)
+              unfolding inputs_at_target_def produces_def
+              apply (clarsimp simp add: BULK_BENQ_def  produces_def)
               apply (rule arg_cong2[where f=set_spec_op])
                apply simp_all
               apply (rule arg_cong2[where f=cUn])
@@ -1286,7 +1286,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (intro conjI)
                         apply (simp_all add: SIM1)
             subgoal
-              unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def drop_caps_def drop_cap_def BTL_def BHD_def produce_def
+              unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def drop_caps_def drop_cap_def BTL_def BHD_def produces_def
               by (simp add: map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def )
             subgoal
               unfolding inputs_at_target_def

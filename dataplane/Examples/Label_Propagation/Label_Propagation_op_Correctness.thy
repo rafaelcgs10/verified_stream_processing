@@ -13,6 +13,10 @@ declare list_emb_Nil2[simp del] BULK_BENQ_right_empty[simp del] BULK_BENQ_left_e
 declare cin.rep_eq[simp del]
 declare cin.rep_eq[symmetric, simp]
 
+lemma produces_singleton:
+  \<open>produces os [(x, cap)] = os\<lparr>outpu := (outpu os)(out cap := outpu os (out cap) @ [(x, capability.time cap)]),
+    produ := produ os @ [(out cap, capability.time cap, 1)]\<rparr>\<close>
+  by (auto simp: produces_def fun_eq_iff)
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -375,7 +379,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule exI)
           apply (rule exI)
           apply (rule exI[of _ lxs'])
-          apply (rule exI[of _ \<open>os(0 := produce (os 0) (Cap t 0) [en1 os_input (v, w)])\<close>])
+          apply (rule exI[of _ \<open>os(0 := produces (os 0) [(en1 os_input (v, w), Cap t 0)])\<close>])
           apply (rule exI[of _ os_input'])
           apply (rule exI)
           apply (rule exI[of _ cbufs])
@@ -385,24 +389,24 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule refl)
           apply (rule subgraph_inv(1))
           apply (rule subgraph_inv(2))
-          using os_inv(1) apply (simp add: produce_def operator_state.defs(3))
-          using os_inv(2) apply (simp add: produce_def)
-          using os_inv(3) apply (simp add: produce_def)
+          using os_inv(1) apply (simp add: produces_singleton operator_state.defs(3))
+          using os_inv(2) apply (simp add: produces_singleton)
+          using os_inv(3) apply (simp add: produces_singleton)
           using os_inv(4) apply simp
-          using os_inv(1,5) apply (simp add: produce_def ty1_check_def operator_state.defs(3))
+          using os_inv(1,5) apply (simp add: produces_singleton ty1_check_def operator_state.defs(3))
           using os_inv(4,6) apply simp
-          using os_inv(7) apply (simp add: produce_def)
+          using os_inv(7) apply (simp add: produces_singleton)
 
           using os_inv(8) apply simp
           using os_inv(9) apply simp
-          using os_inv(4,10) apply (simp add: operator_state.defs(3))                    apply (simp add: buffers_inv BENQ_def BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def fun_eq_iff produce_def)
+          using os_inv(4,10) apply (simp add: operator_state.defs(3))                    apply (simp add: buffers_inv BENQ_def BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def fun_eq_iff produces_singleton)
           using buffers_inv(2) apply simp
           apply (rule dataplane_tracker_inv_produce_singleton[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
           using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
           apply (rule refl)
           apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3))
           apply (simp add: csets_inv(2))
-          using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) produce_def)
+          using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) produces_singleton)
           using label_prop_inv(1) os_inv(4) apply fast
           using label_prop_inv(2) os_inv(4) apply simp
           using label_prop_inv(3) apply simp

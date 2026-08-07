@@ -1418,7 +1418,7 @@ lemma dataplane_tracker_inv_produce_singleton:
   fixes p :: \<open>'p :: {enum, linorder}\<close>
   assumes \<open>dataflow_topology (summ sg) (-+-)\<close> \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close>
     \<open>subgraph.nxt sg = graph_to_nxt (summ sg)\<close> \<open>dataplane_tracker_inv os cbufs sg\<close>
-    \<open>t \<in> set (ocaps (os nid) p)\<close> \<open>os' = os(nid := produce (os nid) (Cap t p) [x])\<close>
+    \<open>t \<in> set (ocaps (os nid) p)\<close> \<open>os' = os(nid := produces (os nid) [(x, Cap t p)])\<close>
   shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
 proof -
   let ?produs = \<open>[(p, t, 1)]\<close>
@@ -1434,7 +1434,7 @@ proof -
     using dataplane_tracker_inv_produces_drops[OF assms(1) refl refl refl refl refl _ _ _ _ assms(2-4),
         where nid=nid and drops=\<open>\<lambda>_. []\<close> and produs=\<open>?produs\<close> and oputs=\<open>?oputs\<close>]
     by (simp add: assms(5))
-  moreover have \<open>?os' = os'\<close> by (simp add: assms(6) produce_def fun_eq_iff split: if_splits)
+  moreover have \<open>?os' = os'\<close> by (simp add: assms(6) produces_def fun_eq_iff split: if_splits)
   ultimately show ?thesis by blast
 qed
 

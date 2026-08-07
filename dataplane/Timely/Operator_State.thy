@@ -101,16 +101,11 @@ section \<open>Primitive State Operations\<close>
 
 definition "delay_cap os cap incr = (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
-definition "produce os cap batch = (if batch = [] then os else os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>)"
-
 definition "consume os p t len = (if len = 0 then os else os\<lparr> consu := consu os @ [(p, t, len)] \<rparr>)"
 
 abbreviation "choice4 op1 op2 op3 op4 \<equiv> choice2 (choice2 op1 op2) (choice2 op3 op4)"
 
 abbreviation "choice5 op1 op2 op3 op4 op5 \<equiv> choice3 (choice2 op1 op2) (choice2 op3 op4) op5"
-
-definition "mint_cap os p t = os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
-definition \<open>mint os caps p t = (if t \<in> set (caps p) then (caps, os) else (caps(p := caps p @ [t]), mint_cap os p t))\<close>
 
 definition "produces os batch = os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
 
@@ -178,14 +173,6 @@ lemma is_en2_delay_cap[simp]:
   "is_en2 (delay_cap os cap incr) = is_en2 os"
   unfolding delay_cap_def by auto
 
-lemma is_en1_produce[simp]:
-  "is_en1 (produce os cap batch) = is_en1 os"
-  unfolding produce_def by auto
-
-lemma is_en2_produce[simp]:
-  "is_en2 (produce os cap batch) = is_en2 os"
-  unfolding produce_def by auto
-
 lemma is_en1_consume[simp]:
   "is_en1 (consume os p t len) = is_en1 os"
   unfolding consume_def by auto
@@ -193,22 +180,6 @@ lemma is_en1_consume[simp]:
 lemma is_en2_consume[simp]:
   "is_en2 (consume os p t len) = is_en2 os"
   unfolding consume_def by auto
-
-lemma is_en1_mint_cap[simp]:
-  "is_en1 (mint_cap os p t) = is_en1 os"
-  unfolding mint_cap_def by auto
-
-lemma is_en2_mint_cap[simp]:
-  "is_en2 (mint_cap os p t) = is_en2 os"
-  unfolding mint_cap_def by auto
-
-lemma is_en1_mint[simp]:
-  "is_en1 (snd (mint os caps p t)) = is_en1 os"
-  unfolding mint_def mint_cap_def by auto
-
-lemma is_en2_mint[simp]:
-  "is_en2 (snd (mint os caps p t)) = is_en2 os"
-  unfolding mint_def mint_cap_def by auto
 
 lemma is_en1_produces[simp]:
   "is_en1 (produces os batch) = is_en1 os"

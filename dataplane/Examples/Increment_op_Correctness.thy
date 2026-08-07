@@ -112,10 +112,10 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
       proof -
         have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1' buf os2\<close> using that
           unfolding invariant_def timely_input_stream_def my_source_op_def ooo_input_op_logic_def
-            produce_def drop_cap_def add_cap_def by (fastforce simp flip: snoc_shift split: llist.splits)
+            produces_def drop_cap_def add_cap_def by (fastforce simp flip: snoc_shift split: llist.splits)
         moreover have \<open>invariant f inc os1' buf os2\<close> using that
             timely_input_stream_ooo_input_op_logic[OF _ that(2)] unfolding invariant_def
-            ooo_input_op_logic_def drop_caps_def produce_def drop_cap_def add_cap_def
+            ooo_input_op_logic_def drop_caps_def produces_def drop_cap_def add_cap_def
           by (force split: llist.splits event.splits)
         ultimately show ?thesis unfolding R_def by blast
       qed
@@ -207,7 +207,7 @@ next
             let ?os1_1 = \<open>foldl (ooo_input_os_Drop_Mint 1) (os1\<lparr>es := (es os1)(1 := ?lxs')\<rparr>) ?xs\<close>
             have en1_os1_1: \<open>en1 ?os1_1 = f\<close> using that(1) foldl_ooo_input_os_Drop_Mint(4)[OF set_not_Data]
               unfolding invariant_def by fast
-            let ?os1_2 = \<open>produce ?os1_1 (Cap t' 1) [f d']\<close>
+            let ?os1_2 = \<open>produces ?os1_1 [(f d', Cap t' 1)]\<close>
             have \<open>(step Tau)\<^sup>*\<^sup>* (ooo_input_op {|1 :: 1|} os1) (ooo_input_op {|1 :: 1|} ?os1_2)\<close>
               using that(1) step_Taus_ooo_input_op_Drop_Mint[OF lfinite_not_Data t'_d'(1)] en1_os1_1
               unfolding invariant_def timely_input_stream_def by simp
@@ -217,16 +217,16 @@ next
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
     (my_ooo_input_op ?os1_2) (my_increment_op inc os2))))\<close> unfolding my_ooo_input_op_def by fast
             have initia_os1_2: \<open>initia ?os1_2\<close> using that(1) foldl_ooo_input_os_Drop_Mint(1)[OF set_not_Data]
-              unfolding invariant_def produce_def by fastforce
+              unfolding invariant_def produces_def by fastforce
             have outpu_os1_2: \<open>outpu ?os1_2 1 = [(d, t')]\<close>
               using outpu_os1_Nil t'_d'(3) foldl_ooo_input_os_Drop_Mint(2)[OF set_not_Data, where os'=\<open>?os1_1\<close>]
-              unfolding produce_def by simp
+              unfolding produces_def by simp
             have es_os1_2: \<open>es ?os1_2 1 = ?lxs'\<close>
               using foldl_ooo_input_os_Drop_Mint(5)[OF set_not_Data, where os'=\<open>?os1_1\<close>]
-              unfolding produce_def by simp
+              unfolding produces_def by simp
             have timely_input_stream_os1_2: \<open>timely_input_stream ?lxs' (mset (ocaps ?os1_2 1))\<close>
               using that(1) timely_input_stream_foldl_ooo_input_os_Drop_Mint[OF lfinite_not_Data t'_d'(1)]
-              unfolding invariant_def produce_def by simp
+              unfolding invariant_def produces_def by simp
             let ?os1_3 = \<open>?os1_2\<lparr>outpu := (outpu ?os1_2)(1 := [])\<rparr>\<close>
             have step_Tau_1: \<open>step Tau
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
@@ -285,7 +285,7 @@ next
               by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] dest: arg_cong[where f=ltl] simp add: fun_eq_iff ltl_lfilter)
             moreover have \<open>invariant f inc ?os1_3 buf ?os2_3\<close> using that(1) initia_os1_2 en1_os1_1
                 es_os1_2 timely_input_stream_os1_2 initia_os2_2 input_os2_2 summar_os2_2 ocaps_os2_2
-              unfolding invariant_def produce_def by simp
+              unfolding invariant_def produces_def by simp
             ultimately show ?thesis unfolding R_def by (fastforce intro!: wbc_base)
           next
             case (Cons x xs)
@@ -348,7 +348,7 @@ next
               input_os2_2 outpu_os2_2 unfolding invariant_def my_source_op_def
               by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
             moreover have \<open>invariant f inc ?os1' buf ?os2_3\<close> using that(1) initia_os2_2 input_os2_2
-                summar_os2_2 ocaps_os2_2 unfolding invariant_def produce_def by simp
+                summar_os2_2 ocaps_os2_2 unfolding invariant_def produces_def by simp
             ultimately show ?thesis unfolding R_def by (fastforce intro!: wbc_base)
           qed
         next
@@ -405,7 +405,7 @@ next
             outpu_os2_2 unfolding invariant_def my_source_op_def BTL_def
             by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
           moreover have \<open>invariant f inc os1 ?buf' ?os2_3\<close> using that(1) initia_os2_2 input_os2_2
-              summar_os2_2 ocaps_os2_2 unfolding invariant_def produce_def BTL_def
+              summar_os2_2 ocaps_os2_2 unfolding invariant_def produces_def BTL_def
             by (auto dest: in_set_tlD)
           ultimately show ?thesis unfolding R_def by (fastforce intro!: wbc_base)
         qed
@@ -446,7 +446,7 @@ next
           unfolding invariant_def my_source_op_def
           by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: append_append_lshift)
         moreover have \<open>invariant f inc os1 buf ?os2''\<close> using that(1) initia_os2' input_os2'
-            summar_os2' ocaps_os2' unfolding invariant_def produce_def by simp
+            summar_os2' ocaps_os2' unfolding invariant_def produces_def by simp
         ultimately show ?thesis using step_Tau step_Out unfolding R_def by (fastforce intro!: wbc_base)
       qed
     next

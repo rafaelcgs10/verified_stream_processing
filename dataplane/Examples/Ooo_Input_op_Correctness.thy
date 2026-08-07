@@ -14,7 +14,7 @@ proof -
   consider (LNil) p' where \<open>es os p' = LNil\<close> \<open>os' = drop_caps os (map (\<lambda>t. Cap t p') (ocaps os p'))\<close>
     \<open>ocaps os p' \<noteq> []\<close>
   | (LCons_Data) p' t d lxs where \<open>es os p' = LCons (Data t d) lxs\<close>
-    \<open>os' = produce (os\<lparr>es := (es os)(p' := lxs)\<rparr>) (Cap t p') [en1 os d]\<close>
+    \<open>os' = produces (os\<lparr>es := (es os)(p' := lxs)\<rparr>) [(en1 os d, Cap t p')]\<close>
   | (LCons_Drop) p' t lxs where \<open>es os p' = LCons (Drop t) lxs\<close>
     \<open>os' = drop_cap (os\<lparr>es := (es os)(p' := lxs)\<rparr>) (Cap t p')\<close>
   | (LCons_Mint) p' t lxs where \<open>es os p' = LCons (Mint t) lxs\<close>
@@ -33,7 +33,7 @@ proof -
     qed
   next
     case LCons_Data
-    thus ?thesis using assms(1) unfolding produce_def by auto
+    thus ?thesis using assms(1) unfolding produces_def by auto
   next
     case LCons_Drop
     thus ?thesis using assms(1) unfolding drop_cap_def by auto
@@ -147,7 +147,7 @@ lemma step_Taus_ooo_input_op_Drop_Mint:
   ldropWhile (Not \<circ> is_Data) (es os p) = LCons (Data t d) lxs \<Longrightarrow> p |\<in>| ops \<Longrightarrow>
   op = ooo_input_op ops os \<Longrightarrow> initia os \<Longrightarrow> timely_monotone (es os p) (mset (ocaps os p)) \<Longrightarrow>
   os' = foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := lxs)\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es os p))) \<Longrightarrow>
-  os'' = produce os' (Cap t p) [en1 os' d] \<Longrightarrow> op' = ooo_input_op ops os'' \<Longrightarrow>
+  os'' = produces os' [(en1 os' d, Cap t p)] \<Longrightarrow> op' = ooo_input_op ops os'' \<Longrightarrow>
   (step Tau)\<^sup>*\<^sup>* op op'\<close>
   unfolding ooo_input_op_def
 proof (induction \<open>ltakeWhile (Not \<circ> is_Data) (es os p)\<close> arbitrary: os op rule: lfinite_induct)
@@ -259,12 +259,12 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
       proof -
         have my_source_op_os': \<open>my_source_op f os = my_source_op f os'\<close>
           using that unfolding invariant_def my_source_op_def ooo_input_op_logic_def drop_caps_def
-            produce_def drop_cap_def add_cap_def
+            produces_def drop_cap_def add_cap_def
           by (force intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] split: llist.splits event.splits)
         have \<open>timely_input_stream (es os' p') (mset (ocaps os' p'))\<close> for p'
           using timely_input_stream_ooo_input_op_logic that unfolding invariant_def by metis
         hence \<open>invariant f os'\<close> using that unfolding invariant_def ooo_input_op_logic_def drop_caps_def
-            produce_def drop_cap_def add_cap_def by (force split: llist.splits event.splits)
+            produces_def drop_cap_def add_cap_def by (force split: llist.splits event.splits)
         thus ?thesis using my_source_op_os' unfolding R_def by blast
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f os) op2'
@@ -330,15 +330,18 @@ next
           using foldl_ooo_input_os_Drop_Mint(5) not_Data by metis
         have wstep: \<open>wstep (Out (1, p) (d, t)) (dataflow_op sg (my_ooo_input_op os)) (dataflow_op sg (my_ooo_input_op ?os''))\<close> (is \<open>wstep _ _ ?op2'\<close>)
         proof -
-          have \<open>(step Tau)\<^sup>*\<^sup>* (ooo_input_op c\<UU> os) (ooo_input_op c\<UU> (produce ?os' (Cap t p) [d]))\<close>
+          have \<open>(step Tau)\<^sup>*\<^sup>* (ooo_input_op c\<UU> os) (ooo_input_op c\<UU> (produces ?os' [(d, Cap t p)]))\<close>
             using that(1,3) d' lfinite ldropWhile_LCons_t_d' en1_os' step_Taus_ooo_input_op_Drop_Mint[where os=os]
             unfolding invariant_def timely_input_stream_def by auto
-          hence step_Taus: \<open>(step Tau)\<^sup>*\<^sup>* (dataflow_op sg (my_ooo_input_op os)) (dataflow_op sg (my_ooo_input_op (produce ?os' (Cap t p) [d])))\<close>
+          hence step_Taus: \<open>(step Tau)\<^sup>*\<^sup>* (dataflow_op sg (my_ooo_input_op os)) (dataflow_op sg (my_ooo_input_op (produces ?os' [(d, Cap t p)])))\<close>
             unfolding my_ooo_input_op_def by blast
-          have \<open>step (Out (Some p) (Inr (d, t))) (ooo_input_op c\<UU> (produce ?os' (Cap t p) [d])) (ooo_input_op c\<UU> ?os'')\<close>
+          have S_eq: \<open>produces ?os' [(d, Cap t p)] =
+            ?os'\<lparr>produ := produ ?os' @ [(p, t, 1)], outpu := (outpu os)(p := [(d, t)])\<rparr>\<close>
+            by (auto simp: produces_def outpu_os'[unfolded o_def] Nil fun_eq_iff split: if_splits)
+          have \<open>step (Out (Some p) (Inr (d, t))) (ooo_input_op c\<UU> (produces ?os' [(d, Cap t p)])) (ooo_input_op c\<UU> ?os'')\<close>
             using that(3) Nil initialized outpu_os' step_builder_op_Write_Some
-            unfolding ooo_input_op_def produce_def by auto
-          hence step_Out: \<open>step (Out (1, p) (d, t)) (dataflow_op sg (my_ooo_input_op (produce ?os' (Cap t p) [d]))) ?op2'\<close>
+            unfolding ooo_input_op_def by (subst S_eq) (auto simp: produces_def fun_eq_iff outpu_os' Nil split: if_splits)
+          hence step_Out: \<open>step (Out (1, p) (d, t)) (dataflow_op sg (my_ooo_input_op (produces ?os' [(d, Cap t p)]))) ?op2'\<close>
             unfolding my_ooo_input_op_def by fastforce
           show ?thesis using step_Taus step_Out wstep_trans(1) by meson
         qed
@@ -372,28 +375,5 @@ next
   qed
 qed
 
-(* record ('p, 'd, 'd1, 'd2, 'd3, 't) input_state_ty3 = "('p, 'd, 'd1, 'd2, 't) input_state2" +  es3:: "('t, 'd3) event llist"
-
-definition ooo_input_ty3_op where
-  "ooo_input_ty3_op os = builder_op {||} {| 1, 2, 3|} os (\<lambda> os. (cimage (\<lambda>p.
-  (if p = 1 
-  then
-   (case es1 os of
-    LNil \<Rightarrow> drop_caps os (map (\<lambda> t. Cap t p) (ocaps os p))
-  | LCons (Data t d) lxs \<Rightarrow> produce (os\<lparr> es1 := lxs \<rparr>) (Cap t p) [en1 os d]
-  | LCons (Drop t) lxs \<Rightarrow> drop_cap (os\<lparr> es1 := lxs \<rparr>) (Cap t p)
-  | LCons (Mint t) lxs \<Rightarrow> mint_cap (os\<lparr> es1 := lxs \<rparr>) p t)
-  else (if p = 2 then
-    (case es2 os of
-    LNil \<Rightarrow> drop_caps os (map (\<lambda> t. Cap t p) (ocaps os p))
-  | LCons (Data t d) lxs \<Rightarrow> produce (os\<lparr> es2 := lxs \<rparr>) (Cap t p) [en2 os d]
-  | LCons (Drop t) lxs \<Rightarrow> drop_cap (os\<lparr> es2 := lxs \<rparr>) (Cap t p)
-  | LCons (Mint t) lxs \<Rightarrow> mint_cap (os\<lparr> es2 := lxs \<rparr>) p t) 
-  else (case es3 os of
-    LNil \<Rightarrow> drop_caps os (map (\<lambda> t. Cap t p) (ocaps os p))
-  | LCons (Data t d) lxs \<Rightarrow> produce (os\<lparr> es3 := lxs \<rparr>) (Cap t p) [en3 os d]
-  | LCons (Drop t) lxs \<Rightarrow> drop_cap (os\<lparr> es3 := lxs \<rparr>) (Cap t p)
-  | LCons (Mint t) lxs \<Rightarrow> mint_cap (os\<lparr> es3 := lxs \<rparr>) p t) )))
-    (cfilter (\<lambda>p. ocaps os p \<noteq> []) {| 1, 2, 3|})))" *)
 
 end
