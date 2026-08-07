@@ -434,7 +434,7 @@ qed
 lemma dataplane_tracker_inv_add_cap:
   assumes \<open>dataflow_topology (summ sg) (-+-)\<close> \<open>dataplane_tracker_inv os cbufs sg\<close>
     \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close> \<open>\<exists>t' \<in>  set (ocaps (os nid) p). t' \<le> t\<close>
-    \<open>os' = os(nid := add_cap (os nid) p t)\<close>
+    \<open>os' = os(nid := add_caps (os nid) [Cap t p])\<close>
   shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
 proof -
   have \<open>dataplane_tracker_inv (os(nid := (os nid)\<lparr>
@@ -442,7 +442,7 @@ proof -
   inter := operator_state.inter (os nid) @ [(p, t, 1)]\<rparr>))
   cbufs sg\<close> (is \<open>dataplane_tracker_inv ?os' _ _\<close>)
     using dataplane_tracker_inv_mints[OF assms(1-3) _ assms(4), where m=1] by simp
-  moreover have \<open>?os' = os'\<close> by (simp add: assms(5) add_cap_def fun_eq_iff)
+  moreover have \<open>?os' = os'\<close> by (simp add: assms(5) add_caps_singleton fun_eq_iff)
   ultimately show ?thesis by simp
 qed
 

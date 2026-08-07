@@ -1466,7 +1466,7 @@ lemma dataplane_tracker_inv_drop_cap:
   fixes p :: \<open>'p :: {enum, linorder}\<close>
   assumes \<open>dataflow_topology (summ sg) (-+-)\<close> \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close>
     \<open>subgraph.nxt sg = graph_to_nxt (summ sg)\<close> \<open>dataplane_tracker_inv os cbufs sg\<close>
-    \<open>t \<in> set (ocaps (os nid) p)\<close> \<open>os' = os(nid := drop_cap (os nid) (Cap t p))\<close>
+    \<open>t \<in> set (ocaps (os nid) p)\<close> \<open>os' = os(nid := drop_caps (os nid) [Cap t p])\<close>
   shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
 proof -
   let ?drops = \<open>(\<lambda>_. [])(p := [t])\<close>
@@ -1480,13 +1480,13 @@ proof -
         where nid=nid and drops=\<open>?drops\<close> and produs=Nil and oputs=\<open>\<lambda>_. []\<close>]
     by (simp add: assms(5))
   moreover have \<open>ocaps (?os' nid) = ocaps (os' nid)\<close>
-    by (simp add: assms(6) fun_eq_iff drop_cap_def)
+    by (simp add: assms(6) fun_eq_iff drop_caps_singleton)
   moreover have \<open>inter (?os' nid) = inter (os' nid)\<close>
     using concat_map_empty_except_1[OF Enum.enum_distinct, where f=\<open>?f\<close> and x=p]
-    by (simp add: assms(6) drop_cap_def)
+    by (simp add: assms(6) drop_caps_singleton)
   ultimately show ?thesis
     using dataplane_tracker_inv_clean_input[where os=\<open>?os'\<close> and os'=os' and sg=sg]
-    by (simp add: assms(6) drop_cap_def)
+    by (simp add: assms(6) drop_caps_singleton)
 qed
 
 lemma change_multiplicities_cons_to_middle:

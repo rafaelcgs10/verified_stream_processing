@@ -10,8 +10,8 @@ record ('p, 'd, 'd1, 't) input_state = "('p, 'd, 'd1, 't) operator_state_ty" + e
 definition \<open>ooo_input_op_logic ops os = cimage (\<lambda>p. case es os p of
     LNil \<Rightarrow> drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))
   | LCons (Data t d) lxs \<Rightarrow> produces (os\<lparr>es := (es os)(p := lxs)\<rparr>) [(en1 os d, Cap t p)]
-  | LCons (Drop t) lxs \<Rightarrow> drop_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p)
-  | LCons (Mint t) lxs \<Rightarrow> add_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) p t)
+  | LCons (Drop t) lxs \<Rightarrow> drop_caps (os\<lparr>es := (es os)(p := lxs)\<rparr>) [Cap t p]
+  | LCons (Mint t) lxs \<Rightarrow> add_caps (os\<lparr>es := (es os)(p := lxs)\<rparr>) [Cap t p])
     (cfilter (\<lambda>p. ocaps os p \<noteq> []) ops)\<close>
 
 definition ooo_input_op where
@@ -22,8 +22,8 @@ record ('p, 'd, 'd1, 'd2, 't) input_state2 = "('p, 'd, 'd1, 'd2, 't) operator_st
 
 definition ooo_input_os_Drop_Mint where
   \<open>ooo_input_os_Drop_Mint p os e = (case e of
-    Drop t \<Rightarrow> drop_cap os (Cap t p)
-  | Mint t \<Rightarrow> add_cap os p t)\<close>
+    Drop t \<Rightarrow> drop_caps os [Cap t p]
+  | Mint t \<Rightarrow> add_caps os [Cap t p])\<close>
 
 
 fun ocaps_updates where
@@ -72,7 +72,7 @@ lemma ooo_input_op_logic_iterates_MintI[intro]:
       ocaps := (ocaps os)(p := ocaps os p @ [t]),
       inter := inter os @ [(p, t, 1)] \<rparr> |\<in>|
    (ooo_input_op_logic P os)"
-  unfolding ooo_input_op_logic_def add_cap_def
+  unfolding ooo_input_op_logic_def add_caps_singleton
   apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
   apply (rule exI[of _ p])
   apply simp
@@ -86,7 +86,7 @@ lemma ooo_input_op_logic_iterates_DropI[intro]:
       ocaps := (ocaps os)(p := remove_last t (ocaps os p)),
       inter := inter os @ [(p, t, -1)] \<rparr> |\<in>|
    (ooo_input_op_logic P os)"
-  unfolding ooo_input_op_logic_def drop_cap_def
+  unfolding ooo_input_op_logic_def drop_caps_singleton
   apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
   apply (rule exI[of _ p])
   apply simp
@@ -350,7 +350,7 @@ lemma ooo_input_op_logic_DropI[intro]:
   assumes \<open>ocaps os p \<noteq> []\<close>
     and \<open>p |\<in>| ops\<close>
     and \<open>es os p = LCons (Drop t) lxs\<close>
-    and \<open>os_next = drop_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p)\<close>
+    and \<open>os_next = drop_caps (os\<lparr>es := (es os)(p := lxs)\<rparr>) [Cap t p]\<close>
   shows \<open>os_next |\<in>| ooo_input_op_logic ops os\<close>
   using assms unfolding ooo_input_op_logic_def
   apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
@@ -362,7 +362,7 @@ lemma step_ooo_input_op_Drop[intro]:
   assumes \<open>ocaps os p \<noteq> []\<close>
     and \<open>p |\<in>| ops\<close>
     and \<open>es os p = LCons (Drop t) lxs\<close>
-    and \<open>os_next = drop_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p)\<close>
+    and \<open>os_next = drop_caps (os\<lparr>es := (es os)(p := lxs)\<rparr>) [Cap t p]\<close>
     and \<open>initia os\<close>
     and \<open>op = ooo_input_op ops os_next\<close>
   shows \<open>step Tau (ooo_input_op ops os) op\<close>
@@ -372,7 +372,7 @@ lemma ooo_input_op_logic_MintI[intro]:
   assumes \<open>ocaps os p \<noteq> []\<close>
     and \<open>p |\<in>| ops\<close>
     and \<open>es os p = LCons (Mint t) lxs\<close>
-    and \<open>os_next = add_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) p t\<close>
+    and \<open>os_next = add_caps (os\<lparr>es := (es os)(p := lxs)\<rparr>) [Cap t p]\<close>
   shows \<open>os_next |\<in>| ooo_input_op_logic ops os\<close>
   using assms unfolding ooo_input_op_logic_def
   apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
@@ -384,7 +384,7 @@ lemma step_ooo_input_op_Mint[intro]:
   assumes \<open>ocaps os p \<noteq> []\<close>
     and \<open>p |\<in>| ops\<close>
     and \<open>es os p = LCons (Mint t) lxs\<close>
-    and \<open>os_next = add_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) p t\<close>
+    and \<open>os_next = add_caps (os\<lparr>es := (es os)(p := lxs)\<rparr>) [Cap t p]\<close>
     and \<open>initia os\<close>
     and \<open>op = ooo_input_op ops os_next\<close>
   shows \<open>step Tau (ooo_input_op ops os) op\<close>

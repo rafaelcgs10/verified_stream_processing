@@ -16,9 +16,9 @@ proof -
   | (LCons_Data) p' t d lxs where \<open>es os p' = LCons (Data t d) lxs\<close>
     \<open>os' = produces (os\<lparr>es := (es os)(p' := lxs)\<rparr>) [(en1 os d, Cap t p')]\<close>
   | (LCons_Drop) p' t lxs where \<open>es os p' = LCons (Drop t) lxs\<close>
-    \<open>os' = drop_cap (os\<lparr>es := (es os)(p' := lxs)\<rparr>) (Cap t p')\<close>
+    \<open>os' = drop_caps (os\<lparr>es := (es os)(p' := lxs)\<rparr>) [Cap t p']\<close>
   | (LCons_Mint) p' t lxs where \<open>es os p' = LCons (Mint t) lxs\<close>
-    \<open>os' = add_cap (os\<lparr>es := (es os)(p' := lxs)\<rparr>) p' t\<close>
+    \<open>os' = add_caps (os\<lparr>es := (es os)(p' := lxs)\<rparr>) [Cap t p']\<close>
     using assms(2) unfolding ooo_input_op_logic_def by (auto split: llist.splits event.splits)
   thus ?thesis
   proof cases
@@ -36,10 +36,10 @@ proof -
     thus ?thesis using assms(1) unfolding produces_def by auto
   next
     case LCons_Drop
-    thus ?thesis using assms(1) unfolding drop_cap_def by auto
+    thus ?thesis using assms(1) unfolding drop_caps_singleton by auto
   next
     case LCons_Mint
-    thus ?thesis using assms(1) unfolding add_cap_def by auto
+    thus ?thesis using assms(1) unfolding add_caps_singleton by auto
   qed
 qed
 
@@ -55,30 +55,30 @@ proof (induction xs arbitrary: os)
     and H2: \<open>os' = foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := lxs)\<rparr>) (x # xs)\<close>
   let ?os = \<open>ooo_input_os_Drop_Mint p os x\<close>
   have \<open>ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := lxs)\<rparr>) x = ?os\<lparr>es := (es ?os)(p := lxs)\<rparr>\<close>
-    using H1 unfolding ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def by (cases x) simp_all (* Why is this much faster than "cases x;simp" ? *)
+    using H1 unfolding ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton by (cases x) simp_all (* Why is this much faster than "cases x;simp" ? *)
   hence os'_alt: \<open>os' = foldl (ooo_input_os_Drop_Mint p) (?os\<lparr>es := (es ?os)(p := lxs)\<rparr>) xs\<close>
     using H2 unfolding fun_upd_def by simp
   {
     assume \<open>initia os\<close>
     hence \<open>initia ?os\<close>
-      using H1 unfolding ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def by (cases x; simp)
+      using H1 unfolding ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton by (cases x; simp)
     thus \<open>initia os'\<close> using Cons(1) H1 os'_alt by fastforce
   next
     have \<open>outpu ?os = outpu os\<close>
-      using H1 unfolding ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def by (cases x; simp)
+      using H1 unfolding ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton by (cases x; simp)
     thus \<open>outpu os' = outpu os\<close> using Cons(2) H1 os'_alt by fastforce
   next
     assume p': \<open>p' \<noteq> p\<close>
     hence \<open>ocaps ?os p' = ocaps os p'\<close>
-      using H1 unfolding ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def by (cases x; simp)
+      using H1 unfolding ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton by (cases x; simp)
     thus \<open>ocaps os' p' = ocaps os p'\<close> using Cons(3) H1 os'_alt p' by fastforce
   next
     have \<open>en1 ?os = en1 os\<close>
-      using H1 unfolding ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def by (cases x; simp)
+      using H1 unfolding ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton by (cases x; simp)
     thus \<open>en1 os' = en1 os\<close> using Cons(4) H1 os'_alt by fastforce
   next
     have \<open>(es ?os)(p := lxs) = (es os)(p := lxs)\<close>
-      using H1 unfolding ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def by (cases x; simp)
+      using H1 unfolding ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton by (cases x; simp)
     thus \<open>es os' = (es os)(p := lxs)\<close> using Cons(5) H1 os'_alt by fastforce
   }
 qed simp_all
@@ -106,12 +106,12 @@ next
       llist_of_list_of ltakeWhile.ctr(1) ltakeWhile.sel(1) by (metis (no_types, opaque_lifting))+
   let ?os = \<open>ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := ltl (es os p))\<rparr>) x\<close>
   have \<open>xs = list_of (ltakeWhile (Not \<circ> is_Data) (es ?os p))\<close> using Cons(2,3) lhd_es(1)
-    by (cases x; simp add: ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def; metis lhd_es list.sel(3) ltl_ltakeWhile tl_list_of)
+    by (cases x; simp add: ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton; metis lhd_es list.sel(3) ltl_ltakeWhile tl_list_of)
   moreover have \<open>lfinite (ltakeWhile (Not \<circ> is_Data) (es ?os p))\<close> using Cons(3) lhd_es
-    by (cases x; simp add: ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def)
+    by (cases x; simp add: ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton)
       (metis lfinite_ltl ltl_ltakeWhile event.disc(2), metis lfinite_ltl ltl_ltakeWhile event.disc(3))
   moreover have \<open>ldropWhile (Not \<circ> is_Data) (es ?os p) = LCons e lxs\<close> using Cons(4) lhd_LCons_ltl_es
-      lhd_es ldropWhile_simps(2) by (cases x; simp add: ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def; metis)
+      lhd_es ldropWhile_simps(2) by (cases x; simp add: ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton; metis)
   moreover have \<open>timely_input_stream (es ?os p) (mset (ocaps ?os p))\<close>
   proof -
     have \<open>ocaps os p \<noteq> []\<close>
@@ -137,7 +137,7 @@ next
   (ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := lxs)\<rparr>) x)
   (list_of (ltakeWhile (Not \<circ> is_Data) (ltl (es os p))))\<close> by simp
     finally show ?thesis using lhd_es(1)
-      by (auto intro: arg_cong[where f=\<open>\<lambda>os. foldl _ os _\<close>] simp add: ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def split: event.splits)
+      by (auto intro: arg_cong[where f=\<open>\<lambda>os. foldl _ os _\<close>] simp add: ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton split: event.splits)
   qed
   ultimately show ?case using Cons(1) by blast
 qed
@@ -173,13 +173,13 @@ next
   moreover have \<open>(step Tau)\<^sup>*\<^sup>* (ooo_input_op ops ?os1) op'\<close>
   proof -
     have es_os1: \<open>es ?os1 p = ltl (es os p)\<close> using lhd_es(1)
-      by (auto simp add: ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def split: event.splits)
+      by (auto simp add: ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton split: event.splits)
     hence \<open>ltl (ltakeWhile (Not \<circ> is_Data) (es os p)) = ltakeWhile (Not \<circ> is_Data) (es ?os1 p)\<close>
       using LCons(2) lnull_ltakeWhile ltakeWhile.simps(4) by force
     moreover from this have \<open>ldropWhile (Not \<circ> is_Data) (es ?os1 p) = LCons (Data t d) lxs\<close>
       using LCons(2,4) es_os1 ldropWhile_simps(2) lhd_LCons_ltl ltakeWhile.disc(1) by metis
     moreover have \<open>initia ?os1\<close> using LCons(7) lhd_es(1)
-      by (auto simp add: ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def split: event.splits)
+      by (auto simp add: ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton split: event.splits)
     moreover have \<open>timely_monotone (es ?os1 p) (mset (ocaps ?os1 p))\<close>
     proof (cases e)
       case Data
@@ -187,14 +187,14 @@ next
     next
       case (Drop t')
       hence \<open>ocaps (ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := ltl (es os p))\<rparr>) e) p = remove_last t' (ocaps os p)\<close>
-        by (simp add: ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def)
+        by (simp add: ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton)
       thus ?thesis using Drop LCons(8) ocaps_not_empty lhd_es(3) es_os1 timely_monotone.cases
           mset_remove_last event.distinct(2,5) event.inject(2) llist.simps(1) mset_zero_iff
         by (smt (verit, ccfv_threshold))
     next
       case (Mint t')
       hence \<open>ocaps (ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := ltl (es os p))\<rparr>) e) p = ocaps os p @ [t']\<close>
-        by (simp add: ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def)
+        by (simp add: ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton)
       thus ?thesis using Mint LCons(8) lhd_es(3) es_os1 timely_monotone.cases by fastforce
     qed
     moreover have \<open>os' = foldl (ooo_input_os_Drop_Mint p) (?os1\<lparr>es := (es ?os1)(p := lxs)\<rparr>)
@@ -206,7 +206,7 @@ next
   (ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := lxs)\<rparr>) e)
   (list_of (ltakeWhile (Not \<circ> is_Data) (es ?os1 p)))\<close> using LCons(9) by (simp split: event.splits)
       moreover have \<open>ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := lxs)\<rparr>) e = ?os1\<lparr>es := (es ?os1)(p := lxs)\<rparr>\<close>
-        using lhd_es(1) by (auto simp add: ooo_input_os_Drop_Mint_def add_cap_def drop_cap_def split: event.splits)
+        using lhd_es(1) by (auto simp add: ooo_input_os_Drop_Mint_def add_caps_singleton drop_caps_singleton split: event.splits)
       ultimately show ?thesis by simp
     qed
     ultimately show ?thesis using LCons(3,5,10,11) ooo_input_op_def by blast
@@ -259,12 +259,12 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
       proof -
         have my_source_op_os': \<open>my_source_op f os = my_source_op f os'\<close>
           using that unfolding invariant_def my_source_op_def ooo_input_op_logic_def drop_caps_def
-            produces_def drop_cap_def add_cap_def
+            produces_def drop_caps_singleton add_caps_singleton
           by (force intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] split: llist.splits event.splits)
         have \<open>timely_input_stream (es os' p') (mset (ocaps os' p'))\<close> for p'
           using timely_input_stream_ooo_input_op_logic that unfolding invariant_def by metis
         hence \<open>invariant f os'\<close> using that unfolding invariant_def ooo_input_op_logic_def drop_caps_def
-            produces_def drop_cap_def add_cap_def by (force split: llist.splits event.splits)
+            produces_def drop_caps_singleton add_caps_singleton by (force split: llist.splits event.splits)
         thus ?thesis using my_source_op_os' unfolding R_def by blast
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f os) op2'

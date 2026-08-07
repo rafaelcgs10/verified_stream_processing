@@ -432,20 +432,20 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule exI)
           apply (rule exI)
           apply (rule exI[of _ lxs'])
-          apply (rule exI[of _ \<open>os(0 := drop_cap (os 0) (Cap t 0))\<close>])
+          apply (rule exI[of _ \<open>os(0 := drop_caps (os 0) [Cap t 0])\<close>])
           apply (rule exI[of _ os_input'])
           apply (intro exI conjI)
           defer
           apply (rule refl)
           apply (rule subgraph_inv(1))
           apply (rule subgraph_inv(2))
-          using os_inv(1) apply (simp add: drop_cap_def operator_state.defs(3))
-          using os_inv(2) apply (simp add: drop_cap_def)
-          using os_inv(3) apply (simp add: drop_cap_def)
+          using os_inv(1) apply (simp add: drop_caps_singleton operator_state.defs(3))
+          using os_inv(2) apply (simp add: drop_caps_singleton)
+          using os_inv(3) apply (simp add: drop_caps_singleton)
           using os_inv(4) apply simp
-          using os_inv(5) apply (simp add: drop_cap_def ty1_check_def)
+          using os_inv(5) apply (simp add: drop_caps_singleton ty1_check_def)
           using os_inv(4,6) apply simp
-          using os_inv(7) apply (simp add: drop_cap_def)
+          using os_inv(7) apply (simp add: drop_caps_singleton)
           using os_inv(8) apply simp
           using os_inv(9) apply simp
           using os_inv(4,10) apply simp                    apply (simp add: buffers_inv)
@@ -459,7 +459,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using timely_input_stream_expires_le input_stream_inv apply blast
           apply simp
           apply (simp add: csets_inv(2))
-          using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) drop_cap_def)
+          using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) drop_caps_singleton)
           using label_prop_inv(1) os_inv(4) apply fast
           using label_prop_inv(2) os_inv(4) apply simp
           using label_prop_inv(3) apply simp
@@ -485,20 +485,20 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule exI)
           apply (rule exI)
           apply (rule exI[of _ lxs'])
-          apply (rule exI[of _ \<open>os(0 := add_cap (os 0) 0 t)\<close>])
+          apply (rule exI[of _ \<open>os(0 := add_caps (os 0) [Cap t 0])\<close>])
           apply (rule exI[of _ os_input'])
           apply (intro exI conjI)
           defer
           apply (rule refl)
           apply (rule subgraph_inv(1))
           apply (rule subgraph_inv(2))
-          using os_inv(1) apply (simp add: add_cap_def operator_state.defs(3))
-          using os_inv(2) apply (simp add: add_cap_def)
-          using os_inv(3) apply (simp add: add_cap_def)
+          using os_inv(1) apply (simp add: add_caps_singleton operator_state.defs(3))
+          using os_inv(2) apply (simp add: add_caps_singleton)
+          using os_inv(3) apply (simp add: add_caps_singleton)
           using os_inv(4) apply simp
-          using os_inv(5) apply (simp add: add_cap_def ty1_check_def)
+          using os_inv(5) apply (simp add: add_caps_singleton ty1_check_def)
           using os_inv(4,6) apply simp
-          using os_inv(7) apply (simp add: add_cap_def)
+          using os_inv(7) apply (simp add: add_caps_singleton)
           using os_inv(8) apply simp
           using os_inv(9) apply simp
           using os_inv(4,10) apply simp                    apply (simp add: buffers_inv)
@@ -510,13 +510,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (subst (1 2) icoll_lshift)
           using timely_input_stream_expires_le input_stream_inv apply blast
           using timely_input_stream_expires_le input_stream_inv apply blast
-          apply (simp add: add_cap_def)
+          apply (simp add: add_caps_singleton)
           apply (simp add: csets_inv(2))
-          using input_stream_inv apply (force simp add: os_inv(1) operator_state.defs(3) add_cap_def)
+          using input_stream_inv apply (force simp add: os_inv(1) operator_state.defs(3) add_caps_singleton)
           using label_prop_inv(1) os_inv(4) apply fast
           using label_prop_inv(2) os_inv(4) apply simp
           using label_prop_inv(3) apply simp
-          using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def add_cap_def)
+          using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def add_caps_singleton)
           using label_prop_inv(5) os_inv(4) apply fast
           using label_prop_inv(6) apply fastforce
           using label_prop_inv(7) apply (simp add: os_inv(4) buffers_inv outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def inputs_at_target_def)

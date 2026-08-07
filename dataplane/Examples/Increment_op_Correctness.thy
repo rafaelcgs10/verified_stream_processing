@@ -112,10 +112,10 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
       proof -
         have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1' buf os2\<close> using that
           unfolding invariant_def timely_input_stream_def my_source_op_def ooo_input_op_logic_def
-            produces_def drop_cap_def add_cap_def by (fastforce simp flip: snoc_shift split: llist.splits)
+            produces_def drop_caps_singleton add_caps_singleton by (fastforce simp flip: snoc_shift split: llist.splits)
         moreover have \<open>invariant f inc os1' buf os2\<close> using that
             timely_input_stream_ooo_input_op_logic[OF _ that(2)] unfolding invariant_def
-            ooo_input_op_logic_def drop_caps_def produces_def drop_cap_def add_cap_def
+            ooo_input_op_logic_def drop_caps_def produces_def drop_caps_singleton add_caps_singleton
           by (force split: llist.splits event.splits)
         ultimately show ?thesis unfolding R_def by blast
       qed

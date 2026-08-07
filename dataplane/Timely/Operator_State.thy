@@ -133,17 +133,21 @@ abbreviation "send_output op p x \<equiv> Write op (Some p) (Inr x)"
 
 definition "obtain_progress os = (os\<lparr> consu := [], inter := [], produ := [] \<rparr>, \<lparr> cons = consu os, inte = inter os, prod = produ os\<rparr>)"
 
-definition "drop_cap os cap = os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
-
 definition "drop_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
 
 definition "release_caps os p = (
   let ts = list_diff (ocaps os p) (concat (map (\<lambda> (p', s). (map (((+) s) o snd) (input os p'))) (concat (map (\<lambda> p'. (map (\<lambda> s. (p', s)) (intsum os p' p))) enum_class.enum)))) in
   trace (STR ''Droping: '' + show_nat (length ts)) (drop_caps os (map (\<lambda> t. Cap t p) ts)))"
 
-definition "add_cap os p t = os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
-
 definition "add_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, 1)) caps, ocaps := (\<lambda> p. ocaps os p @ map time (filter (\<lambda> cap. out cap = p) caps))  \<rparr>"
+
+lemma drop_caps_singleton:
+  \<open>drop_caps os [cap] = os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>\<close>
+  unfolding drop_caps_def by (auto simp: fun_eq_iff)
+
+lemma add_caps_singleton:
+  \<open>add_caps os [Cap t p] = os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t]) \<rparr>\<close>
+  unfolding add_caps_def by (auto simp: fun_eq_iff)
 
 definition "consumes os p t d = add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) (concat (map (\<lambda> p'. map (\<lambda> t'. Cap (t + t') p') (intsum os p p')) enum_class.enum))"
 
@@ -208,14 +212,6 @@ lemma de2_produces[simp]:
 lemma initia_produces[simp]:
   \<open>initia (produces os batch) = initia os\<close>
   unfolding produces_def by auto
-
-lemma is_en1_drop_cap[simp]:
-  "is_en1 (drop_cap os cap) = is_en1 os"
-  unfolding drop_cap_def by auto
-
-lemma is_en2_drop_cap[simp]:
-  "is_en2 (drop_cap os cap) = is_en2 os"
-  unfolding drop_cap_def by auto
 
 lemma is_en1_drop_caps[simp]:
   "is_en1 (drop_caps os caps) = is_en1 os"
@@ -284,14 +280,6 @@ lemma produ_release_caps[simp]:
 lemma initia_release_caps[simp]:
   \<open>initia (release_caps os p) = initia os\<close>
   unfolding release_caps_def drop_caps_def Let_def by auto
-
-lemma is_en1_add_cap[simp]:
-  "is_en1 (add_cap os p t) = is_en1 os"
-  unfolding add_cap_def by auto
-
-lemma is_en2_add_cap[simp]:
-  "is_en2 (add_cap os p t) = is_en2 os"
-  unfolding add_cap_def by auto
 
 lemma input_add_caps[simp]:
   "input (add_caps os caps) = input os"
@@ -406,10 +394,6 @@ lemma outpu_drop_caps[simp]:
 lemma front_drop_caps[simp]:
   "front (drop_caps os caps) = front os"
   unfolding drop_caps_def
-  by auto
-lemma outpu_drop_cap[simp]:
-  "outpu (drop_cap os cap) = outpu os"
-  unfolding drop_cap_def
   by auto
 lemma outpu_produces[simp]:
   "outpu (produces os batch) = (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch))"

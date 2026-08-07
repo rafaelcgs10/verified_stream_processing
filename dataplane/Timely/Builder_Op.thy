@@ -90,7 +90,7 @@ proof (cases io)
       hence \<open>op = \<oslash>\<close> using assms Inp None
         apply -
         apply (subst (asm) builder_op.code)
-        apply (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def split: if_splits list.splits sum.splits)
+        apply (auto 0 0 simp add: drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def split: if_splits list.splits sum.splits)
         done
         thus ?thesis using read_end_None Inp None unexpected by blast
     next
@@ -99,12 +99,12 @@ proof (cases io)
       proof (cases \<open>initia os\<close>)
         case True
         hence \<open>fb \<and> op = builder_op fb tps sps (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
-          using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
+          using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
         thus ?thesis using read_frontier Inp None frontier True by blast
       next
         case False
         hence \<open>fb \<and> op = builder_op fb tps sps (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
-          using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
+          using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
         thus ?thesis using read_frontier Inp None frontier False by blast
       qed
     qed
@@ -116,12 +116,12 @@ proof (cases io)
     proof cases
       case unexpected
       hence \<open>p' |\<in>| tps \<and> op = \<oslash>\<close> using assms Inp Some by (subst (asm) builder_op.code)
-          (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits sum.splits)
+          (auto 0 0 simp add: drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits sum.splits)
       thus ?thesis using read_end_Some Inp Some unexpected by simp
     next
       case data
       hence \<open>p' |\<in>| tps \<and> op = builder_op fb tps sps (consumes os p' t d) logic\<close> using assms Inp Some
-        by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
+        by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
       thus ?thesis using read_data Inp Some data by blast
     qed
   qed
@@ -132,18 +132,18 @@ next
     case None
     obtain os' st where os'_st: \<open>(os', st) = obtain_progress os\<close> unfolding obtain_progress_def by blast
     hence \<open>x = Inl (Inl st) \<and> op = builder_op fb tps sps os' logic\<close> using assms Out None
-      by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
+      by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
     thus ?thesis using write_state Out None os'_st by blast
   next
     case (Some p')
     then obtain x' xs where x'_xs: \<open>x = Inr x'\<close> \<open>outpu os p' = x' # xs\<close> using assms Out
       apply -
       apply (subst (asm) builder_op.code)
-      apply (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
+      apply (auto 0 0 simp add: drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
       done
     have \<open>p' |\<in>| sps \<and> op = builder_op fb tps sps (os\<lparr>outpu := (outpu os)(p' := xs)\<rparr>) logic\<close>
       using assms Out Some x'_xs by (subst (asm) builder_op.code)
-        (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
+        (auto 0 0 simp add: drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits list.splits)
     thus ?thesis using write_data Out Some x'_xs by blast
   qed
 next
@@ -157,7 +157,7 @@ next
   proof -
     have \<open>Silent op |\<in>| choices (builder_op fb tps sps os logic)\<close> using Tau assms step_choicesE by blast
     thus ?thesis using that
-      by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized neq_Nil_conv drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits)
+      by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized neq_Nil_conv drop_caps_def consumes_def obtain_progress_def produces_def delay_cap_def consume_def  split: if_splits)
   qed
   ultimately show ?thesis using silent Tau by blast
 qed

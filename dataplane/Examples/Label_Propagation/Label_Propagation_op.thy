@@ -1243,11 +1243,6 @@ lemma min_label_is_en2_update[simp]:
   "min_label (os\<lparr>is_en2 := f\<rparr>) = min_label os"
   unfolding min_label_def by auto
 
-lemma all_edges_add_cap[simp]:
-  "all_edges (add_cap os p t') = all_edges os"
-  unfolding add_cap_def all_edges_def all_vertices_def neighbors_def
-  by auto
-
 lemma all_edges_add_caps[simp]:
   "all_edges (add_caps os caps) = all_edges os"
   unfolding add_caps_def all_edges_def all_vertices_def neighbors_def
@@ -1294,10 +1289,6 @@ lemma label_prob_ty2_check_label_update[simp]:
   "label_prob_ty2_check (os\<lparr>label := L\<rparr>) bufs = label_prob_ty2_check os bufs"
   unfolding label_prob_ty2_check_def by auto
 
-lemma label_prob_ty2_check_drop_cap[simp]:
-  "label_prob_ty2_check (drop_cap os cap) bufs = label_prob_ty2_check os bufs"
-  unfolding label_prob_ty2_check_def drop_cap_def by auto
-
 lemma label_prob_ty2_check_drop_caps[simp]:
   "label_prob_ty2_check (drop_caps os caps) bufs = label_prob_ty2_check os bufs"
   unfolding label_prob_ty2_check_def drop_caps_def by auto
@@ -1306,10 +1297,6 @@ lemma label_prob_ty2_check_release_caps[simp]:
   "label_prob_ty2_check (release_caps os p) bufs = label_prob_ty2_check os bufs"
   unfolding release_caps_def label_prob_ty2_check_def drop_caps_def trace_simp Let_def
   by auto
-
-lemma label_prob_ty2_check_add_cap[simp]:
-  "label_prob_ty2_check (add_cap os p t') bufs = label_prob_ty2_check os bufs"
-  unfolding label_prob_ty2_check_def add_cap_def by auto
 
 lemma label_prob_ty2_check_add_caps[simp]:
   "label_prob_ty2_check (add_caps os caps) bufs = label_prob_ty2_check os bufs"
@@ -1384,16 +1371,6 @@ lemma min_label_produces[simp]:
   unfolding produces_def min_label_def
   by (auto cong: if_cong)
 
-lemma min_label_drop_cap[simp]:
-  "min_label (drop_cap os cap) = min_label os"
-  unfolding drop_cap_def min_label_def
-  by (auto cong: if_cong)
-
-lemma min_label_add_cap[simp]:
-  "min_label (add_cap os p t') = min_label os"
-  unfolding add_cap_def min_label_def
-  by (auto cong: if_cong)
-
 lemma min_label_add_caps[simp]:
   "min_label (add_caps os caps) = min_label os"
   unfolding add_caps_def min_label_def
@@ -1435,12 +1412,6 @@ lemma min_label_input_tl_label_state_update[simp]:
   unfolding input_tl_def min_label_def
   by auto
 
-lemma labels_inv_drop_cap[simp]:
-  "labels_inv (all_edges (drop_cap os cap) t) (min_label (drop_cap os cap) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def drop_cap_def
-  by auto
-
 lemma labels_inv_drop_caps[simp]:
   "labels_inv (all_edges (drop_caps os caps) t) (min_label (drop_caps os caps) t) =
    labels_inv (all_edges os t) (min_label os t)"
@@ -1469,12 +1440,6 @@ lemma labels_inv_consume[simp]:
   "labels_inv (all_edges (consume os p t' len) t) (min_label (consume os p t' len) t) =
    labels_inv (all_edges os t) (min_label os t)"
   unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def consume_def
-  by auto
-
-lemma labels_inv_add_cap[simp]:
-  "labels_inv (all_edges (add_cap os p t') t) (min_label (add_cap os p t') t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def add_cap_def
   by auto
 
 lemma labels_inv_add_caps[simp]:
@@ -1523,19 +1488,9 @@ lemma label_prop_upd_inv_delay_cap[simp]:
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def delay_cap_def
   by (simp add: set_neighbors)
 
-lemma label_prop_upd_inv_add_cap[simp]:
-  "label_prop_upd_inv (add_cap os p t) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def add_cap_def
-  by (simp add: set_neighbors)
-
 lemma label_prop_upd_inv_add_caps[simp]:
   "label_prop_upd_inv (add_caps os caps) \<longleftrightarrow> label_prop_upd_inv os"
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def add_caps_def
-  by (simp add: set_neighbors)
-
-lemma label_prop_upd_inv_drop_cap[simp]:
-  "label_prop_upd_inv (drop_cap os cap) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def drop_cap_def
   by (simp add: set_neighbors)
 
 lemma label_prop_upd_inv_obtain_progress[simp]:
