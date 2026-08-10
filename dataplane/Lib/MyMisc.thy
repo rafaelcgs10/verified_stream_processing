@@ -13,7 +13,7 @@ section \<open>Debugging Support\<close>
 
 text \<open>A trace function that prints only when DEBUG is on.\<close>
 
-definition "DEBUG = True"
+definition "DEBUG = False"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 

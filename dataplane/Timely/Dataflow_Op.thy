@@ -162,4 +162,11 @@ definition "compile_dataflow chns dt = (let summary = antichain_from_list oo (da
                                     let sg = init_subgraph summary in
                                     dataflow_op sg op)"
 
+
+abbreviation tscomp_op ( "_ \<sqdot>\<^bsub>_\<^esub> _" [81, 80, 80] 80) where
+  "tscomp_op dt1 p dt2 \<equiv> Comp (\<lambda> (nid, p'). if nid = 0 \<and> p' = p then Some (0, p) else None) dt1 dt2"
+
+abbreviation loop_back ("_ \<hookleftarrow>\<^bsub>_\<^esub>" [81, 0] 81) where
+  "loop_back dt p \<equiv> Loop [(of_nat (nodes_count dt - 1), p) \<mapsto> (0, p)] dt"
+
 end
