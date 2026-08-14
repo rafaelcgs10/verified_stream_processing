@@ -214,17 +214,27 @@ next
   ultimately show ?case by (rule transitive_closurep_trans'(6))
 qed
 
+abbreviation \<open>wrap \<equiv> case_option (Inl (1 :: 1)) (\<lambda>p. Inr (1 :: 1, p))\<close>
+
 lemma ooo_input_op_source_op:
-  defines \<open>invariant f os \<equiv> initia os \<and> en1 os = f \<and> inj f \<and> (\<forall>p. timely_input_stream (es os p) (mset (ocaps os p)))\<close>
-    and \<open>my_ooo_input_op os \<equiv> map_op
-  (case_option (Inl (1 :: 1)) (\<lambda>p. Inr (1 :: 1, p))) (case_option (Inl (1 :: 1)) (\<lambda>p. Inr (1 :: 1, p)))
-  (ooo_input_op c\<UU> os)\<close>
-    and \<open>my_source_op f os \<equiv> map_op (\<lambda>p. (0, p)) (\<lambda>p. (0, p))
+  assumes \<open>initia os\<close> and \<open>en1 os = f\<close> and \<open>inj f\<close>
+    and \<open>\<forall>p. timely_input_stream (es os p) (mset (ocaps os p))\<close>
+  shows \<open>dataflow_op sg (map_op wrap wrap (ooo_input_op c\<UU> os)) \<approx>
+  map_op (\<lambda>p. (0, p)) (\<lambda>p. (0, p))
   (source_op (\<lambda>p. outpu os p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p))))\<close>
-  assumes \<open>invariant f os\<close>
-  shows \<open>dataflow_op sg (my_ooo_input_op os) \<approx> my_source_op f os\<close>
-  using assms(4)
-proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
+proof -
+  define invariant where \<open>invariant g os' \<longleftrightarrow>
+    initia os' \<and> en1 os' = g \<and> inj g \<and> (\<forall>p. timely_input_stream (es os' p) (mset (ocaps os' p)))\<close>
+    for g :: \<open>'d \<Rightarrow> 'b\<close> and os' :: \<open>('a, 'b, 'd, 'c, 'e) input_state_scheme\<close>
+  define my_ooo_input_op where \<open>my_ooo_input_op os' = map_op wrap wrap (ooo_input_op c\<UU> os')\<close>
+    for os' :: \<open>('a, 'b, 'd, 'c, 'e) input_state_scheme\<close>
+  define my_source_op where \<open>my_source_op g os' = map_op (\<lambda>p :: 'a. (0 :: 1, p)) (\<lambda>p. (0 :: 1, p))
+  (source_op (\<lambda>p. outpu os' p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (g d, t)) (lfilter is_Data (es os' p))))\<close>
+    for g :: \<open>'d \<Rightarrow> 'b\<close> and os' :: \<open>('a, 'b, 'd, 'c, 'e) input_state_scheme\<close>
+  have inv: \<open>invariant f os\<close> using assms unfolding invariant_def by blast
+  have \<open>dataflow_op sg (my_ooo_input_op os) \<approx> my_source_op f os\<close>
+    using inv
+  proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
   case SIM1
   show ?case (is \<open>\<exists>_. _ \<and> wbisim_cong ?R _ _\<close>)
   proof -
@@ -237,10 +247,10 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
         if "invariant f os"
           and "outpu os p = (d, t) # xs"
           and "p \<notin> defaults"
-        for p :: 'c
+        for p :: 'a
           and d :: 'b
-          and t :: 'd
-          and xs :: "('b \<times> 'd) buf"
+          and t :: 'c
+          and xs :: "('b \<times> 'c) buf"
       proof -
         let ?os' = \<open>os\<lparr>outpu := (outpu os)(p := xs)\<rparr>\<close>
         have \<open>step (Out p (d, t))
@@ -255,7 +265,7 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
   \<and> wbisim_cong R (dataflow_op sg (my_ooo_input_op os')) op2'"
         if "invariant f os"
           and os': "os' |\<in>| ooo_input_op_logic c\<UU> os"
-        for os' :: "('c, 'b, 'a, 'd, 'e) input_state_scheme"
+        for os' :: "('a, 'b, 'd, 'c, 'e) input_state_scheme"
       proof -
         have my_source_op_os': \<open>my_source_op f os = my_source_op f os'\<close>
           using that unfolding invariant_def my_source_op_def ooo_input_op_logic_def drop_caps_def
@@ -272,8 +282,8 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
     (my_ooo_input_op os')) op2'"
         if "invariant f os"
           and "(os', st) = obtain_progress os"
-        for st :: "('c, 'd) shared_state"
-          and os' :: "('c, 'b, 'a, 'd, 'e) input_state_scheme"
+        for st :: "('a, 'c) shared_state"
+          and os' :: "('a, 'b, 'd, 'c, 'e) input_state_scheme"
         using that unfolding R_def invariant_def my_source_op_def obtain_progress_def
         by (force intro!: wbc_base del: timely_input_stream_DataI)
       ultimately show ?thesis unfolding R_def[symmetric]
@@ -294,10 +304,10 @@ next
         if "invariant f os"
           and d_t_lxs: "outpu os p @@- lmap (\<lambda>z. case z of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p)) = LCons (d, t) lxs"
           and "p \<notin> defaults"
-        for p :: 'c
+        for p :: 'a
           and d :: 'b
-          and t :: 'd
-          and lxs :: "('b \<times> 'd) llist"
+          and t :: 'c
+          and lxs :: "('b \<times> 'c) llist"
       proof (cases \<open>outpu os p\<close>)
         case Nil
         then obtain d' where d': \<open>f d' = d\<close>
@@ -373,6 +383,8 @@ next
         by (sim_cases sim: SIM2 defs: my_source_op_def elims: step_map_op_elim step_source_op_elim)
     qed
   qed
+  qed
+  thus ?thesis unfolding my_ooo_input_op_def my_source_op_def .
 qed
 
 

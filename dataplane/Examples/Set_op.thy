@@ -13,15 +13,30 @@ text \<open>The set_op definition and introduction rules for its (weak) steps.\<
 
 abbreviation "eccard S \<equiv> (if cinfinite S then infinity else ccard S)"
 
+abbreviation eval_set_op_aux where
+  \<open>eval_set_op_aux b S S' op aux \<equiv> (case aux of
+    Inl op \<Rightarrow> (case op of
+      Write op p x \<Rightarrow> Silent (b (cinsert (p, x) S) S' op)
+    | Silent op \<Rightarrow> Silent (b S S' op)
+    | Read _ _ \<Rightarrow> Code.abort (STR ''Set_op can only output'') (\<lambda> _. \<oslash>))
+  | Inr (p, x) \<Rightarrow> Write (b S (cinsert (p, x) S') op) p x)\<close>
+
 corec set_op :: "('a \<times> 'b) cset \<Rightarrow> ('a \<times> 'b) cset \<Rightarrow> ('c, 'a, 'b) op \<Rightarrow> ('c, 'a, 'b) op" where
-  "set_op S S' op = choice2
-  (Choice (cimage (\<lambda> op. case op of
+  "set_op S S' op = Choice (cimage (eval_set_op_aux set_op S S' op)
+     (cUn (cimage Inl (choices op)) (cimage Inr (S - S'))))"
+
+lemma set_op_code:
+  "set_op S S' op = Choice (cUn
+   (cimage (\<lambda> op. case op of
      Write op p x \<Rightarrow> Silent (set_op (cinsert (p, x) S) S' op) 
    | Silent op \<Rightarrow> Silent (set_op S S' op)
    | Read _ _ \<Rightarrow> Code.abort (STR ''Set_op can only output'') (\<lambda> _. \<oslash>)
    ) (choices op))
-   )
-  (Choice (cimage (\<lambda> (p, x). Write (set_op S (cinsert (p, x) S') op) p x) (S - S')))"
+   (cimage (\<lambda> (p, x). Write (set_op S (cinsert (p, x) S') op) p x) (S - S')))"
+  apply (subst set_op.code)
+  apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong[where f = Choice] arg_cong2[where f = cUn] cimage_cong
+      split: sum.splits op.splits)
+  done
 
 lemma step_set_op_elim:
   assumes "step io (set_op S S' op) op'"
@@ -42,9 +57,8 @@ lemma step_set_op_intro_Out[intro]:
    \<not> (p, x) |\<in>| S' \<Longrightarrow>
    op' = set_op S (cinsert (p, x) S') op \<Longrightarrow>
    step io (set_op S S' op) op'"
-  apply (subst set_op.code)
-  apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-  apply fast
+  apply (subst set_op_code)
+  apply (force simp add: image_iff simp flip: cin.rep_eq)
   done
 
 lemma step_set_op_intro_Tau_1[intro]:
@@ -52,11 +66,8 @@ lemma step_set_op_intro_Tau_1[intro]:
    io = Tau \<Longrightarrow>
    op' = set_op (cinsert (p, x) S) S' op'' \<Longrightarrow>
    step io (set_op S S' op) op'"
-  apply (subst set_op.code)
-  apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-  apply (smt (verit) IO.distinct(1,5) IO.inject(2) SC Silent_in_choices_step String.Literal'_def cDiff_cancel cDiff_cinsert2
-      cDiff_cinsert_absorb choices_Silent cimage_eqI cinsert_absorb cinsert_cDiff1 cinsert_cDiff_if cinsert_cDiff_single cinsert_commute
-      cinsert_not_cempty csingleton_iff internal_case_prod_def op.simps(18) step.simps step_choicesE)
+  apply (subst set_op_code)
+  apply (erule step_choicesE; force simp add: image_iff simp flip: cin.rep_eq)
   done
 
 lemma step_set_op_intro_Tau_2[intro]:
@@ -64,10 +75,8 @@ lemma step_set_op_intro_Tau_2[intro]:
    step Tau op op'' \<Longrightarrow>
    op' = set_op S S' op'' \<Longrightarrow>
    step io (set_op S S' op) op'"
-  apply (subst set_op.code)
-  apply (subst set_op.code)
-  apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-  apply (metis (no_types, lifting) IO.distinct(5) IO.simps(6) cimageI cinsertI1 op.simps(20) step.simps step_choicesE)
+  apply (subst set_op_code)
+  apply (erule step_choicesE; force simp add: image_iff simp flip: cin.rep_eq)
   done
 
 

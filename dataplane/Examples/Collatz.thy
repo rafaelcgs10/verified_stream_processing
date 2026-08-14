@@ -61,14 +61,13 @@ abbreviation init_operator_state_ty2 where
    \<rparr>"
 
 
-abbreviation "collatz_logic os \<equiv> tmap_op 0 0 os (\<lambda> (n, x). if even x then (n, x div 2) else (n, 3 * x + 1))"
 definition "inps = (\<lambda> p. llist_of
   [Data (0 :: nat) (12 :: nat, 12 :: nat), Data 0 (2, 2), Data 0 (7, 7),
    Data 0 (15, 15), Data 0 (6, 6), Data 0 (9, 9), Data 0 (18, 18),
    Data 0 (11, 11), Drop 0])"
 definition "input_dt = Logic (ooo_input_op {|0 :: 2|} (init_input_state inps)) default_internal_summary"
 definition "concat_dt = Logic (concat_op {|0, 1|} 0 init_operator_state) default_internal_summary"
-definition "collatz_dt = Logic (collatz_logic init_operator_state_ty2) default_internal_summary"
+definition "collatz_dt = Logic (tmap_op 0 0 init_operator_state_ty2 (\<lambda> (n, x). if even x then (n, x div 2) else (n, 3 * x + 1))) default_internal_summary"
 definition "branch_dt = Logic (branch_op 0 0 1 (\<lambda> (x, t). snd x \<le> 1 \<or> t > 100) init_operator_state) default_internal_summary"
 definition "increment_dt = Logic (increment_op 1 1 1 init_operator_state) (\<lambda> p1 p2. if 1 = p2 then [1] else [])"
 
