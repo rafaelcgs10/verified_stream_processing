@@ -1742,8 +1742,7 @@ proof -
     using caps_mset by auto
   have clean_ocaps:
     "dataplane_tracker_inv ?osTargetCaps_can cbufs sg \<longleftrightarrow> dataplane_tracker_inv ?osTarget_can cbufs sg"
-    apply (rule dataplane_tracker_inv_clean_reorder_ocaps[where f="upfro sg"])
-     apply simp
+    apply (rule dataplane_tracker_inv_clean_reorder_ocaps)
     using same_ocaps by blast
   have inv_target_can:
     "dataplane_tracker_inv ?osTarget_can cbufs sg"
@@ -2042,8 +2041,7 @@ proof -
         produ := produ os' @ ?produs,
         inter := operator_state.inter ?target\<rparr>)) cbufs sg \<longleftrightarrow>
      dataplane_tracker_inv (os(nid := ?target)) cbufs sg"
-    apply (rule dataplane_tracker_inv_clean_reorder_ocaps[where f="upfro sg"])
-     apply simp
+    apply (rule dataplane_tracker_inv_clean_reorder_ocaps)
     using same by blast
   show ?thesis
     using clean inv_abs by simp

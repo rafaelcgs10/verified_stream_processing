@@ -169,6 +169,18 @@ subsection \<open>The Generalized Correctness Lemma\<close>
 text \<open>One large induction establishing correctness for the wired batch
   dataflow.\<close>
 
+lemma dataplane_tracker_inv_clean2:
+  "sg = sg' \<Longrightarrow>
+   (\<forall> nid. intsum (os nid) = intsum (os' nid) \<and> ocaps (os nid) = ocaps (os' nid) \<and> 
+   consu (os nid) = consu (os' nid) \<and> inter (os nid) = inter (os' nid) \<and>
+   produ (os nid) = produ (os' nid) \<and> input (os nid) = input (os' nid) \<and>
+   outpu (os nid) = outpu (os' nid) \<and> front (os nid) = front (os' nid)) \<Longrightarrow>
+   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+  apply hypsubst
+  apply (rule dataplane_tracker_inv_clean)
+  apply assumption
+  done
+
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
     and f :: \<open>'d1 buf \<Rightarrow> 'd2 buf\<close>
@@ -696,7 +708,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(1 := fst (obtain_progress (os 1)))"])
-          apply (rule exI[of _ "sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (subgraph.nxt sg) st) (pt_tr sg)\<rparr>"])
+          apply (rule exI[of _ "sg\<lparr>pt_tr := change_multiplicities (summ sg) (extract_progress 1 (subgraph.nxt sg) st) (pt_tr sg)\<rparr>"])
           apply (rule exI[of _ "cbufs"])
           apply (rule exI[of _ inps])
           apply (rule exI[of _ S])
@@ -729,9 +741,8 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             by (simp add: SIM1 obtain_progress_def)
           subgoal
-            apply (subst dataplane_tracker_inv_clean[where f="\<lambda>_. True"])
+            apply (subst dataplane_tracker_inv_clean)
               defer
-              defer                                 
               apply (rule dataplane_tracker_inv_progress)
             using SIM1(10) apply assumption
                 apply simp_all
@@ -779,7 +790,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(0 := fst (obtain_progress (os 0)))"])
-          apply (rule exI[of _ "sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (subgraph.nxt sg) st) (pt_tr sg)\<rparr>"])
+          apply (rule exI[of _ "sg\<lparr>pt_tr := change_multiplicities (summ sg) (extract_progress 0 (subgraph.nxt sg) st) (pt_tr sg)\<rparr>"])
           apply (rule exI[of _ "cbufs"])
           apply (rule exI[of _ inps])
           apply (rule exI[of _ S])
@@ -812,9 +823,8 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             by (simp add: SIM1 obtain_progress_def)
           subgoal
-            apply (subst dataplane_tracker_inv_clean[where f="\<lambda>_. True"])
+            apply (subst dataplane_tracker_inv_clean)
               defer
-              defer                                 
               apply (rule dataplane_tracker_inv_progress)
             using SIM1(10) apply assumption
                 apply simp_all
@@ -865,7 +875,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(1 := (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True \<rparr> )"])
-          apply (rule exI[of _ "sg\<lparr>pt_tr := c, upfro := (upfro sg)(1 := False)\<rparr>"])
+          apply (rule exI[of _ "sg\<lparr>pt_tr := c\<rparr>"])
           apply (rule exI[of _ "cbufs"])
           apply (rule exI[of _ inps])
           apply (rule exI[of _ S])
@@ -890,7 +900,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (auto simp add: ty2_check_def operator_state.defs comp_def fun_upd_def BTL_def BHD_def  obtain_progress_def split: option.splits if_splits prod.splits)
             done
           subgoal
-            apply (subst dataplane_tracker_inv_clean[where f="(upfro sg)(1 := False)", of _ "sg\<lparr>pt_tr := c\<rparr>" _ "os(1:= (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))) \<rparr> )"])
+            apply (subst dataplane_tracker_inv_clean[where os'="os(1:= (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))) \<rparr> )"])
               apply simp_all
             apply (subgoal_tac "propagate_all (antichain_from_list \<circ>\<circ> my_summ) (pt_tr sg) = Some c \<Longrightarrow> dataplane_tracker_inv (map_entry 1 (front_update (\<lambda>_. frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p))))) os) cbufs (sg\<lparr>pt_tr := c\<rparr>)")
             subgoal
@@ -2787,7 +2797,7 @@ next
                                 apply (rule exI[of _ 
                                       "os(0 := (os 0)\<lparr> ocaps := (ocaps ip_state)(1 := ocaps_updates (ocaps ip_state 1) (ltaken n (es ip_state 1))), outpu := (outpu ip_state)(1 := []), consu := [], inter := [], produ := [] \<rparr>,
                                           1 := (os 1)\<lparr> ocaps := _, input := _, outpu := (outpu (os 1))(1 := []), consu := [], inter := _, produ := _, front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True \<rparr>)"])
-                                apply (rule exI[of _ "sg\<lparr>pt_tr := c, upfro := (\<lambda>_. True)(1 := False)\<rparr>"])
+                                apply (rule exI[of _ "sg\<lparr>pt_tr := c\<rparr>"])
                                 apply (rule exI[of _ "cbufs( (1, 1) := [] )"])
                                 apply (rule exI[of _ "inps( 1:= ldropn n (inps 1)) "])
                                 apply (rule exI[of _ "cUn (Pair (1, 1) |`|
@@ -3352,7 +3362,7 @@ next
                               map (\<lambda> (d, t). (1, t, 1)) (output_batches f F batches))" 
                                         and os="os(0 := (os 0)\<lparr> ocaps := (ocaps ip_state)(1 := list_diff (ocaps (os 0) 1 @ map event.time (filter is_Mint (ltaken n (inps 1)))) (map event.time (filter is_Drop (ltaken n (inps 1))))), outpu := (outpu ip_state)(1 := []), consu := [], inter := [], produ := [] \<rparr>,
                                           1 := (os 1)\<lparr> ocaps := _, input := (\<lambda> _. input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1 @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1)))), outpu := _, consu := [], inter := [], produ := [], front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True \<rparr>)"]; (rule refl)?)
-                                             apply (subst dataplane_tracker_inv_clean)
+                                             apply (subst dataplane_tracker_inv_clean2)
                                                defer
                                                defer
                                                apply (rule dataplane_tracker_inv_front_update[where nid=1 and c=c, rotated 4]; (rule refl)?)

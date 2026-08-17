@@ -9,6 +9,7 @@ imports
   Branch_op
   Increment_op
   "../Timely/Dataflow_Op"
+  "../Timely/Dataflow_Opt_Op"
 begin
 
 abbreviation init_input_state where
@@ -78,7 +79,7 @@ abbreviation dt :: "(5, 2, (2, nat) shared_state + (2 \<Rightarrow> nat antichai
 
 value "list_connections (dataflow_tree_to_graph dt)"
 
-abbreviation "compiled \<equiv> compile_dataflow (\<lambda> _. []) dt"
+abbreviation "compiled \<equiv> compile_dataflow_opt (\<lambda> _. []) dt"
 value [GHC] "ltaken 8 (lmap show_Outs (trace_exec compiled))"
 
 end

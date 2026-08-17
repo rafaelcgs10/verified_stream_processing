@@ -33,6 +33,12 @@ record ('id, 'p, 't) subgraph =
   pt_tr :: "(('id, 'p) location, 't) configuration"
   nxt :: "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option"
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
+
+text \<open>Extension of @{type subgraph} with the bookkeeping needed by the
+optimized dataflow wrapper: a per-node flag recording whether the node's
+frontier knowledge may be outdated.\<close>
+
+record ('id, 'p, 't) subgraph_opt = "('id, 'p, 't) subgraph" +
   upfro :: "'id \<Rightarrow> bool"
 
 (* Inspired by https://github.com/TimelyDataflow/timely-dataflow/blob/eba4ae5298442cc2475e5ef82277bb135e4a7ea4/timely/src/progress/operate.rs#L185 *)

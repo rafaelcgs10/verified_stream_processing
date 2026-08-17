@@ -135,12 +135,11 @@ definition "dataplane_tracker_inv os cbufs sg =
 
 
 lemma dataplane_tracker_inv_clean:
-  "sg = sg'\<lparr> upfro := f \<rparr> \<Longrightarrow>
-   (\<forall> nid. intsum (os nid) = intsum (os' nid) \<and> ocaps (os nid) = ocaps (os' nid) \<and> 
+  "(\<forall> nid. intsum (os nid) = intsum (os' nid) \<and> ocaps (os nid) = ocaps (os' nid) \<and> 
    consu (os nid) = consu (os' nid) \<and> inter (os nid) = inter (os' nid) \<and>
    produ (os nid) = produ (os' nid) \<and> input (os nid) = input (os' nid) \<and>
    outpu (os nid) = outpu (os' nid) \<and> front (os nid) = front (os' nid)) \<Longrightarrow>
-   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg"
   unfolding dataplane_tracker_inv_def 
   apply clarsimp
   apply (rule iffI)
@@ -148,7 +147,6 @@ lemma dataplane_tracker_inv_clean:
     apply clarsimp
     subgoal for caps
       apply (rule exI[of _ caps])
-      apply hypsubst_thin
       unfolding propagation_inv_def BULK_BENQ_def  Src_caps_inv_def Trg_caps_inv_def produ_consu_inter_supported_def extract_prog_changes_above_impl_inv_def change_deltas_inv_def front_inv_def c_pts_inv_def chnls_imp_front_inv_def
       by (auto simp add: obtain_progress_def outputs_at_target_def extract_prog_def extract_progress_def split: prod.splits cong: if_cong)
     done
@@ -156,22 +154,19 @@ lemma dataplane_tracker_inv_clean:
     apply clarsimp
     subgoal for caps
       apply (rule exI[of _ caps])
-      apply hypsubst_thin
       unfolding propagation_inv_def BULK_BENQ_def  Src_caps_inv_def Trg_caps_inv_def produ_consu_inter_supported_def extract_prog_changes_above_impl_inv_def change_deltas_inv_def front_inv_def c_pts_inv_def chnls_imp_front_inv_def
       by (auto simp add: obtain_progress_def outputs_at_target_def extract_prog_def extract_progress_def split: prod.splits cong: if_cong)
     done
   done
 
 lemma dataplane_tracker_inv_clean_reorder_ocaps:
-  "sg = sg'\<lparr> upfro := f \<rparr> \<Longrightarrow>
-   (\<forall> nid. intsum (os nid) = intsum (os' nid) \<and>
+  "(\<forall> nid. intsum (os nid) = intsum (os' nid) \<and>
      (\<forall> p. mset (ocaps (os nid) p) = mset (ocaps (os' nid) p)) \<and>
      consu (os nid) = consu (os' nid) \<and> inter (os nid) = inter (os' nid) \<and>
      produ (os nid) = produ (os' nid) \<and> input (os nid) = input (os' nid) \<and>
      outpu (os nid) = outpu (os' nid) \<and> front (os nid) = front (os' nid)) \<Longrightarrow>
-   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg"
 proof -
-  assume sg: "sg = sg'\<lparr> upfro := f \<rparr>"
   assume eqs: "\<forall> nid. intsum (os nid) = intsum (os' nid) \<and>
      (\<forall> p. mset (ocaps (os nid) p) = mset (ocaps (os' nid) p)) \<and>
      consu (os nid) = consu (os' nid) \<and> inter (os nid) = inter (os' nid) \<and>
@@ -185,10 +180,10 @@ proof -
       outpu (os nid) = outpu (?os0 nid) \<and> front (os nid) = front (?os0 nid)"
     using eqs by auto
   have clean:
-    "dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv ?os0 cbufs sg'"
-    using dataplane_tracker_inv_clean[OF sg clean_eqs] .
+    "dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv ?os0 cbufs sg"
+    using dataplane_tracker_inv_clean[OF clean_eqs] .
   have ocaps_reordered:
-    "dataplane_tracker_inv ?os0 cbufs sg' \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+    "dataplane_tracker_inv ?os0 cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg"
   proof -
     have zm_eq: "\<And>nid p. to_zmset (ocaps (?os0 nid) p) = to_zmset (ocaps (os' nid) p)"
     proof -
@@ -208,19 +203,18 @@ proof -
         produ_consu_inter_supported_def
       by (auto split: prod.splits cong: if_cong)
   qed
-  show "dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+  show "dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg"
     using clean ocaps_reordered by simp
 qed
 (* Like dataplane_tracker_inv_clean but the `input` field is allowed to differ:
    the invariant does not depend on input directly, only through outputs_at_target
    (which is itself input-invariant). *)
 lemma dataplane_tracker_inv_clean_no_input:
-  "sg = sg'\<lparr> upfro := f \<rparr> \<Longrightarrow>
-   (\<forall> nid. intsum (os nid) = intsum (os' nid) \<and> ocaps (os nid) = ocaps (os' nid) \<and>
+  "(\<forall> nid. intsum (os nid) = intsum (os' nid) \<and> ocaps (os nid) = ocaps (os' nid) \<and>
      consu (os nid) = consu (os' nid) \<and> inter (os nid) = inter (os' nid) \<and>
      produ (os nid) = produ (os' nid) \<and>
      outpu (os nid) = outpu (os' nid) \<and> front (os nid) = front (os' nid)) \<Longrightarrow>
-   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg"
   unfolding dataplane_tracker_inv_def
   apply clarsimp
   apply (rule iffI)
@@ -228,7 +222,6 @@ lemma dataplane_tracker_inv_clean_no_input:
     apply clarsimp
     subgoal for caps
       apply (rule exI[of _ caps])
-      apply hypsubst_thin
       unfolding propagation_inv_def BULK_BENQ_def  Src_caps_inv_def Trg_caps_inv_def produ_consu_inter_supported_def extract_prog_changes_above_impl_inv_def change_deltas_inv_def front_inv_def c_pts_inv_def chnls_imp_front_inv_def
       by (auto simp add: obtain_progress_def outputs_at_target_def extract_prog_def extract_progress_def split: prod.splits cong: if_cong)
     done
@@ -236,7 +229,6 @@ lemma dataplane_tracker_inv_clean_no_input:
     apply clarsimp
     subgoal for caps
       apply (rule exI[of _ caps])
-      apply hypsubst_thin
       unfolding propagation_inv_def BULK_BENQ_def  Src_caps_inv_def Trg_caps_inv_def produ_consu_inter_supported_def extract_prog_changes_above_impl_inv_def change_deltas_inv_def front_inv_def c_pts_inv_def chnls_imp_front_inv_def
       by (auto simp add: obtain_progress_def outputs_at_target_def extract_prog_def extract_progress_def split: prod.splits cong: if_cong)
     done
@@ -245,7 +237,7 @@ lemma dataplane_tracker_inv_clean_no_input:
 lemma dataplane_tracker_inv_input_tl[simp]:
   "dataplane_tracker_inv (os(nid := input_tl (os nid) p)) cbufs sg \<longleftrightarrow>
    dataplane_tracker_inv os cbufs sg"
-  by (rule dataplane_tracker_inv_clean_no_input[where sg' = sg and f = "upfro sg", symmetric]) auto
+  by (rule dataplane_tracker_inv_clean_no_input) auto
 
 section \<open>Invariant connection timestamps in the input buffer and ocaps - not all operators do that!\<close>
 definition "input_ocaps_inv os = (\<forall> p p'. \<forall> t \<in> snd ` set (input os p). \<forall> s \<in> set ((intsum os) p p'). t -+- s \<in> set (ocaps os p'))" 

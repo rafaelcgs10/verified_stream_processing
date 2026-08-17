@@ -1178,7 +1178,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using os_inv(10) apply simp
           using buffers_inv(2) apply simp
           subgoal premises aux
-            apply (rule iffD1[OF dataplane_tracker_inv_clean, rotated 2, of _ _ sg "upfro sg"])
+            apply (rule iffD1[OF dataplane_tracker_inv_clean, rotated 1])
             apply (rule dataplane_tracker_inv_produces_drops[OF D, where nid=1 and os=os 
                   and drops = "\<lambda> p. if p = 1
                          then []
@@ -1187,7 +1187,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   and oputs="(\<lambda> p. if p = 1 then [] else map (\<lambda>t. (en2 os_label_prop (components_from_labels (all_edges os_label_prop t) (min_label os_label_prop t)), (MyPair t 0)))
                           (remdups (map myfst (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t) \<and> myfst t \<in> set (timestamps os_label_prop)) (ocaps os_label_prop 0)))))"])
             apply (rule refl)+
-            prefer 9
+            prefer 8
             subgoal
               apply (intro allI impI conjI)
               apply simp
@@ -1285,8 +1285,6 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               using subgraph_inv(2) by assumption
             subgoal
               using dataplane_inv by assumption
-            subgoal
-              by auto
             done
           subgoal
             using input_stream_inv timely_input_stream_expires_le 
@@ -2364,10 +2362,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(9) apply (simp add: obtain_progress_def)
         using os_inv(10) apply (simp add: obtain_progress_def)
         using buffers_inv(2) apply simp
-        apply (subst dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>])
-        prefer 3
+        apply (subst dataplane_tracker_inv_clean)
+        prefer 2
         apply (rule dataplane_tracker_inv_progress[OF dataplane_inv D G, where nid=2])
-        apply simp
         apply (simp add: obtain_progress_def)
         apply (simp add: obtain_progress_def)
         using input_stream_inv apply simp
@@ -2415,12 +2412,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(9) apply simp
         using os_inv(10) apply (simp add: obtain_progress_def)
         using buffers_inv(2) apply simp
-        apply (subst dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>])
-        prefer 3
+        apply (subst dataplane_tracker_inv_clean)
+        prefer 2
         apply (rule dataplane_tracker_inv_progress[OF dataplane_inv D G, where nid=1])
-        apply simp
         apply (simp add: obtain_progress_def os_inv(4) operator_state.defs(3))
-        apply simp
+        apply (simp add: obtain_progress_def os_inv(4) operator_state.defs(3))
         using input_stream_inv apply simp
         using label_prop_inv(1) apply (simp add: obtain_progress_def)
         using label_prop_inv(2) apply (simp add: obtain_progress_def)
@@ -2466,10 +2462,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(9) apply simp
         using os_inv(10) apply simp
         using buffers_inv(2) apply simp
-        apply (subst dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>])
-        prefer 3
+        apply (subst dataplane_tracker_inv_clean)
+        prefer 2
         apply (rule dataplane_tracker_inv_progress[OF dataplane_inv D G, where nid=0])
-        apply simp
         apply (simp add: obtain_progress_def)
         apply simp
         using input_stream_inv apply (simp add: obtain_progress_def)
@@ -2512,7 +2507,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule exI[of _ \<open>os(1 := (os 1)\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p))), initia := True\<rparr>)\<close>])
         apply (rule exI[of _ \<open>os_label_prop\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p))), initia := True\<rparr>\<close>])
         apply (rule exI[of _ cbufs])
-        apply (rule exI[of _ \<open>sg\<lparr>pt_tr := c, upfro := (upfro sg)(1 := False)\<rparr>\<close>])
+        apply (rule exI[of _ \<open>sg\<lparr>pt_tr := c\<rparr>\<close>])
         apply (intro conjI)
         apply (simp add: dataflow_tree_to_operator_def os_inv(1))
         apply (simp add: csets_inv buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def cimage_cUn)
@@ -2528,8 +2523,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using os_inv(9) apply simp
         using os_inv(10) apply simp
         using buffers_inv(2) apply simp
-        apply (subst dataplane_tracker_inv_clean[where f=\<open>(upfro sg)(1 := False)\<close>, of _ \<open>sg\<lparr>pt_tr := c\<rparr>\<close> _ \<open>os(1 := (os 1)\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p)))\<rparr>)\<close>])
-        apply simp
+        apply (subst dataplane_tracker_inv_clean[where os'=\<open>os(1 := (os 1)\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p)))\<rparr>)\<close>])
         apply simp
         apply (rule dataplane_tracker_inv_front_update[OF D _ _ G dataplane_inv])
         apply (simp add: subgraph_inv(1))
@@ -2840,7 +2834,7 @@ next
 (* STEPS 1: op 0 reports progress *)
   define os_progress where \<open>os_progress = os(0 := op_state_base (fst (obtain_progress os_input)))\<close>
 
-  define sg_progress where \<open>sg_progress = sg\<lparr>upfro := (\<lambda>_. True),
+  define sg_progress where \<open>sg_progress = sg\<lparr>
     pt_tr := change_multiplicities (summ sg)
       (extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress os_input)))
       (pt_tr sg)\<rparr>\<close>
@@ -2856,26 +2850,13 @@ next
       \<open>snd (obtain_progress os_input) = snd (obtain_progress (os 0))\<close>
       using os_inv(1)
       by (simp add: obtain_progress_def operator_state.defs)
-    have inv_no_upfro:
-      \<open>dataplane_tracker_inv os_progress cbufs
-        (sg\<lparr>pt_tr := change_multiplicities (summ sg)
-          (extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress os_input)))
-          (pt_tr sg)\<rparr>)\<close>
+    show ?thesis
+      unfolding sg_progress_def
       using dataplane_tracker_inv_progress[OF dataplane_inv D G refl]
       by (simp add: os_progress_def base_progress progress_st)
-    have clean_upfro:
-      \<open>dataplane_tracker_inv os_progress cbufs sg_progress \<longleftrightarrow>
-        dataplane_tracker_inv os_progress cbufs
-          (sg\<lparr>pt_tr := change_multiplicities (summ sg)
-            (extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress os_input)))
-            (pt_tr sg)\<rparr>)\<close>
-      by (rule dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>])
-        (simp_all add: sg_progress_def)
-    show ?thesis
-      using clean_upfro inv_no_upfro by simp
   qed
 
-  define sg_first_propa where \<open>sg_first_propa = sg_progress\<lparr>pt_tr := c', upfro := (upfro sg_progress)(1 := False)\<rparr>\<close>
+  define sg_first_propa where \<open>sg_first_propa = sg_progress\<lparr>pt_tr := c'\<rparr>\<close>
 
   define label_front_after_first_propa where
     \<open>label_front_after_first_propa = frontier \<circ> (\<lambda>p. c_imp (pt_tr sg_first_propa) (Loc (1 :: 3) (Trg p)))\<close>
@@ -2928,20 +2909,15 @@ next
       have clean_initia:
         \<open>dataplane_tracker_inv os_first_propa cbufs (sg_progress\<lparr>pt_tr := c'\<rparr>) \<longleftrightarrow>
           dataplane_tracker_inv os_front cbufs (sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>
-        by (rule dataplane_tracker_inv_clean[where f=\<open>upfro (sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>])
+        by (rule dataplane_tracker_inv_clean)
           (simp_all add: os_first_propa_def os_front_def os_progress_def
             label_front_after_first_propa_def sg_first_propa_def front_c_def
             os_inv(4) op_state_base_def operator_state.defs)
       show ?thesis
         using clean_initia inv_map by simp
     qed
-    have clean_upfro:
-      \<open>dataplane_tracker_inv os_first_propa cbufs sg_first_propa \<longleftrightarrow>
-        dataplane_tracker_inv os_first_propa cbufs (sg_progress\<lparr>pt_tr := c'\<rparr>)\<close>
-      by (rule dataplane_tracker_inv_clean[where f=\<open>(upfro sg_progress)(1 := False)\<close>])
-        (simp_all add: sg_first_propa_def)
     show ?thesis
-      using clean_upfro inv_front_no_upfro by simp
+      using inv_front_no_upfro by (simp add: sg_first_propa_def)
   qed
 
 (* ----------------------------- *)
@@ -4324,7 +4300,7 @@ next
 
 
   define sg_after_ooo_input_progress where
-    \<open>sg_after_ooo_input_progress = (\<lambda>n. sg_first_propa\<lparr>upfro := (\<lambda>_. True),
+    \<open>sg_after_ooo_input_progress = (\<lambda>n. sg_first_propa\<lparr>
       pt_tr := change_multiplicities (summ sg_first_propa)
         (extract_progress (0 :: 3) (nxt sg_first_propa)
           (snd (obtain_progress (os_after_loop_progress n 0))))
@@ -4731,23 +4707,20 @@ next
       apply (rule refl)
       done
 
-    have clean_upfro:
+    have clean_os:
       \<open>dataplane_tracker_inv
         (os_after_ooo_input_progress n) (cbufs_after_loop_updates n)
         (sg_after_ooo_input_progress n) \<longleftrightarrow>
        dataplane_tracker_inv
         ((os_after_loop_progress n)(0 := fst (obtain_progress (os_after_loop_progress n 0))))
         (cbufs_after_loop_updates n)
-        (sg_first_propa\<lparr>pt_tr := change_multiplicities (summ sg_first_propa)
-          (extract_progress (0 :: 3) (nxt sg_first_propa)
-            (snd (obtain_progress (os_after_loop_progress n 0))))
-          (pt_tr sg_first_propa)\<rparr>)\<close>
-      by (rule dataplane_tracker_inv_clean[where f=\<open>\<lambda>_. True\<close>];
-          (simp add: sg_after_ooo_input_progress_def os_after_ooo_input_progress_def
+        (sg_after_ooo_input_progress n)\<close>
+      by (rule dataplane_tracker_inv_clean;
+          (simp add: os_after_ooo_input_progress_def
             os_after_loop_progress_def op_state_base_def operator_state.defs obtain_progress_def
             flip: map_append filter_append fold_append))
     show ?thesis
-      using clean_upfro inv_no_upfro by simp
+      using clean_os inv_no_upfro by (simp add: sg_after_ooo_input_progress_def)
   qed
 
   have G_ooo:
@@ -4774,7 +4747,7 @@ next
     \<open>os_label_after_label_progress = (\<lambda>n. fst (obtain_progress (os_label_after_drop_caps n)))\<close>
 
   define sg_after_label_progress where
-    \<open>sg_after_label_progress = (\<lambda>n. (sg_after_ooo_input_progress n)\<lparr>upfro := (\<lambda>_. True),
+    \<open>sg_after_label_progress = (\<lambda>n. (sg_after_ooo_input_progress n)\<lparr>
       pt_tr := change_multiplicities (summ (sg_after_ooo_input_progress n))
         (extract_progress (1 :: 3) (nxt (sg_after_ooo_input_progress n))
           (snd (obtain_progress (os_label_after_drop_caps n))))
@@ -4840,7 +4813,7 @@ next
 (* ----------------------------- *)
 (* STEPS 11: op 2 reports progress *)
   define sg_after_increment_progress where
-    \<open>sg_after_increment_progress = (\<lambda>n. (sg_after_label_progress n)\<lparr>upfro := (\<lambda>_. True),
+    \<open>sg_after_increment_progress = (\<lambda>n. (sg_after_label_progress n)\<lparr>
       pt_tr := change_multiplicities (summ (sg_after_label_progress n))
         (extract_progress (2 :: 3) (nxt (sg_after_label_progress n))
           (snd (obtain_progress (os_after_label_progress n 2))))
@@ -4905,10 +4878,7 @@ next
             (snd (obtain_progress (os_after_label_progress n 2))))
           (pt_tr (sg_after_label_progress n))\<rparr>)\<close>
       by (rule dataplane_tracker_inv_progress[OF dataplane_after_label_progress D_label G_label refl])
-    have \<open>sg_after_label_progress n \<lparr>upfro := \<lambda>_. True\<rparr> = sg_after_label_progress n\<close>
-      unfolding sg_after_label_progress_def sg_after_ooo_input_progress_def
-      by simp
-    then show ?thesis
+    show ?thesis
       using inv_progress base_progress
       by (simp add: os_after_increment_progress_def sg_after_increment_progress_def)
 
@@ -5161,7 +5131,7 @@ next
 
   define sg_after_second_propa where
     \<open>sg_after_second_propa = (\<lambda>n. (sg_after_increment_progress n)\<lparr>
-      pt_tr := c'' n, upfro := (upfro (sg_after_increment_progress n))(1 := False)\<rparr>)\<close>
+      pt_tr := c'' n\<rparr>)\<close>
 
   define os_after_second_propa where
     \<open>os_after_second_propa = (\<lambda>n. (os_after_increment_progress n)
@@ -5226,24 +5196,15 @@ next
           ((sg_after_increment_progress n)\<lparr>pt_tr := c'' n\<rparr>) \<longleftrightarrow>
           dataplane_tracker_inv os_front (cbufs_after_loop_updates n)
           ((sg_after_increment_progress n)\<lparr>pt_tr := c'' n\<rparr>)\<close>
-        by (rule dataplane_tracker_inv_clean
-            [where f=\<open>upfro ((sg_after_increment_progress n)\<lparr>pt_tr := c'' n\<rparr>)\<close>])
+        by (rule dataplane_tracker_inv_clean)
           (simp_all add: os_after_second_propa_def os_front_def os_label_after_second_propa_def
             label_front_after_second_propa_def front_c_def os_after_increment_progress_def
             os_after_label_progress_def op_state_base_def operator_state.defs)
       show ?thesis
         using clean_initia inv_map by simp
     qed
-    have clean_upfro:
-      \<open>dataplane_tracker_inv
-        (os_after_second_propa n) (cbufs_after_loop_updates n) (sg_after_second_propa n) \<longleftrightarrow>
-        dataplane_tracker_inv
-        (os_after_second_propa n) (cbufs_after_loop_updates n)
-        ((sg_after_increment_progress n)\<lparr>pt_tr := c'' n\<rparr>)\<close>
-      by (rule dataplane_tracker_inv_clean[where f=\<open>(upfro (sg_after_increment_progress n))(1 := False)\<close>])
-        (simp_all add: sg_after_second_propa_def)
     show ?thesis
-      using clean_upfro inv_front_no_upfro by simp
+      using inv_front_no_upfro by (simp add: sg_after_second_propa_def)
   qed
 
   have labels_after_second_propa:
@@ -8877,7 +8838,7 @@ lemma dataplane_tracker_inv_init_op_state_pernode:
   assumes D: "dataflow_topology su (-+-)"
     and SU: "\<forall> loc. su loc loc = {}\<^sub>A"
     and R: "reachable_locations su = UNIV"
-  shows  "dataplane_tracker_inv (\<lambda> x. init_op_state (isu x) (i x)) (\<lambda>_. []) \<lparr>pt_tr =the (propagate_all su initial_conf), nxt = graph_to_nxt su, summ = su, upfro = upf\<rparr>"
+  shows  "dataplane_tracker_inv (\<lambda> x. init_op_state (isu x) (i x)) (\<lambda>_. []) \<lparr>pt_tr =the (propagate_all su initial_conf), nxt = graph_to_nxt su, summ = su\<rparr>"
   unfolding dataplane_tracker_inv_def
   apply clarsimp
   apply (rule exI[of _ "\<lambda> l. case l of Loc nid (Trg p) \<Rightarrow> {#}\<^sub>z | Loc nid (Src p) \<Rightarrow> to_zmset bots"])
@@ -9051,7 +9012,9 @@ lemma correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
   assumes T: \<open>timely_input_stream lxs (mset bots)\<close>
     and TS: \<open>\<forall> t \<in> event.time ` lset lxs. mysnd t = 0\<close>
-  shows \<open>set_op {||} {||} (compiled lxs) \<approx>
+  shows \<open>set_op {||} {||} (compile_dataflow (\<lambda> _. [])
+      (G (initial_state_input lxs) initial_state_label_prop
+        (initial_state_increment (MyPair 0 1)))) \<approx>
     set_spec_op (cimage (\<lambda>t. ((1, 0), (Inr (ccs (set (icoll lxs t)))), t)) (ts lxs)) {||}\<close>
   using correctness_aux[OF T TS] apply -
   unfolding compile_dataflow_def Let_def

@@ -3,7 +3,7 @@ theory Batch_op
 imports
   Ooo_Input_op
   "../Timely/Dataflow_Op"
-  "../Timely/Dataflow_Op_Pruned"
+  "../Timely/Dataflow_Opt_Op"
   "../Lib/LList_Haskell_Setup"
 begin
 
@@ -79,62 +79,57 @@ abbreviation "G f ip_state os2 \<equiv> Comp [(0 :: 2, 1) \<mapsto> (0, 1)] (l1 
 
 abbreviation "compiled_batch_op inps f \<equiv> compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary inps) (init_operator_state_ty2 default_internal_summary) )"
 
-abbreviation "compile_dataflow_pruned chns dt \<equiv>
-  (let summary = antichain_from_list oo (dataflow_tree_to_graph dt) in
-   let op = dataflow_tree_to_operator chns dt in
-   let sg = init_subgraph summary in
-   dataflow_op_pruned sg op)"
-
-abbreviation "compiled_batch_op_pruned inps f \<equiv>
-  compile_dataflow_pruned (\<lambda> _. [])
+abbreviation "compiled_batch_op_opt inps f \<equiv>
+  compile_dataflow_opt (\<lambda> _. [])
     (G f (init_input_state default_internal_summary inps)
          (init_operator_state_ty2 default_internal_summary))"
 
-value [GHC] "check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] (compiled_batch_op_pruned (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
-value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec (compiled_batch_op_pruned (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)])))"
+value [GHC] "check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] (compiled_batch_op_opt (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec (compiled_batch_op_opt (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)])))"
 
 
 abbreviation "list_inps_test2 \<equiv> 
  [ Mint t_1_0, Data t_1_0 10, Data t0 (7 :: nat), Drop t0, Drop t_1_0]"
 abbreviation "inps_test2 \<equiv> llist_of list_inps_test2"
 
-section \<open>Trace-Nondeterminism Demonstrated on the Pruned Wrapper\<close>
+section \<open>Trace-Nondeterminism Demonstrated on the Optimized Wrapper\<close>
 
 text \<open>The stuttering options that defeat the search above are exactly the ones
   classified as nops by @{term not_nop}: frontier reads that deliver what the
   node already knows, and progress writes with nothing to report. The operator
-  @{const dataflow_op_pruned} filters them out of every choice set, which makes
+  @{const dataflow_opt_op} filters them out of every choice set, which makes
   the choice tree finite for finite inputs, so the search terminates and can
   answer both positively and negatively.
 
   This is sound as evidence about the real semantics because
-  @{thm [source] dataflow_op_pruned_wbisim_start} states that the pruned
+  @{thm [source] dataflow_opt_op_wbisim_start} states that the optimized
   wrapper is weakly bisimilar to @{const dataflow_op}, and weakly bisimilar
   operators have the same weak traces.
 
-  CAVEAT: that corollary still carries a @{term nop_invariant} hypothesis,
-  which has not yet been discharged for the compiled shape used here. Until
-  that instantiation is done, the checks below are justified modulo the
-  pending hypothesis.\<close>
+  The @{term nop_invariant} hypothesis of that corollary is discharged for
+  all builder-compiled dataflow trees by the generic theorem in theory
+  Tree_Nop_Invariant, instantiated for this example in theory
+  Batch_op_Nop_Invariant. The checks below therefore carry no pending
+  hypotheses.\<close>
 
 text \<open>On @{term inps_test2} both orders are possible. Outputting 7 first is the
   schedule where the input operator reports progress after @{term "Drop t0"}
   but before consuming @{term "Drop t_1_0"}, so only @{term t0} is complete and
   the notifier fires for it alone.\<close>
 
-value [GHC] "check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 0))] (compiled_batch_op_pruned (\<lambda> _. inps_test2) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
-value [GHC] "check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0))] (compiled_batch_op_pruned (\<lambda> _. inps_test2) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+value [GHC] "check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 0))] (compiled_batch_op_opt (\<lambda> _. inps_test2) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+value [GHC] "check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0))] (compiled_batch_op_opt (\<lambda> _. inps_test2) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
 
 text \<open>The whole second trace, not only its first element.\<close>
 
-value [GHC] "check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 0)), ((1, 1), (Inr 10, MyPair 1 0))] (compiled_batch_op_pruned (\<lambda> _. inps_test2) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
-value [GHC] "check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0)), ((1, 1), (Inr 7, MyPair 0 0))] (compiled_batch_op_pruned (\<lambda> _. inps_test2) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+value [GHC] "check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 0)), ((1, 1), (Inr 10, MyPair 1 0))] (compiled_batch_op_opt (\<lambda> _. inps_test2) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+value [GHC] "check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0)), ((1, 1), (Inr 7, MyPair 0 0))] (compiled_batch_op_opt (\<lambda> _. inps_test2) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
 
 text \<open>The same phenomenon on the richer input @{term inps_test}: the elements
   at @{term t_1_1} and @{term t_0_1} can also come out in the order reversed
   with respect to the check at the start of the example.\<close>
 
-value [GHC] "check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] (compiled_batch_op_pruned (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+value [GHC] "check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] (compiled_batch_op_opt (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
 
 
 end

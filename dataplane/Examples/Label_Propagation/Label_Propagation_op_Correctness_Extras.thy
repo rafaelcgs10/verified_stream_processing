@@ -6,6 +6,7 @@ imports
   "../Increment_op"
   "../Set_op"
   "../../Timely/Dataflow_Op"
+  "../../Timely/Dataflow_Opt_Op"
   "../../Correctness/General"
 begin
 
@@ -110,7 +111,7 @@ abbreviation \<open>op2 state \<equiv> Logic (increment_op (1 :: 2) 1 (MyPair 0 
 abbreviation G :: "_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> (3, 2, (2, (nat, nat) myprod) shared_state + (2 \<Rightarrow> (nat, nat) myprod antichain), (nat \<times> nat + nat set set) \<times> (nat, nat) myprod, (nat, nat) myprod) dataflow_tree" where
   "G inp_state label_state incr_state \<equiv> (Comp [(0, 0) \<mapsto> (0, 0)] (op0 inp_state) (Loop [(1, 1) \<mapsto> (0, 1)] (Comp [(0, 1) \<mapsto> (0, 1)] (op1 label_state) (op2 incr_state))))"
 
-abbreviation "compiled inp \<equiv> compile_dataflow (\<lambda> _. []) (G (initial_state_input inp) initial_state_label_prop (initial_state_increment (MyPair 0 1)))"
+abbreviation "compiled inp \<equiv> compile_dataflow_opt (\<lambda> _. []) (G (initial_state_input inp) initial_state_label_prop (initial_state_increment (MyPair 0 1)))"
 
 abbreviation "G_op inp_state label_state incr_state chns \<equiv>
    dataflow_tree_to_operator chns (G inp_state label_state incr_state)"

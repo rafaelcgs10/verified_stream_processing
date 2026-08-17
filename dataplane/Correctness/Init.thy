@@ -37,7 +37,7 @@ lemma dataplane_tracker_inv_init_op_state:
   assumes D: "dataflow_topology su (-+-)"
     and SU: "\<forall> loc. su loc loc = {}\<^sub>A"
     and R: "reachable_locations su = UNIV"
-  shows  "dataplane_tracker_inv (\<lambda> x. init_op_state isu (i x)) (\<lambda>_. []) \<lparr>pt_tr =the (propagate_all su initial_conf), nxt = graph_to_nxt su, summ = su, upfro = upf\<rparr>"
+  shows  "dataplane_tracker_inv (\<lambda> x. init_op_state isu (i x)) (\<lambda>_. []) \<lparr>pt_tr =the (propagate_all su initial_conf), nxt = graph_to_nxt su, summ = su\<rparr>"
   unfolding dataplane_tracker_inv_def
   apply clarsimp
   apply (rule exI[of _ "\<lambda> l. case l of Loc nid (Trg p) \<Rightarrow> {#}\<^sub>z | Loc nid (Src p) \<Rightarrow> to_zmset bots"])

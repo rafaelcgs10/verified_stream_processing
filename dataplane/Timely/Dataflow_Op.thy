@@ -11,37 +11,18 @@ section \<open>Dataflow Wrapper Operator\<close>
 corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of
      Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
-         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf' \<rparr> in
          let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
       | None \<Rightarrow> \<oslash>)
    | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
    | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>))
    (choices op)
    )"
 
-lemma dataflow_op_code[code]:
-  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of
-     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
-         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
-         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
-      | None \<Rightarrow> \<oslash>)
-   | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
-   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> (Write (dataflow_op sg op') (nid, p) x)
-   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
-      (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>))
-   (let ops = delay_cset (not_nop sg) 10000 (choices op) in
-    let ops2 = delay_cset (is_Silent) 10000 ops in
-    ops2)
-   )"
-  apply (simp only: delay_cset_def trace_simp id_def)
-  apply (subst dataflow_op.code)
-  apply auto
-  done
+lemmas dataflow_op_code[code] = dataflow_op.code
 
 subsection \<open>Transition Rules for @{const dataflow_op}\<close>
 
@@ -51,8 +32,8 @@ lemma step_dataflow_op_elim:
     nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
   | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
-  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
-  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)"
+  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf' \<rparr>)"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
   using assms apply -
   apply atomize_elim
@@ -61,18 +42,14 @@ lemma step_dataflow_op_elim:
   apply (elim stepChoiceE)
   subgoal for op'
     apply (auto del: disjCI split: op.splits sum.splits option.splits simp flip: cin.rep_eq)
-    subgoal by fastforce
-    subgoal by fastforce
-    subgoal by fastforce
-    subgoal by fastforce
-    subgoal by fastforce
+    apply fastforce+
     done
   done
 
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
   "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
    propagate_all(summ sg) (pt_tr sg) = Some conf' \<Longrightarrow>
-   sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> \<Longrightarrow>
+   sg' = sg\<lparr> pt_tr := conf' \<rparr> \<Longrightarrow>
    imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
@@ -81,7 +58,7 @@ lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
 
 lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
   "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
-   sg' = sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
+   sg' = sg\<lparr> pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
   apply (force elim: step_choicesE split: sum.splits option.splits)
@@ -155,7 +132,7 @@ abbreviation init_conf where
 definition "init_subgraph summary =
    \<lparr> pt_tr = init_conf summary,
    nxt = graph_to_nxt summary,
-   summ = summary, upfro = (\<lambda> _. True) \<rparr>"
+   summ = summary \<rparr>"
 
 definition "compile_dataflow chns dt = (let summary = antichain_from_list oo (dataflow_tree_to_graph dt) in
                                     let op = dataflow_tree_to_operator chns dt in
