@@ -2,14 +2,14 @@ theory Batch_op_Correctness
 
 imports
   Batch_op
-  "../Correctness/Consumes"
-  "../Correctness/Progress"
-  "../Correctness/Produces"
-  "../Correctness/Outputs"
-  "../Correctness/Timely_Collections"
-  "../Correctness/OCapsReorder"
-  "../Correctness/Init"
-  Set_op
+  "../../Correctness/Consumes"
+  "../../Correctness/Progress"
+  "../../Correctness/Produces"
+  "../../Correctness/Outputs"
+  "../../Correctness/Timely_Collections"
+  "../../Correctness/OCapsReorder"
+  "../../Correctness/Init"
+  "../Set_op"
 begin
 no_notation shiftr  (infixl \<open>>>\<close> 55)
 

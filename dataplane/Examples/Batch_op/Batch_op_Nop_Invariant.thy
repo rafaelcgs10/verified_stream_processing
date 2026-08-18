@@ -2,7 +2,7 @@ theory Batch_op_Nop_Invariant
 
 imports
   Batch_op
-  "../Timely/Tree_Nop_Invariant"
+  "../../Timely/Tree_Nop_Invariant"
 begin
 
 section ‹The Optimized and Plain Compiled Batch Programs are Equivalent›

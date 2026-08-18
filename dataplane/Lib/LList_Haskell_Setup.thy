@@ -42,7 +42,7 @@ declare ccard_def[code del]
 
 code_printing code_module "Cset" \<rightharpoonup> (Haskell)
 \<open>
-module Cset (chd, Cset (..), Nat (..), cnub, clast, ctake, safe_nth, ndrop, ntake, lmerge) where
+module Cset (chd, Cset (..), Nat (..), cnub, clast, ctake, safe_nth, ndrop, lmerge) where
 import qualified Data.List;
 
 newtype Cset a = Cset [a];
@@ -58,12 +58,9 @@ safe_nth xs n = xs !! ((mod (Prelude.fromInteger n) (length  xs)));
 ctake (Nat n) (Cset xs) = Cset (Prelude.take (Prelude.fromInteger n) xs);
 
 ndrop (Nat n) xs = drop (Prelude.fromInteger n) xs;
-ntake (Nat n) xs = take (Prelude.fromInteger n) xs;
 
 lmerge = (concat . Data.List.transpose);
 \<close> 
-
-declare ltaken.simps[code del]
 
 code_printing
   type_constructor cset \<rightharpoonup>
@@ -123,8 +120,6 @@ code_printing
     (Haskell) "Cset.ndrop"
   | constant ldrop \<rightharpoonup>
     (Haskell) "Cset.ndrop"
-  | constant ltaken \<rightharpoonup>
-    (Haskell) "Cset.ntake"
   | constant llist_all \<rightharpoonup>
     (Haskell) "all"
   | constant llist_of \<rightharpoonup>
@@ -213,6 +208,20 @@ fun check_prefix where
   (case find_output_at op io n of
      None \<Rightarrow> False
    | Some op \<Rightarrow> check_prefix n ios op)"
+
+subsection \<open>Executable Unit Tests\<close>
+
+text \<open>A unit test asserts that a computed value equals an expected one. On
+  success the computed value is returned, so that a @{command value} command
+  using it still displays that value. On failure the generated code aborts,
+  which turns a wrong result into a failing @{command value} command instead of
+  a silently wrong output. The comparison is plain equality, so the expected
+  value fixes exactly as much as the test intends: comparing traces as lazy
+  lists fixes the order of the outputs, while comparing @{const lset} of a
+  trace with a set of expected outputs leaves the order open, which is what
+  programs with several possible schedules require.\<close>
+
+definition "unit_test v r = (if v = r then v else Code.abort (STR ''Failed unit test'') (\<lambda> _. v))"
 
 lemma choice2_simp[simp]:
   "choice2 op1 op2 = Choice {| op1, op2 |}"

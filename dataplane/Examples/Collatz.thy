@@ -77,9 +77,9 @@ abbreviation dt :: "(5, 2, (2, nat) shared_state + (2 \<Rightarrow> nat antichai
     input_dt \<sqdot>\<^bsub>0\<^esub>
       (concat_dt \<sqdot>\<^bsub>0\<^esub> collatz_dt \<sqdot>\<^bsub>0\<^esub> branch_dt \<sqdot>\<^bsub>1\<^esub> increment_dt) \<hookleftarrow>\<^bsub>1\<^esub>"
 
-value "list_connections (dataflow_tree_to_graph dt)"
-
 abbreviation "compiled \<equiv> compile_dataflow_opt (\<lambda> _. []) dt"
-value [GHC] "ltaken 8 (lmap show_Outs (trace_exec compiled))"
+
+text \<open>The executable tests that run this program live in theory
+  Collatz_Tests.\<close>
 
 end
