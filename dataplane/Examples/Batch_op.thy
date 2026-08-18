@@ -75,7 +75,9 @@ abbreviation "inps_test \<equiv> llist_of list_inps_test"
 
 abbreviation "l1 ip_state \<equiv> ((Logic (ooo_input_op {|1 :: 1|} ip_state) default_internal_summary) :: ('a, _, (_, 't) shared_state + (1 \<Rightarrow> 't antichain), 'c \<times> 't, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)"
 abbreviation "l2 os2 f \<equiv> Logic (batch_op os2 f) default_internal_summary"
-abbreviation "G f ip_state os2 \<equiv> Comp [(0 :: 2, 1) \<mapsto> (0, 1)] (l1 (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state)) (l2 (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f)"
+abbreviation "G f ip_state os2 \<equiv>
+  (l1 (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) :: (2, _, _, _, _) dataflow_tree)
+    \<sqdot>\<^bsub>1\<^esub> l2 (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f"
 
 abbreviation "compiled_batch_op inps f \<equiv> compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary inps) (init_operator_state_ty2 default_internal_summary) )"
 
@@ -131,5 +133,68 @@ text \<open>The same phenomenon on the richer input @{term inps_test}: the eleme
 
 value [GHC] "check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] (compiled_batch_op_opt (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
 
+section \<open>Trace-Nondeterminism on Two Incomparable Timestamps\<close>
+
+text \<open>The stream below is the one drawn in the thesis figure. The operator
+  @{const ooo_input_op} starts holding the capability of the bottom timestamp
+  @{term t0}, mints the two incomparable timestamps @{term t_1_0} and
+  @{term t_0_1}, drops @{term t0}, sends one data item at each of the two
+  minted timestamps, and finally drops @{term t_0_1} and then @{term t_1_0}.
+  Neither of the two data timestamps is below the other, so nothing in the
+  order on timestamps decides which of the two batches is emitted first.\<close>
+
+abbreviation "list_inps_test3 \<equiv>
+ [Mint t_1_0, Mint t_0_1, Drop t0, Data t_1_0 (10 :: nat), Data t_0_1 7,
+  Drop t_0_1, Drop t_1_0]"
+abbreviation "inps_test3 \<equiv> llist_of list_inps_test3"
+
+text \<open>Frontier-driven order. The notifier of @{const batch_op} fires as soon as
+  the drop of @{term t_0_1} has been propagated, so the batch of
+  @{term t_0_1} leaves first and the batch of @{term t_1_0} follows only after
+  the drop of @{term t_1_0}. This schedule requires the input operator to pause
+  between its two drops, which the depth-first search of @{const check_prefix}
+  only reaches after exploring every schedule that keeps draining the input, so
+  this check takes about twelve minutes. The check below it, whose order is the
+  one a greedy schedule produces, answers in twenty seconds.\<close>
+(* 
+value [GHC] "check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 0))] (compiled_batch_op_opt (\<lambda> _. inps_test3) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+ *)
+(* WARNING: the check above takes about twelve minutes. The schedule it looks
+   for pauses the input operator between its two drops, and the depth-first
+   search of check_prefix only reaches it after exploring every schedule that
+   keeps draining the input first. Every other check in this file answers in
+   under a minute. *)
+
+text \<open>Consumption-driven order. Here @{const batch_op} delays its logic until
+  both drops have happened, and then its own bookkeeping decides the order:
+  the timestamps are emitted in the order in which they were first consumed,
+  which is @{term t_1_0} before @{term t_0_1}.\<close>
+                                                                                                                                       
+value [GHC] "check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0)), ((1, 1), (Inr 7, MyPair 0 1))] (compiled_batch_op_opt (\<lambda> _. inps_test3) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+
+text \<open>The order is open but the pairing of data with timestamps is not: no
+  schedule pairs the batch of @{term t_1_0} with the timestamp @{term t_0_1},
+  so this check answers negatively.\<close>
+(* 
+value [GHC] "check_prefix 55500 [((1, 1), (Inr 10, MyPair 0 1))] (compiled_batch_op_opt (\<lambda> _. inps_test3) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+ *)
+text \<open>The single schedule followed by @{const trace_exec} exhibits one of the
+  two orders without any search. Its whole trace has two elements, so the
+  batch of @{term t_1_0} really does leave before the batch of @{term t_0_1}
+  in this schedule.\<close>
+
+value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec (compiled_batch_op_opt (\<lambda> _. inps_test3) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)])))"
+
+text \<open>One cannot isolate the other order by truncating the stream before the
+  last drop: when the event stream of @{const ooo_input_op} reaches
+  @{const LNil} its logic gives up every capability it still holds, so the
+  truncated stream also ends with both timestamps complete and produces the
+  same two outputs. Only a schedule that leaves the last drop unconsumed keeps
+  the capability of @{term t_1_0} alive, which is what the first check above
+  searches for.\<close>
+(* 
+
+value [GHC] "check_prefix 100 [((1, 1), (Inr 10, MyPair 0 1))] (compiled_batch_op_opt (\<lambda> _. inps_test3) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+ *)
 
 end
