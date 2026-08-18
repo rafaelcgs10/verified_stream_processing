@@ -6,14 +6,8 @@ begin
 
 section ‹Executable Tests for the Label Propagation Program›
 
-text ‹Each test runs the optimized compilation of the label propagation
-  program on a finite input stream and compares the outputs it produces with
-  the expected ones. The traces are finite, so @{const trace_exec} returns the
-  whole trace and no prefix has to be taken. The comparison is between
-  @{const lset} of the trace and a set of expected outputs: the schedule
-  followed by @{const trace_exec} fixes one order of the outputs, but that
-  order is an artifact of the schedule rather than a property of the program,
-  so the tests deliberately do not constrain it.›
+text ‹The tests compare @{const lset} of the trace, not the trace itself: the
+  order in which the outputs come out is an artifact of the schedule.›
 
 abbreviation ‹test_input1 ≡ llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data ⊥ (0, 1), Data (MyPair 1 0) (3, 4), Data ⊥ (1, 2), Data (MyPair 2 0) (4, 5)]›
 

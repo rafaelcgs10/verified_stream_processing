@@ -211,15 +211,9 @@ fun check_prefix where
 
 subsection \<open>Executable Unit Tests\<close>
 
-text \<open>A unit test asserts that a computed value equals an expected one. On
-  success the computed value is returned, so that a @{command value} command
-  using it still displays that value. On failure the generated code aborts,
-  which turns a wrong result into a failing @{command value} command instead of
-  a silently wrong output. The comparison is plain equality, so the expected
-  value fixes exactly as much as the test intends: comparing traces as lazy
-  lists fixes the order of the outputs, while comparing @{const lset} of a
-  trace with a set of expected outputs leaves the order open, which is what
-  programs with several possible schedules require.\<close>
+text \<open>Aborts when the value differs from the expected one, so that a wrong
+  result makes the @{command value} command fail. Comparing a trace through
+  @{const lset} leaves the order of its outputs open.\<close>
 
 definition "unit_test v r = (if v = r then v else Code.abort (STR ''Failed unit test'') (\<lambda> _. v))"
 

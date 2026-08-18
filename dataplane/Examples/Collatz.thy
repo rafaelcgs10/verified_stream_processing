@@ -79,7 +79,4 @@ abbreviation dt :: "(5, 2, (2, nat) shared_state + (2 \<Rightarrow> nat antichai
 
 abbreviation "compiled \<equiv> compile_dataflow_opt (\<lambda> _. []) dt"
 
-text \<open>The executable tests that run this program live in theory
-  Collatz_Tests.\<close>
-
 end

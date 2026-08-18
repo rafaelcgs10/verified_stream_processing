@@ -77,7 +77,4 @@ abbreviation "compiled_batch_op_opt inps f \<equiv>
     (G f (init_input_state default_internal_summary inps)
          (init_operator_state_ty2 default_internal_summary))"
 
-text \<open>The executable tests that run this program, including the ones that
-  demonstrate its trace-nondeterminism, live in theory Batch_op_Tests.\<close>
-
 end

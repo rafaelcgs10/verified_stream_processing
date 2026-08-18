@@ -146,11 +146,8 @@ abbreviation tscomp_op ( "_ \<sqdot>\<^bsub>_\<^esub> _" [81, 80, 80] 80) where
 abbreviation loop_back ("_ \<hookleftarrow>\<^bsub>_\<^esub>" [81, 0] 81) where
   "loop_back dt p \<equiv> Loop [(of_nat (nodes_count dt - 1), p) \<mapsto> (0, p)] dt"
 
-text \<open>The wire function written by the sequential composition notation and the
-  map literal are the same function. The equation is deliberately not a simp
-  rule: proof search tactics such as fastforce degrade when it is in the
-  default simpset. Proofs that need to move between the two forms unfold it
-  explicitly.\<close>
+text \<open>Deliberately not a simp rule: fastforce degrades badly with it in the
+  default simpset. Proofs unfold it explicitly instead.\<close>
 
 lemma tscomp_op_wire_eq:
   "(\<lambda> (nid, p'). if nid = 0 \<and> p' = p then Some (0, p) else None) = [(0, p) \<mapsto> (0, p)]"

@@ -117,9 +117,6 @@ abbreviation "compiled inp \<equiv> compile_dataflow_opt (\<lambda> _. []) (G (i
 abbreviation "G_op inp_state label_state incr_state chns \<equiv>
    dataflow_tree_to_operator chns (G inp_state label_state incr_state)"
 
-text \<open>The executable tests that run this program live in theory
-  Label_Propagation_op_Tests.\<close>
-
 
 
 section \<open>Concrete graph summary\<close>

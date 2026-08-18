@@ -7,12 +7,9 @@ begin
 
 section ‹The Optimized and Plain Compiled Batch Programs are Equivalent›
 
-text ‹The batch dataflow is a @{const builder_tree}: both of its leaves are
-@{const builder_op} instances whose logics never touch the @{const front}
-and @{const initia} fields. Hence the generic theorem
-@{thm [source] compile_dataflow_opt_wbisim_generic} applies and the
-optimized and plain compilations are weakly bisimilar, so they have the
-same weak traces.›
+text ‹Both leaves are @{const builder_op} instances whose logics never touch
+@{const front} and @{const initia}, so
+@{thm [source] compile_dataflow_opt_wbisim_generic} applies.›
 
 lemma logic_frontier_stable_ooo_input_op_logic:
   "logic_frontier_stable (ooo_input_op_logic ops)"

@@ -130,10 +130,7 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
     done
   done 
 
-(* The same equation keyed on the tscomp_op notation, whose wire is an
-   if-then-else lambda rather than the map literal. Both forms occur in
-   goals: statements written with the notation produce the lambda, while
-   proofs that start by unfolding tscomp_op_wire_eq work on the literal. *)
+(* The same equation keyed on the notation wire, which also occurs in goals. *)
 lemma dataflow_tree_to_graph_to_my_summ_tscomp[simp]:
   "dataflow_tree_to_graph (Logic op1 default_internal_summary \<sqdot>\<^bsub>1\<^esub> Logic op2 default_internal_summary) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ list)"
   unfolding tscomp_op_wire_eq by (rule dataflow_tree_to_graph_to_my_summ)
@@ -232,10 +229,7 @@ lemma correctness_gen:
   shows 
     \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms apply -
-  (* The tree G is written with the tscomp_op notation, whose wire is an
-     if-then-else lambda. Rewriting it to the map literal once here lets the
-     whole proof body below see the same terms as when G was written with the
-     literal. *)
+  (* Rewrite the notation wire once, so the proof body sees the literal. *)
   unfolding tscomp_op_wire_eq
 proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D raw_s rule: weakBisimWeakUptoBisimCong)
   case SIM1
@@ -3932,9 +3926,8 @@ lemma correctness_aux:
           cUn (ts (inps 1)) (cset_from_list (map snd ((outputs_at_target (summ my_sg) init_op_states >> (\<lambda>_. []) >> inputs_at_target init_op_states) (1, 1)))))))
      {||}"
   apply (rule correctness_gen[where S="cempty" and os=init_op_states and SO="cempty" and D="cempty" and sg=my_sg and inps=inps and cbufs="\<lambda> _. []" and ip_state="(init_input_state default_internal_summary inps)" and bt_state="init_operator_state_ty2 default_internal_summary"])
-  (* Rewrite the tscomp_op wire to the map literal before any simp runs:
-     simp would otherwise collapse the singleton-port conjunct inside the
-     wire lambda, producing a form no my_summ simp rule matches. *)
+  (* Before any simp runs: simp would otherwise collapse the singleton-port
+     conjunct in the wire, leaving a form no my_summ rule matches. *)
   unfolding tscomp_op_wire_eq
                   apply (simp_all add: input_ocaps_inv_def operator_state.defs ty2_check_def ty1_check_def init_subgraph_def)
   subgoal
@@ -3962,10 +3955,7 @@ lemma correctness_aux:
     using T by auto
   done
 
-(* Variant of the my_summ equation keyed on the wire shape that simp derives
-   from the tscomp_op notation at the singleton port type 1: the port conjunct
-   inside the wire lambda collapses to True, so goals normalized by simp (for
-   example through a simplified attribute) carry this third form of the wire. *)
+(* Third wire shape: at port type 1 simp collapses the port conjunct. *)
 lemma tscomp_op_wire_eq_num1:
   "(\<lambda> (nid :: 2, p' :: 1). if nid = 0 then Some (0 :: 2, 1 :: 1) else None) = [(0, 1) \<mapsto> (0, 1)]"
   by (rule ext) (auto split: prod.splits)
