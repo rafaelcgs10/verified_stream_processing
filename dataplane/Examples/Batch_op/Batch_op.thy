@@ -64,11 +64,11 @@ abbreviation init_operator_state_ty2 where
    is_en2 = isr
    \<rparr>"
 
-abbreviation "l1 ip_state \<equiv> ((Logic (ooo_input_op {|1 :: 1|} ip_state) default_internal_summary) :: ('a, _, (_, 't) shared_state + (1 \<Rightarrow> 't antichain), 'c \<times> 't, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)"
-abbreviation "l2 os2 f \<equiv> Logic (batch_op os2 f) default_internal_summary"
+abbreviation "input_dt ip_state \<equiv> ((Logic (ooo_input_op {|1 :: 1|} ip_state) default_internal_summary) :: ('a, _, (_, 't) shared_state + (1 \<Rightarrow> 't antichain), 'c \<times> 't, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)"
+abbreviation "batch_dt os2 f \<equiv> Logic (batch_op os2 f) default_internal_summary"
 abbreviation "G f ip_state os2 \<equiv>
-  (l1 (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) :: (2, _, _, _, _) dataflow_tree)
-    \<sqdot>\<^bsub>1\<^esub> l2 (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f"
+  (input_dt (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) :: (2, _, _, _, _) dataflow_tree)
+    \<sqdot>\<^bsub>1\<^esub> batch_dt (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f"
 
 abbreviation "compiled_batch_op inps f \<equiv> compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary inps) (init_operator_state_ty2 default_internal_summary) )"
 

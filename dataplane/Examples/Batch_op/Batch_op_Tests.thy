@@ -90,9 +90,7 @@ text ‹Frontier-driven order. The notifier of @{const batch_op} fires as soon a
   only reaches after exploring every schedule that keeps draining the input, so
   this check takes about twelve minutes. The check below it, whose order is the
   one a greedy schedule produces, answers in twenty seconds.›
-(* 
 value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 0))] (batch_prog inps_test3)) True"
- *)
 (* WARNING: the check above takes about twelve minutes. The schedule it looks
    for pauses the input operator between its two drops, and the depth-first
    search of check_prefix only reaches it after exploring every schedule that

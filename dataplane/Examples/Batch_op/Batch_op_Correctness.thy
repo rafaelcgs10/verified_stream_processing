@@ -3922,9 +3922,8 @@ lemma correctness_aux:
   assumes T: "timely_input_stream (inps 1) (mset bots)"
   shows  "set_op {||} {||}
      (dataflow_op my_sg
-       (dataflow_tree_to_operator (\<lambda>_. [])
-         ((l1 (init_input_state default_internal_summary inps) :: (2, _, _, _, _) dataflow_tree)
-           \<sqdot>\<^bsub>1\<^esub> l2 (init_operator_state_ty2 default_internal_summary) f))) \<approx>
+       (dataflow_tree_to_operator (\<lambda>_. [])        ((input_dt (init_input_state default_internal_summary inps) :: (2, _, _, _, _) dataflow_tree)
+          \<sqdot>\<^bsub>1\<^esub> batch_dt (init_operator_state_ty2 default_internal_summary) f))) \<approx>
     set_spec_op
      (cUn (cUn {||} {||})
        (cUnion
