@@ -6947,7 +6947,10 @@ next
                           apply (simp add: timestamps_after_second_propa_eq input0_msgs_def label_input0_msgs_def
                               input_data_def input_events_def cimage_iff cin.rep_eq ts_def cset_of_llist.rep_eq
                               buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1)
-                              inputs_at_target_def in_lset_ltaken_ldropn split: event.splits)
+                              inputs_at_target_def in_lset_ltaken_ldropn
+                              del: label_propagation_op_logic_front_initia
+                              ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                              operator_state_front_initia_upd_collapse split: event.splits)
                           apply (elim disjE)
                           subgoal
                             apply (simp add: image_iff in_lset_ltaken_ldropn)
@@ -7343,7 +7346,9 @@ next
                         apply (elim disjE)
                         subgoal
                           apply (clarsimp simp add: ts_def cin.rep_eq cset_of_llist.rep_eq
-                              image_iff split: event.splits)
+                              image_iff simp del: label_propagation_op_logic_front_initia
+                              ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                              operator_state_front_initia_upd_collapse split: event.splits)
                           apply (case_tac x)
                           prefer 2
                           subgoal by clarsimp
@@ -7376,7 +7381,10 @@ next
                       subgoal
                         using label_prop_inv(6)[unfolded input_ocaps_inv_def, rule_format]
                           os_inv(7)[rule_format, of 1]
-                        by (fastforce simp add: raw_summary_def zero_myprod_def[symmetric])
+                        by (fastforce simp add: raw_summary_def zero_myprod_def[symmetric]
+                            simp del: label_propagation_op_logic_front_initia
+                            ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                            operator_state_front_initia_upd_collapse)
                       apply (elim disjE)
                       subgoal for t0 (* t0 \<in> ts lxs *)
                         apply (clarsimp simp flip: cin.rep_eq
@@ -7395,13 +7403,19 @@ next
                                Data t0 (a, b) \<in> lset (ldropn n lxs)\<close>)
                           prefer 2
                           subgoal
-                            by (simp add: cin.rep_eq cset_of_llist.rep_eq
-                                in_lset_ltaken_ldropn[symmetric])
+                              by (simp add: cin.rep_eq cset_of_llist.rep_eq
+                                in_lset_ltaken_ldropn[symmetric]
+                                del: label_propagation_op_logic_front_initia
+                                ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                operator_state_front_initia_upd_collapse)
                           apply (erule disjE)
                           prefer 2
                           subgoal
                             apply (drule_tac x=\<open>Data t0 (a, b)\<close> in spec)
-                            by (clarsimp simp add: cin.rep_eq cset_of_llist.rep_eq)
+                            by (clarsimp simp add: cin.rep_eq cset_of_llist.rep_eq
+                                simp del: label_propagation_op_logic_front_initia
+                                ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                operator_state_front_initia_upd_collapse)
                           apply (subgoal_tac \<open>t0 \<in> set (ocaps (os_after_final_output n 1) (0 :: 2))\<close>)
                           prefer 2
                           subgoal
@@ -7519,10 +7533,13 @@ next
                                 inputs_at_target (os_after_final_output n)) (1, 0)) = []\<close>)
                           prefer 2
                           subgoal
-                            by (simp add: outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def
+                              by (simp add: outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def
                                 inputs_at_target_def sg_after_second_propa_def sg_after_increment_progress_def
                                 sg_after_label_progress_def sg_after_ooo_input_progress_def sg_first_propa_def
-                                sg_progress_def outpu_0_after_final_output_empty)
+                                sg_progress_def outpu_0_after_final_output_empty
+                                del: label_propagation_op_logic_front_initia
+                                ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                operator_state_front_initia_upd_collapse)
                           apply (subgoal_tac \<open>mysnd xa = 0\<close>)
                           prefer 2
                           subgoal
@@ -7533,7 +7550,9 @@ next
                             apply (elim disjE)
                             subgoal
                               apply (clarsimp simp add: ts_def cin.rep_eq cset_of_llist.rep_eq
-                                  image_iff split: event.splits)
+                                  image_iff simp del: label_propagation_op_logic_front_initia
+                                  ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                  operator_state_front_initia_upd_collapse split: event.splits)
                               apply (rename_tac ev)
                               apply (case_tac ev)
                               prefer 2
@@ -7550,8 +7569,11 @@ next
                                 by (metis (mono_tags, lifting) UnCI event.sel(1) imageI)
                               done
                             subgoal
-                              by (simp add: BULK_BENQ_def cin.rep_eq cimage.rep_eq
-                                  cset_of_llist.rep_eq)
+                            by (simp add: BULK_BENQ_def cin.rep_eq cimage.rep_eq
+                                  cset_of_llist.rep_eq
+                                  del: label_propagation_op_logic_front_initia
+                                  ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                  operator_state_front_initia_upd_collapse)
                             subgoal
                               by clarsimp
                             done
@@ -7580,14 +7602,23 @@ next
                               apply (subgoal_tac \<open>Data xa (a, b) \<in> lset lxs\<close>)
                               prefer 2
                               subgoal
-                                by (simp add: cin.rep_eq cset_of_llist.rep_eq
-                                    in_lset_ltaken_ldropn[of _ lxs n])
+                                  by (simp add: cin.rep_eq cset_of_llist.rep_eq
+                                    in_lset_ltaken_ldropn[of _ lxs n]
+                                    del: label_propagation_op_logic_front_initia
+                                    ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                    operator_state_front_initia_upd_collapse)
                               apply (drule_tac x=\<open>Data xa (a, b)\<close> in spec)
-                              by (clarsimp simp add: cin.rep_eq cset_of_llist.rep_eq)
+                              by (clarsimp simp add: cin.rep_eq cset_of_llist.rep_eq
+                                  simp del: label_propagation_op_logic_front_initia
+                                  ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                  operator_state_front_initia_upd_collapse)
                             done
                           subgoal (* xa \<in> times of the emptied new buffers *)
-                            by (simp add: BULK_BENQ_def cin.rep_eq cimage.rep_eq
-                                cset_of_llist.rep_eq)
+                              by (simp add: BULK_BENQ_def cin.rep_eq cimage.rep_eq
+                                cset_of_llist.rep_eq
+                                del: label_propagation_op_logic_front_initia
+                                ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                operator_state_front_initia_upd_collapse)
                           subgoal (* MyPair-filter-new \<Longrightarrow> index-old *)
                             apply (thin_tac \<open>\<forall>t0. mysnd t0 = 0 \<longrightarrow> P t0\<close> for P)
                             apply (thin_tac \<open>\<forall>t\<in>set (timestamps (os_label_after_second_propa n)). Q t\<close> for Q)
@@ -7678,7 +7709,10 @@ next
                                       apply (rule_tac x=\<open>Data t' (a, b)\<close> in cBexI)
                                       subgoal
                                         by simp
-                                      by (simp add: cin.rep_eq cset_of_llist.rep_eq)
+                          by (simp add: cin.rep_eq cset_of_llist.rep_eq
+                              del: label_propagation_op_logic_front_initia
+                              ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                              operator_state_front_initia_upd_collapse)
                                     done
                                   done
                                 done
@@ -7750,7 +7784,10 @@ next
                                         apply (rule_tac x=\<open>Data x' (a, b)\<close> in cBexI)
                                         subgoal
                                           by simp
-                                        by (simp add: cin.rep_eq cset_of_llist.rep_eq)
+                          by (simp add: cin.rep_eq cset_of_llist.rep_eq
+                              del: label_propagation_op_logic_front_initia
+                              ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                              operator_state_front_initia_upd_collapse)
                                       done
                                     done
                                   done
@@ -7812,6 +7849,9 @@ next
                             drop_caps_def
                             label_input0_msgs_def input0_msgs_def input_data_def
                             input_events_def CONSUMES_CONSUMES filter_filter conj_commute
+                            del: label_propagation_op_logic_front_initia
+                            ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                            operator_state_front_initia_upd_collapse
                             flip: fold_append)
                         apply (rule filter_cong[OF refl])
                         apply (simp only: image_Un image_image)
@@ -8019,7 +8059,9 @@ next
                           apply (elim disjE)
                           subgoal
                             apply (clarsimp simp add: ts_def cin.rep_eq cset_of_llist.rep_eq
-                                image_iff split: event.splits)
+                                image_iff simp del: label_propagation_op_logic_front_initia
+                                ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                operator_state_front_initia_upd_collapse split: event.splits)
                             apply (rename_tac ev)
                             apply (case_tac ev)
                             prefer 2
@@ -8052,7 +8094,9 @@ next
                           apply (elim disjE)
                           subgoal (* timestamp from lxs: closed times must be in the consumed prefix *)
                             apply (clarsimp simp add: cin.rep_eq ts_def cset_of_llist.rep_eq
-                                image_iff)
+                                image_iff simp del: label_propagation_op_logic_front_initia
+                                ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                operator_state_front_initia_upd_collapse)
                             subgoal for xb
                               apply (cases xb)
                               subgoal for t d
@@ -8333,7 +8377,10 @@ next
                                 subgoal by simp
                                 apply (subst cin_cfilter)
                                 apply (rule conjI)
-                                subgoal by (simp add: cin.rep_eq cset_of_llist.rep_eq)
+                                subgoal by (simp add: cin.rep_eq cset_of_llist.rep_eq
+                                    del: label_propagation_op_logic_front_initia
+                                    ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                    operator_state_front_initia_upd_collapse)
                                 subgoal by blast
                                 done
                               subgoal (* cap consumed: xa is the consumed time itself *)
@@ -8431,7 +8478,9 @@ next
                               apply (elim disjE)
                               subgoal
                                 apply (clarsimp simp add: ts_def cin.rep_eq cset_of_llist.rep_eq
-                                    image_iff split: event.splits)
+                                    image_iff simp del: label_propagation_op_logic_front_initia
+                                    ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                    operator_state_front_initia_upd_collapse split: event.splits)
                                 apply (rename_tac ev)
                                 apply (case_tac ev)
                                 prefer 2
@@ -8448,8 +8497,11 @@ next
                                   by (metis (mono_tags, lifting) UnCI event.sel(1) imageI)
                                 done
                               subgoal
-                                by (simp add: BULK_BENQ_def cin.rep_eq cimage.rep_eq
-                                    cset_of_llist.rep_eq)
+                              by (simp add: BULK_BENQ_def cin.rep_eq cimage.rep_eq
+                                    cset_of_llist.rep_eq
+                                    del: label_propagation_op_logic_front_initia
+                                    ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                    operator_state_front_initia_upd_collapse)
                               subgoal
                                 by clarsimp
                               done
@@ -8494,13 +8546,22 @@ next
                                 prefer 2
                                 subgoal
                                   by (simp add: cin.rep_eq cset_of_llist.rep_eq
-                                      in_lset_ltaken_ldropn[of _ lxs n])
+                                      in_lset_ltaken_ldropn[of _ lxs n]
+                                      del: label_propagation_op_logic_front_initia
+                                      ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                      operator_state_front_initia_upd_collapse)
                                 apply (drule_tac x=\<open>Data xa (a, b)\<close> in spec)
-                                by (clarsimp simp add: cin.rep_eq cset_of_llist.rep_eq)
+                              by (clarsimp simp add: cin.rep_eq cset_of_llist.rep_eq
+                                  simp del: label_propagation_op_logic_front_initia
+                                  ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                  operator_state_front_initia_upd_collapse)
                               done
                             subgoal (* xa \<in> times of the emptied new buffers *)
-                              by (simp add: BULK_BENQ_def cin.rep_eq cimage.rep_eq
-                                  cset_of_llist.rep_eq)
+                            by (simp add: BULK_BENQ_def cin.rep_eq cimage.rep_eq
+                                  cset_of_llist.rep_eq
+                                  del: label_propagation_op_logic_front_initia
+                                  ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                                  operator_state_front_initia_upd_collapse)
                             subgoal (* MyPair-filter-new: impossible for a closed xa *)
                               by blast
                             done
@@ -8572,10 +8633,13 @@ next
                     en2 (os_label_after_loop_updates n) = Inr \<and>
                     de2 (os_label_after_loop_updates n) = projr \<and>
                     is_en2 (os_label_after_loop_updates n) = isr\<close>)
-                apply (simp add: os_label_after_final_output_def os_label_after_produces_def
+  apply (simp add: os_label_after_final_output_def os_label_after_produces_def
                     os_label_after_second_propa_def os_label_after_label_progress_def
                     os_label_after_drop_caps_def drop_caps_def produces_def obtain_progress_def
-                    operator_state.defs)
+                    operator_state.defs
+                    del: label_propagation_op_logic_front_initia
+                    ooo_input_op_logic_front_initia increment_op_logic_front_initia
+                    operator_state_front_initia_upd_collapse)
                 apply (subgoal_tac \<open>os_label_after_loop_updates n =
                     operator_state.extend (op_state_base (os_label_after_loop_updates n))
                       \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,

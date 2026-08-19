@@ -1841,7 +1841,9 @@ lemma snd_snd_label_prop_input1_loop_updates_update[simp]:
     snd (snd (label_prop_input1_loop_updates cbufs os_label_prop os)) m\<close>
   using nm
   unfolding label_prop_input1_loop_updates_def
-  by clarsimp
+  by (clarsimp simp del: label_propagation_op_logic_front_initia
+      ooo_input_op_logic_front_initia increment_op_logic_front_initia
+      operator_state_front_initia_upd_collapse)
 
 
 lemma fst_label_prop_input1_loop_updates_cbufs_cleared[simp]:
