@@ -155,7 +155,9 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
         by (sim_cases sim: SIM1
             defs: my_ooo_input_op_def ooo_input_op_def my_increment_op_def increment_op_def
             elims: step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_builder_op_elim
-            intros: invariant_initia)
+            intros: invariant_initia
+            simps: ooo_input_op_logic_front_initia increment_op_logic_front_initia
+            operator_state_front_initia_upd_collapse)
     qed
   qed
 next
@@ -233,8 +235,28 @@ next
     (my_ooo_input_op ?os1_2) (my_increment_op inc os2))))
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (d, t')) buf)
     (my_ooo_input_op ?os1_3) (my_increment_op inc os2))))\<close> using initia_os1_2 outpu_os1_2
-              unfolding my_ooo_input_op_def ooo_input_op_def
-              by (auto intro!: step_Tau_dataflow_op_Tau_intro)
+            proof -
+              have \<open>step (Out (Some 1) (Inr (d, t')))
+  (ooo_input_op {|1 :: 1|} ?os1_2) (ooo_input_op {|1 :: 1|} ?os1_3)\<close>
+                by (rule step_ooo_input_op_Write_Some[OF refl _ outpu_os1_2 refl]) simp
+              hence \<open>step (Out (Inr (0, 1)) (Inr (d, t')))
+  (my_ooo_input_op ?os1_2) (my_ooo_input_op ?os1_3)\<close>
+                unfolding my_ooo_input_op_def by (rule step_map_op) simp
+              hence \<open>step Tau
+  (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op ?os1_2) (my_increment_op inc os2))
+  (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (d, t')) buf)
+    (my_ooo_input_op ?os1_3) (my_increment_op inc os2))\<close>
+                by (rule step_Tau_comp_op_L_alt) simp
+              hence \<open>step Tau
+  (map_op (case_sum id id) (case_sum id id)
+    (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op ?os1_2) (my_increment_op inc os2)))
+  (map_op (case_sum id id) (case_sum id id)
+    (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (d, t')) buf)
+      (my_ooo_input_op ?os1_3) (my_increment_op inc os2)))\<close>
+                by (rule step_map_op) simp
+              thus ?thesis
+                by (rule step_Tau_dataflow_op_Tau_intro)
+            qed
             let ?os2_1 = \<open>consumes os2 1 t' d\<close>
             have step_Tau_2: \<open>step Tau
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (d, t')) buf)
@@ -258,7 +280,9 @@ next
                 consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
             have \<open>step Tau (my_increment_op inc ?os2_1) (my_increment_op inc os2_2)\<close> using that(1)
                 Cons os2_2 unfolding invariant_def my_increment_op_def increment_op_def consumes_def
-                add_caps_def by (auto intro!: step_builder_op_Silent)
+                add_caps_def by (auto intro!: step_builder_op_Silent
+                  simp add: increment_op_logic_front_initia
+                  operator_state_front_initia_upd_collapse)
             hence step_Tau_3: \<open>step Tau
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
     (my_ooo_input_op ?os1_3) (my_increment_op inc ?os2_1))))
@@ -322,7 +346,9 @@ next
                 consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
             have \<open>step Tau (my_increment_op inc ?os2_1) (my_increment_op inc os2_2)\<close> using that(1)
                 Cons os2_2 unfolding invariant_def my_increment_op_def increment_op_def consumes_def
-                add_caps_def by (auto intro!: step_builder_op_Silent)
+                add_caps_def by (auto intro!: step_builder_op_Silent
+                  simp add: increment_op_logic_front_initia
+                  operator_state_front_initia_upd_collapse)
             hence step_Tau_3: \<open>step Tau
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
     (my_ooo_input_op ?os1') (my_increment_op inc ?os2_1))))
@@ -380,7 +406,9 @@ next
               consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
           have \<open>step Tau (my_increment_op inc ?os2_1) (my_increment_op inc os2_2)\<close> using that(1)
               Cons os2_2 unfolding invariant_def my_increment_op_def increment_op_def consumes_def
-              add_caps_def by (auto intro!: step_builder_op_Silent)
+              add_caps_def by (auto intro!: step_builder_op_Silent
+                simp add: increment_op_logic_front_initia
+                operator_state_front_initia_upd_collapse)
           hence step_Tau_2: \<open>step Tau
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] ?buf'
     (my_ooo_input_op os1) (my_increment_op inc ?os2_1))))
@@ -426,7 +454,9 @@ next
             consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
         have \<open>step Tau (my_increment_op inc os2) (my_increment_op inc os2')\<close> using that(1) Cons os2'
           unfolding invariant_def my_increment_op_def increment_op_def
-          by (auto intro!: step_builder_op_Silent)
+          by (auto intro!: step_builder_op_Silent
+              simp add: increment_op_logic_front_initia
+              operator_state_front_initia_upd_collapse)
         hence step_Tau: \<open>step Tau
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
     (my_ooo_input_op os1) (my_increment_op inc os2))))

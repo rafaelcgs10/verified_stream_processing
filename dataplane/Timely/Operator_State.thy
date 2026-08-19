@@ -734,7 +734,7 @@ proof -
   show "produ os = []" by (rule e3)
 qed
 
-lemma operator_state_front_initia_upd_collapse[simp]:
+lemma operator_state_front_initia_upd_collapse:
   "front os' = v \<Longrightarrow> initia os' = b \<Longrightarrow> os'\<lparr> front := v, initia := b \<rparr> = os'"
 proof -
   assume "front os' = v" and "initia os' = b"
@@ -743,7 +743,7 @@ proof -
   then show ?thesis by simp
 qed
 
-lemma operator_state_front_initia_upd_triv[simp]:
+lemma operator_state_front_initia_upd_triv:
   "front os = v \<Longrightarrow> initia os \<Longrightarrow> os\<lparr> front := v, initia := True \<rparr> = os"
 proof -
   assume "front os = v" and "initia os"

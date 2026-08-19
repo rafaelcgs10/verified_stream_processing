@@ -22,7 +22,7 @@ lemma nop_leaf_ooo_input_op:
   unfolding ooo_input_op_def
   by (rule nop_leaf_builder_op) simp
 
-lemma ooo_input_op_logic_front_initia[simp]:
+lemma ooo_input_op_logic_front_initia:
   assumes "os' |\<in>| ooo_input_op_logic ops os"
   shows "front os' = front os" and "initia os' = initia os"
 proof -
@@ -36,10 +36,10 @@ proof -
     by (auto split: llist.splits event.splits)
 qed
 
-lemma ooo_input_op_logic_collapse[simp]:
+lemma ooo_input_op_logic_collapse:
   "os' |\<in>| ooo_input_op_logic ops os \<Longrightarrow>
    os'\<lparr>front := front os, initia := initia os\<rparr> = os'"
-  by simp
+  by (simp add: ooo_input_op_logic_front_initia)
 
 record ('p, 'd, 'd1, 'd2, 't) input_state2 = "('p, 'd, 'd1, 'd2, 't) operator_state_ty2" + 
   es1:: "('t, 'd1) event llist" es2:: "('t, 'd2) event llist"

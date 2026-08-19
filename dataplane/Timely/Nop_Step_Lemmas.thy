@@ -71,6 +71,8 @@ qed
 
 subsection ‹Builder self-loops›
 
+declare operator_state_front_initia_upd_triv[simp]
+
 lemma builder_op_frontier_read_self_loop:
   "front os = v ⟹ initia os ⟹
    builder_op fb tps sps (os⦇ front := v, initia := True ⦈) logic = builder_op fb tps sps os logic"

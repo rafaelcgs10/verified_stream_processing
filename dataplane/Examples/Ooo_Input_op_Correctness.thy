@@ -305,7 +305,9 @@ proof -
       ultimately show ?thesis unfolding R_def[symmetric]
         by (sim_cases sim: SIM1 defs: my_ooo_input_op_def ooo_input_op_def
             elims: step_dataflow_op_elim step_map_op_elim step_builder_op_elim
-            intros: invariant_initia)
+            intros: invariant_initia
+            simps: ooo_input_op_logic_front_initia
+            operator_state_front_initia_upd_collapse)
     qed
   qed
 next

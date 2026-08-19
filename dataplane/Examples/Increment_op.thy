@@ -14,7 +14,7 @@ definition \<open>increment_op_logic ip op inc = (\<lambda>os.
 
 definition \<open>increment_op ip op inc os = builder_op False {|ip|} {|op|} os (increment_op_logic ip op inc)\<close>
 
-lemma increment_op_logic_front_initia[simp]:
+lemma increment_op_logic_front_initia:
   "os' |\<in>| increment_op_logic ip op inc os \<Longrightarrow> front os' = front os"
   "os' |\<in>| increment_op_logic ip op inc os \<Longrightarrow> initia os' = initia os"
   unfolding increment_op_logic_def
@@ -126,6 +126,15 @@ lemma step_increment_op_Silent[intro]:
     and \<open>initia os\<close>
     and \<open>op' = increment_op ip op inc os_next\<close>
   shows \<open>step Tau (increment_op ip op inc os) op'\<close>
-  using assms unfolding increment_op_def increment_op_logic_def by auto
+  unfolding assms(8) increment_op_def
+  apply (rule step_builder_op_Silent)
+     apply (rule refl)
+    apply (rule assms(7))
+   apply (unfold increment_op_logic_def)
+   apply (simp add: assms(1-6))
+  apply (simp add: assms(2-6) increment_op_logic_front_initia
+      operator_state_front_initia_upd_collapse)
+  done
+
 
 end

@@ -2677,17 +2677,17 @@ lemma steps_label_propagation_op_Read_Some[intro]:
   shows \<open>steps ys (label_propagation_op os) op\<close>
   using assms unfolding label_propagation_op_def by (auto simp add: filter_True filter_False BULK_BENQ_right_empty BULK_BENQ_left_empty list_emb_Nil2 in_filter_zmset_in_zmset pos_filter_zmset_pos_zmset neg_filter_zmset_neg_zmset set_antichain1 set_antichain2 mset_set.infinite cin.rep_eq simp del: cin.rep_eq[symmetric] cong del: if_cong)
 
-lemma label_propagation_op_logic_front_initia[simp]:
+lemma label_propagation_op_logic_front_initia:
   "os' |\<in>| label_propagation_op_logic os \<Longrightarrow> front os' = front os"
   "os' |\<in>| label_propagation_op_logic os \<Longrightarrow> initia os' = initia os"
   unfolding label_propagation_op_logic_def
   by (auto simp add: Let_def split: list.splits prod.splits if_splits
       simp flip: cin.rep_eq)
 
-lemma label_propagation_op_logic_collapse[simp]:
+lemma label_propagation_op_logic_collapse:
   "os' |\<in>| label_propagation_op_logic os \<Longrightarrow>
    os'\<lparr>front := front os, initia := initia os\<rparr> = os'"
-  by simp
+  by (simp add: label_propagation_op_logic_front_initia)
 
 lemma nop_leaf_label_propagation_op:
   "nop_leaf None (label_propagation_op os)"
