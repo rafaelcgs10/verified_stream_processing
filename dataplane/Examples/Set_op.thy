@@ -954,6 +954,59 @@ corec set_spec_op :: "('a \<times> 'b) cset \<Rightarrow> ('a \<times> 'b) cset 
   "set_spec_op S S' = 
   (Choice (cimage (\<lambda> (p, x). Write (set_spec_op S (cinsert (p, x) S')) p x) (S - S')))"
 
+lemma cDiff_cinsert_right: "S - cinsert x S' = (S - S') - cinsert x {||}"
+  by transfer auto
+
+lemma cDiff_cempty: "S - {||} = S"
+  by transfer auto
+
+lemma set_spec_op_simps:
+  "\<not> is_Read (set_spec_op A A')"
+  "\<not> is_Write (set_spec_op A A')"
+  "\<not> is_Silent (set_spec_op A A')"
+  "is_Choice (set_spec_op A A')"
+  "un_Choice (set_spec_op A A') = cimage (\<lambda>(p, x). Write (set_spec_op A (cinsert (p, x) A')) p x) (A - A')"
+  by (subst set_spec_op.code; simp)+
+
+text \<open>Only the difference of the two sets matters for the behavior of
+  @{const set_spec_op}. The two arguments are kept because they align its
+  states with those of @{const set_op} in the correctness proofs.\<close>
+
+lemma set_spec_op_cong:
+  assumes "S - S' = T - T'"
+  shows "set_spec_op S S' = (set_spec_op T T' :: ('a, 'a, 'b) op)"
+  using assms
+proof (coinduction arbitrary: S S' T T' rule: op.coinduct_upto)
+  case Eq_op
+  define R where "R = (\<lambda>op1 op2. \<exists>S S' T T'.
+    (op1 :: ('a, 'a, 'b) op) = set_spec_op S S' \<and> op2 = set_spec_op T T' \<and> S - S' = T - T')"
+  have pointwise: "op.congclp R
+    (Write (set_spec_op S (cinsert (p, x) S')) p x)
+    (Write (set_spec_op T (cinsert (p, x) T')) p x)" for p x
+    apply (rule op.cong_Write)
+      apply (rule op.cong_base)
+      apply (unfold R_def)
+      using Eq_op apply (metis cDiff_cinsert_right)
+     apply (rule refl)
+    apply (rule refl)
+    done
+  have "rel_set (op.congclp R)
+    (rcset (un_Choice (set_spec_op S S'))) (rcset (un_Choice (set_spec_op T T')))"
+    apply (rule rel_setI)
+     apply (clarsimp simp add: set_spec_op_simps split: prod.splits)
+    subgoal for p x
+      using Eq_op pointwise[of p x] by (force intro: rev_image_eqI)
+     apply (clarsimp simp add: set_spec_op_simps split: prod.splits)
+    subgoal for p x
+      using Eq_op pointwise[of p x] by (force intro: rev_image_eqI)
+    done
+  thus ?case unfolding R_def by (simp add: set_spec_op_simps)
+qed
+
+lemma set_spec_op_collapse:
+  "set_spec_op S S' = set_spec_op (S - S') {||}"
+  by (rule set_spec_op_cong) (simp add: cDiff_cempty)
+
 section \<open>The Specification Operator\<close>
 
 text \<open>An abstract set operator used as the simulation target.\<close>

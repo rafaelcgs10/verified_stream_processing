@@ -1,7 +1,7 @@
 theory Collatz_Tests
 
 imports
-  Collatz
+  Collatz_Nop_Invariant
 begin
 
 section ‹Executable Tests for the Collatz Program›

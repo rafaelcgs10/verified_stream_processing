@@ -2316,7 +2316,8 @@ next
                                            apply (rule step_taus_L_pow_comp_op_steps_intro)
                                             apply (rule step_tau_pow_map_op)
                                             apply (subst ooo_input_op_def)
-                                            apply (rule step_builder_op_n_Silents[where n=n])
+                                            apply (rule step_builder_op_n_Silents_collapse[where n=n])
+                                              apply (rule ooo_input_op_logic_collapse, assumption)
                                              apply (rule ooo_input_op_logic_iterates_n[where OS="{| ip_state |}" and os=ip_state and p=1])
                               subgoal
                                 by (simp add: SIM2(4,13) operator_state.defs)

@@ -32,7 +32,7 @@ section ‹Trace-Nondeterminism Demonstrated on the Optimized Wrapper›
 
 text ‹Pruning the nops keeps the choice tree finite, so the search below
   terminates. It is evidence about @{const dataflow_op} by
-  @{thm [source] dataflow_opt_op_wbisim_start}, whose @{term nop_invariant}
+  @{thm [source] dataflow_opt_op_wbisim_start}, whose @{term nop_invar}
   hypothesis is discharged in theory Batch_op_Nop_Invariant.›
 
 value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 0))] (batch_prog inps_test2)) True"

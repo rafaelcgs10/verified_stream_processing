@@ -15,4 +15,9 @@ definition \<open>concat_op ips p os = builder_op False ips {|p|} os (\<lambda> 
     |}
    )\<close>
 
+lemma nop_leaf_concat_op:
+  "nop_leaf None (concat_op ips p os)"
+  unfolding concat_op_def
+  by (rule nop_leaf_builder_op) simp
+
 end

@@ -14,6 +14,17 @@ definition \<open>increment_op_logic ip op inc = (\<lambda>os.
 
 definition \<open>increment_op ip op inc os = builder_op False {|ip|} {|op|} os (increment_op_logic ip op inc)\<close>
 
+lemma increment_op_logic_front_initia[simp]:
+  "os' |\<in>| increment_op_logic ip op inc os \<Longrightarrow> front os' = front os"
+  "os' |\<in>| increment_op_logic ip op inc os \<Longrightarrow> initia os' = initia os"
+  unfolding increment_op_logic_def
+  by (auto simp add: Let_def split: if_splits simp flip: cin.rep_eq)
+
+lemma nop_leaf_increment_op:
+  "nop_leaf None (increment_op ip op inc os)"
+  unfolding increment_op_def
+  by (rule nop_leaf_builder_op) simp
+
 section \<open>Inputs of increment_op\<close>
 
 lemma inputs_increment_op:
@@ -46,7 +57,10 @@ next
     unfolding increment_op_def
     apply -
     apply (subst (asm) (2) builder_op.code)
-    apply (auto 0 0 simp add: obtain_progress_def split: if_splits list.splits sum.splits prod.splits)
+    apply (auto 0 0 simp add: obtain_progress_def
+        simp del: increment_op_logic_front_initia
+        operator_state_front_initia_upd_collapse
+        split: if_splits list.splits sum.splits prod.splits)
     apply (meson Suc_lessD lessI)+
     done
 qed

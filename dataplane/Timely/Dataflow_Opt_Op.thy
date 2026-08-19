@@ -179,12 +179,12 @@ definition nop_sound where
         step (Inp (Inl nid) (Inl (Inr (frontier o (λ p. c_imp (pt_tr sg) (Loc nid (Trg p))))))) op op' ⟶ op' = op) ∧
      (∀ nid st op'. ¬ has_progress st ⟶ step (Out (Inl nid) (Inl (Inl st))) op op' ⟶ op' = op)"
 
-text ‹@{term "nop_invariant P"} states that @{term P} implies local soundness
+text ‹@{term "nop_invar P"} states that @{term P} implies local soundness
 and is closed under all transition shapes of the (optimized) dataflow wrapper.
 The coinduction below is parameterized by any such @{term P}.›
 
-definition nop_invariant where
-  "nop_invariant P ⟷
+definition nop_invar where
+  "nop_invar P ⟷
      (∀ sg op. P sg op ⟶ nop_sound sg op) ∧
      (∀ sg op op'. P sg op ⟶ step Tau op op' ⟶ P sg op') ∧
      (∀ sg op op' nid p x. P sg op ⟶ step (Inp (Inr (nid, p)) (Inr x)) op op' ⟶ P sg op') ∧
@@ -209,42 +209,42 @@ lemma nop_soundD_write_progress:
   "nop_sound sg op ⟹ ¬ has_progress st ⟹ step (Out (Inl nid) (Inl (Inl st))) op op' ⟹ op' = op"
   unfolding nop_sound_def by blast
 
-lemma nop_invariantD_sound:
-  assumes "nop_invariant P" and "P sg op"
+lemma nop_invarD_sound:
+  assumes "nop_invar P" and "P sg op"
   shows "nop_sound sg op"
-  using assms(1)[unfolded nop_invariant_def, THEN conjunct1, rule_format, OF assms(2)] .
+  using assms(1)[unfolded nop_invar_def, THEN conjunct1, rule_format, OF assms(2)] .
 
-lemma nop_invariantD_Tau:
-  assumes "nop_invariant P" and "P sg op" and "step Tau op op'"
+lemma nop_invarD_Tau:
+  assumes "nop_invar P" and "P sg op" and "step Tau op op'"
   shows "P sg op'"
-  using assms(1)[unfolded nop_invariant_def, THEN conjunct2, THEN conjunct1, rule_format,
+  using assms(1)[unfolded nop_invar_def, THEN conjunct2, THEN conjunct1, rule_format,
     OF assms(2) assms(3)] .
 
-lemma nop_invariantD_Inp:
-  assumes "nop_invariant P" and "P sg op" and "step (Inp (Inr (nid, p)) (Inr x)) op op'"
+lemma nop_invarD_Inp:
+  assumes "nop_invar P" and "P sg op" and "step (Inp (Inr (nid, p)) (Inr x)) op op'"
   shows "P sg op'"
-  using assms(1)[unfolded nop_invariant_def, THEN conjunct2, THEN conjunct2, THEN conjunct1,
+  using assms(1)[unfolded nop_invar_def, THEN conjunct2, THEN conjunct2, THEN conjunct1,
     rule_format, OF assms(2) assms(3)] .
 
-lemma nop_invariantD_Out:
-  assumes "nop_invariant P" and "P sg op" and "step (Out (Inr (nid, p)) (Inr x)) op op'"
+lemma nop_invarD_Out:
+  assumes "nop_invar P" and "P sg op" and "step (Out (Inr (nid, p)) (Inr x)) op op'"
   shows "P sg op'"
-  using assms(1)[unfolded nop_invariant_def, THEN conjunct2, THEN conjunct2, THEN conjunct2,
+  using assms(1)[unfolded nop_invar_def, THEN conjunct2, THEN conjunct2, THEN conjunct2,
     THEN conjunct1, rule_format, OF assms(2) assms(3)] .
 
-lemma nop_invariantD_progress:
-  assumes "nop_invariant P" and "P sg op" and "step (Out (Inl nid) (Inl (Inl st))) op op'"
+lemma nop_invarD_progress:
+  assumes "nop_invar P" and "P sg op" and "step (Out (Inl nid) (Inl (Inl st))) op op'"
     and "has_progress st"
   shows "P (sg⦇ upfro := (λ _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) ⦈) op'"
-  using assms(1)[unfolded nop_invariant_def, THEN conjunct2, THEN conjunct2, THEN conjunct2,
+  using assms(1)[unfolded nop_invar_def, THEN conjunct2, THEN conjunct2, THEN conjunct2,
     THEN conjunct2, THEN conjunct1, rule_format, OF assms(2) assms(3) assms(4)] .
 
-lemma nop_invariantD_frontier:
-  assumes "nop_invariant P" and "P sg op" and "upfro sg nid"
+lemma nop_invarD_frontier:
+  assumes "nop_invar P" and "P sg op" and "upfro sg nid"
     and "propagate_all (summ sg) (pt_tr sg) = Some conf'"
     and "step (Inp (Inl nid) (Inl (Inr (frontier o (λ p. c_imp conf' (Loc nid (Trg p))))))) op op'"
   shows "P (sg⦇ pt_tr := conf', upfro := (upfro sg)(nid := False) ⦈) op'"
-  using assms(1)[unfolded nop_invariant_def, THEN conjunct2, THEN conjunct2, THEN conjunct2,
+  using assms(1)[unfolded nop_invar_def, THEN conjunct2, THEN conjunct2, THEN conjunct2,
     THEN conjunct2, THEN conjunct2, rule_format, OF assms(2) assms(3) assms(4) assms(5)] .
 
 section ‹Weak Bisimilarity of the Optimized and Plain Operators›
@@ -262,7 +262,7 @@ lemma subgraph_truncate_simps[simp]:
   by (simp_all add: subgraph.truncate_def)
 
 lemma dataflow_opt_op_sim1:
-  assumes inv: "nop_invariant P"
+  assumes inv: "nop_invar P"
     and Pop: "P sg op"
     and stp: "step io (dataflow_opt_op sg op) op1'"
   shows "∃ sg' op''. wstep io (dataflow_op (subgraph.truncate sg) op) (dataflow_op (subgraph.truncate sg') op'') ∧
@@ -273,7 +273,7 @@ proof (cases rule: step_dataflow_opt_op_elim)
   have s2: "step (Inp (nid, p) x) (dataflow_op (subgraph.truncate sg) op) (dataflow_op (subgraph.truncate sg) op'')"
     using read_data(3) by blast
   have P': "P sg op''"
-    by (rule nop_invariantD_Inp[OF inv Pop read_data(3)])
+    by (rule nop_invarD_Inp[OF inv Pop read_data(3)])
   show ?thesis
     unfolding read_data(1)
     using s2 P' read_data(2) by blast
@@ -282,7 +282,7 @@ next
   have s2: "step (Out (nid, p) x) (dataflow_op (subgraph.truncate sg) op) (dataflow_op (subgraph.truncate sg) op'')"
     using write_data(3) by blast
   have P': "P sg op''"
-    by (rule nop_invariantD_Out[OF inv Pop write_data(3)])
+    by (rule nop_invarD_Out[OF inv Pop write_data(3)])
   show ?thesis
     unfolding write_data(1)
     using s2 P' write_data(2) by blast
@@ -291,7 +291,7 @@ next
   have s2: "step Tau (dataflow_op (subgraph.truncate sg) op) (dataflow_op (subgraph.truncate sg) op'')"
     using silent(3) by blast
   have P': "P sg op''"
-    by (rule nop_invariantD_Tau[OF inv Pop silent(3)])
+    by (rule nop_invarD_Tau[OF inv Pop silent(3)])
   show ?thesis
     unfolding silent(1)
     using s2 P' silent(2) by blast
@@ -301,7 +301,7 @@ next
   have s2: "step Tau (dataflow_op (subgraph.truncate sg) op) (dataflow_op (subgraph.truncate ?sg') op'')"
     by (rule step_Tau_dataflow_op_Out_Inl_intro[OF write_progress(4)]) simp
   have P': "P ?sg' op''"
-    by (rule nop_invariantD_progress[OF inv Pop write_progress(4) write_progress(2)])
+    by (rule nop_invarD_progress[OF inv Pop write_progress(4) write_progress(2)])
   show ?thesis
   proof (intro exI conjI)
     show "wstep io (dataflow_op (subgraph.truncate sg) op) (dataflow_op (subgraph.truncate ?sg') op'')"
@@ -323,7 +323,7 @@ next
     by (rule step_Tau_dataflow_op_Inp_Inl_intro[OF step0 prop2 refl]) simp
   have P': "P sg' op''"
     unfolding read_frontier(4)
-    by (rule nop_invariantD_frontier[OF inv Pop read_frontier(2) read_frontier(3) step0])
+    by (rule nop_invarD_frontier[OF inv Pop read_frontier(2) read_frontier(3) step0])
   have trunc: "subgraph.truncate sg ⦇ pt_tr := conf' ⦈ = subgraph.truncate sg'"
     unfolding read_frontier(4) by simp
   show ?thesis
@@ -338,7 +338,7 @@ next
 qed
 
 lemma dataflow_opt_op_sim2:
-  assumes inv: "nop_invariant P"
+  assumes inv: "nop_invar P"
     and Pop: "P sg op"
     and stp: "step io (dataflow_op (subgraph.truncate sg) op) op2'"
   shows "∃ sg' op''. wstep io (dataflow_opt_op sg op) (dataflow_opt_op sg' op'') ∧
@@ -349,7 +349,7 @@ proof (cases rule: step_dataflow_op_elim')
   have s1: "step (Inp (nid, p) x) (dataflow_opt_op sg op) (dataflow_opt_op sg op'')"
     using read_data(3) by blast
   have P': "P sg op''"
-    by (rule nop_invariantD_Inp[OF inv Pop read_data(3)])
+    by (rule nop_invarD_Inp[OF inv Pop read_data(3)])
   show ?thesis
     unfolding read_data(1)
     using s1 P' read_data(2) by blast
@@ -358,7 +358,7 @@ next
   have s1: "step (Out (nid, p) x) (dataflow_opt_op sg op) (dataflow_opt_op sg op'')"
     using write_data(3) by blast
   have P': "P sg op''"
-    by (rule nop_invariantD_Out[OF inv Pop write_data(3)])
+    by (rule nop_invarD_Out[OF inv Pop write_data(3)])
   show ?thesis
     unfolding write_data(1)
     using s1 P' write_data(2) by blast
@@ -367,7 +367,7 @@ next
   have s1: "step Tau (dataflow_opt_op sg op) (dataflow_opt_op sg op'')"
     using silent(3) by blast
   have P': "P sg op''"
-    by (rule nop_invariantD_Tau[OF inv Pop silent(3)])
+    by (rule nop_invarD_Tau[OF inv Pop silent(3)])
   show ?thesis
     unfolding silent(1)
     using s1 P' silent(2) by blast
@@ -380,7 +380,7 @@ next
     have s1: "step Tau (dataflow_opt_op sg op) (dataflow_opt_op ?sg' op'')"
       by (rule step_Tau_dataflow_opt_op_Out_Inl_intro[OF write_progress(3) True refl])
     have P': "P ?sg' op''"
-      by (rule nop_invariantD_progress[OF inv Pop write_progress(3) True])
+      by (rule nop_invarD_progress[OF inv Pop write_progress(3) True])
     have eq2: "subgraph.truncate sg ⦇ pt_tr := change_multiplicities (summ (subgraph.truncate sg)) (extract_progress nid (nxt (subgraph.truncate sg)) st) (pt_tr (subgraph.truncate sg)) ⦈ = subgraph.truncate ?sg'"
       by simp
     show ?thesis
@@ -395,7 +395,7 @@ next
   next
     case False
     have op''_eq: "op'' = op"
-      by (rule nop_soundD_write_progress[OF nop_invariantD_sound[OF inv Pop] False write_progress(3)])
+      by (rule nop_soundD_write_progress[OF nop_invarD_sound[OF inv Pop] False write_progress(3)])
     have eq2: "subgraph.truncate sg ⦇ pt_tr := change_multiplicities (summ (subgraph.truncate sg)) (extract_progress nid (nxt (subgraph.truncate sg)) st) (pt_tr (subgraph.truncate sg)) ⦈ = subgraph.truncate sg"
       using False by simp
     show ?thesis
@@ -423,7 +423,7 @@ next
     have s1: "step Tau (dataflow_opt_op sg op) (dataflow_opt_op ?sg' op'')"
       by (rule step_Tau_dataflow_opt_op_Inp_Inl_intro[OF step0 True prop1 refl]) simp
     have P': "P ?sg' op''"
-      by (rule nop_invariantD_frontier[OF inv Pop True prop1 step0])
+      by (rule nop_invarD_frontier[OF inv Pop True prop1 step0])
     have trunc: "sg' = subgraph.truncate ?sg'"
       unfolding read_frontier(3) by simp
     show ?thesis
@@ -438,7 +438,7 @@ next
   next
     case False
     have sound: "nop_sound sg op"
-      by (rule nop_invariantD_sound[OF inv Pop])
+      by (rule nop_invarD_sound[OF inv Pop])
     have fix1: "propagate_all (summ sg) (pt_tr sg) = Some (pt_tr sg)"
       by (rule nop_soundD_propagate[OF sound False])
     have conf'_eq: "conf' = pt_tr sg"
@@ -463,8 +463,8 @@ next
   qed
 qed
 
-theorem dataflow_opt_op_wbisim:
-  assumes inv: "nop_invariant P"
+lemma dataflow_opt_op_wbisim:
+  assumes inv: "nop_invar P"
     and Pop: "P sg op"
   shows "dataflow_opt_op sg op ≈ dataflow_op (subgraph.truncate sg) op"
 proof -
@@ -525,12 +525,12 @@ definition "compile_dataflow_opt chns dt = (let summary = antichain_from_list oo
                                     dataflow_opt_op sg op)"
 
 corollary dataflow_opt_op_wbisim_start:
-  assumes "nop_invariant P" and "P (init_subgraph_opt summary) op"
+  assumes "nop_invar P" and "P (init_subgraph_opt summary) op"
   shows "dataflow_opt_op (init_subgraph_opt summary) op ≈ dataflow_op (init_subgraph summary) op"
   using dataflow_opt_op_wbisim[OF assms] by simp
 
 corollary compile_dataflow_opt_wbisim:
-  assumes "nop_invariant P"
+  assumes "nop_invar P"
     and "P (init_subgraph_opt (antichain_from_list oo (dataflow_tree_to_graph dt)))
          (dataflow_tree_to_operator chns dt)"
   shows "compile_dataflow_opt chns dt ≈ compile_dataflow chns dt"
@@ -538,7 +538,7 @@ corollary compile_dataflow_opt_wbisim:
   by (rule dataflow_opt_op_wbisim_start[OF assms])
 
 corollary compile_dataflow_opt_wtraces:
-  assumes "nop_invariant P"
+  assumes "nop_invar P"
     and "P (init_subgraph_opt (antichain_from_list oo (dataflow_tree_to_graph dt)))
          (dataflow_tree_to_operator chns dt)"
   shows "compile_dataflow_opt chns dt ≡⇩t compile_dataflow chns dt"

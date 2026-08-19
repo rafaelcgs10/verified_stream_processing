@@ -25,6 +25,10 @@ definition batch_op where
   "batch_op os f = batch_op_logic {|(1 :: 1)|} {|(1 :: 1)|} id os
    (\<lambda> compl_batches ts caps. {| (concat (map (\<lambda> t. map (\<lambda> x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda> t. Cap t 1) (caps 1)) |})"
 
+lemma nop_leaf_batch_op:
+  "nop_leaf None (batch_op os f)"
+  unfolding batch_op_def batch_op_logic_def notifier_op_def
+  by (rule nop_leaf_builder_op) simp
 section \<open>The Batch Dataflow Program\<close>
 
 

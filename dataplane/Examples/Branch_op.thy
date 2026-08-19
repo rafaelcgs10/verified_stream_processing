@@ -14,4 +14,9 @@ definition \<open>branch_op ip p0 p1 c os = builder_op False {|ip|} {|p0, p1|} o
     |}
    )\<close>
 
+lemma nop_leaf_branch_op:
+  "nop_leaf None (branch_op ip p0 p1 c os)"
+  unfolding branch_op_def
+  by (rule nop_leaf_builder_op) simp
+
 end

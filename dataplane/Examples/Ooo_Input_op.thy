@@ -17,6 +17,30 @@ definition \<open>ooo_input_op_logic ops os = cimage (\<lambda>p. case es os p o
 definition ooo_input_op where
   "ooo_input_op ops os = builder_op False {||} ops os (ooo_input_op_logic ops)"
 
+lemma nop_leaf_ooo_input_op:
+  "nop_leaf None (ooo_input_op ops os)"
+  unfolding ooo_input_op_def
+  by (rule nop_leaf_builder_op) simp
+
+lemma ooo_input_op_logic_front_initia[simp]:
+  assumes "os' |\<in>| ooo_input_op_logic ops os"
+  shows "front os' = front os" and "initia os' = initia os"
+proof -
+  obtain p where "os' = (case es os p of
+      LNil \<Rightarrow> drop_caps os (map (\<lambda> t. Cap t p) (ocaps os p))
+    | LCons (Data t d) lxs \<Rightarrow> produces (os\<lparr>es := (es os)(p := lxs)\<rparr>) [(en1 os d, Cap t p)]
+    | LCons (Drop t) lxs \<Rightarrow> drop_caps (os\<lparr>es := (es os)(p := lxs)\<rparr>) [Cap t p]
+    | LCons (Mint t) lxs \<Rightarrow> add_caps (os\<lparr>es := (es os)(p := lxs)\<rparr>) [Cap t p])"
+    using assms unfolding ooo_input_op_logic_def by (auto simp flip: cin.rep_eq)
+  then show "front os' = front os" and "initia os' = initia os"
+    by (auto split: llist.splits event.splits)
+qed
+
+lemma ooo_input_op_logic_collapse[simp]:
+  "os' |\<in>| ooo_input_op_logic ops os \<Longrightarrow>
+   os'\<lparr>front := front os, initia := initia os\<rparr> = os'"
+  by simp
+
 record ('p, 'd, 'd1, 'd2, 't) input_state2 = "('p, 'd, 'd1, 'd2, 't) operator_state_ty2" + 
   es1:: "('t, 'd1) event llist" es2:: "('t, 'd2) event llist"
 
@@ -285,14 +309,21 @@ lemma step_ooo_input_op_Silent[intro]:
     and \<open>os' |\<in>| ooo_input_op_logic ops os\<close>
     and \<open>op = ooo_input_op ops os'\<close>
   shows \<open>step io (ooo_input_op ops os) op\<close>
-  using assms unfolding ooo_input_op_def by auto
+  unfolding assms(1,4) ooo_input_op_def
+  apply (rule step_builder_op_Silent)
+     apply (rule refl)
+    apply (rule assms(2))
+   apply (rule assms(3))
+  apply (simp add: ooo_input_op_logic_collapse[OF assms(3)])
+  done
 
 lemma step_ooo_input_op_n_Silents[intro]:
   assumes \<open>os' |\<in>| ((\<lambda>oss. cUnion (cimage (ooo_input_op_logic ops)
       (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
     and \<open>op = ooo_input_op ops os'\<close>
   shows \<open>(step Tau ^^ n) (ooo_input_op ops os) op\<close>
-  using assms unfolding ooo_input_op_def by auto
+  using assms unfolding ooo_input_op_def
+  by (intro step_builder_op_n_Silents_collapse) (auto simp: ooo_input_op_logic_collapse)
 
 lemma steps_ooo_input_op_n_Silents[intro]:
   assumes \<open>os' |\<in>| ((\<lambda>oss. cUnion (cimage (ooo_input_op_logic ops)

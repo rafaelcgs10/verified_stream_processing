@@ -717,6 +717,41 @@ definition "has_progress st = (cons st \<noteq> [] \<or> inte st \<noteq> [] \<o
 
 abbreviation "not_nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | Write _ (Inl _) (Inl (Inl st)) \<Rightarrow> has_progress st | _ \<Rightarrow> True)"
 
+lemma obtain_progress_no_progressD:
+  assumes "obtain_progress os = (os', st)" and "\<not> has_progress st"
+  shows "os' = os" and "consu os = []" and "inter os = []" and "produ os = []"
+proof -
+  have os': "os' = os\<lparr> consu := [], inter := [], produ := [] \<rparr>" and
+       st: "st = \<lparr> cons = consu os, inte = inter os, prod = produ os \<rparr>"
+    using assms(1) unfolding obtain_progress_def by auto
+  have e1: "consu os = []" and e2: "inter os = []" and e3: "produ os = []"
+    using assms(2) unfolding st has_progress_def by auto
+  have "os' = os\<lparr> consu := consu os, inter := inter os, produ := produ os \<rparr>"
+    unfolding os' using e1 e2 e3 by simp
+  then show "os' = os" by simp
+  show "consu os = []" by (rule e1)
+  show "inter os = []" by (rule e2)
+  show "produ os = []" by (rule e3)
+qed
+
+lemma operator_state_front_initia_upd_collapse[simp]:
+  "front os' = v \<Longrightarrow> initia os' = b \<Longrightarrow> os'\<lparr> front := v, initia := b \<rparr> = os'"
+proof -
+  assume "front os' = v" and "initia os' = b"
+  then have "os'\<lparr> front := v, initia := b \<rparr> = os'\<lparr> front := front os', initia := initia os' \<rparr>"
+    by simp
+  then show ?thesis by simp
+qed
+
+lemma operator_state_front_initia_upd_triv[simp]:
+  "front os = v \<Longrightarrow> initia os \<Longrightarrow> os\<lparr> front := v, initia := True \<rparr> = os"
+proof -
+  assume "front os = v" and "initia os"
+  then have "os\<lparr> front := v, initia := True \<rparr> = os\<lparr> front := front os, initia := initia os \<rparr>"
+    by simp
+  then show ?thesis by simp
+qed
+
 fun delay_nop where
   "delay_nop F 0 xs lxs = xs @@- lxs"
 | "delay_nop F n xs LNil = llist_of xs"

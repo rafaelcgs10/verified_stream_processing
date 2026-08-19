@@ -7,146 +7,11 @@ begin
 
 section ‹A Generic Nop Invariant for Compiled Dataflow Trees›
 
-text ‹This theory discharges the @{const nop_invariant} hypothesis of
+text ‹This theory discharges the @{const nop_invar} hypothesis of
 @{thm [source] compile_dataflow_opt_wbisim} once and for all for every
 dataflow tree whose leaves are well-behaved, in the sense of the
-type-erased leaf invariant @{term nop_leaf} below. All operators built
-with @{const builder_op} and a frontier-stable logic satisfy it.›
-
-subsection ‹The leaf invariant›
-
-text ‹@{term "nop_leaf k q"} states that the leaf operator @{term q}
-answers empty progress writes with a self-loop, answers a re-read of the
-frontier it currently knows (@{term k}, if any) with a self-loop, only
-emits @{const Inr}-shaped data values, and that all of this is preserved
-by every step. A frontier read updates the known frontier.›
-
-coinductive nop_leaf :: "('p ⇒ 't antichain) option ⇒
-  ('p option, 'p option, (('p, 't, 'm) shared_state_scheme + ('p ⇒ 't antichain)) + 'dd × 't) op ⇒ bool" where
-  nop_leafI: "⟦
-     ⋀st op'. ¬ has_progress st ⟹ step (Out None (Inl (Inl st))) q op' ⟹ op' = q;
-     ⋀F op'. k = Some F ⟹ step (Inp None (Inl (Inr F))) q op' ⟹ op' = q;
-     ⋀op'. step Tau q op' ⟹ nop_leaf k op';
-     ⋀p v op'. step (Inp (Some p) (Inr v)) q op' ⟹ nop_leaf k op';
-     ⋀p v op'. step (Out (Some p) v) q op' ⟹ is_Inr v ∧ nop_leaf k op';
-     ⋀st op'. step (Out None (Inl (Inl st))) q op' ⟹ nop_leaf k op';
-     ⋀F op'. step (Inp None (Inl (Inr F))) q op' ⟹ nop_leaf (Some F) op'
-   ⟧ ⟹ nop_leaf k q"
-
-lemma nop_leafD_progress_selfloop:
-  "nop_leaf k q ⟹ ¬ has_progress st ⟹ step (Out None (Inl (Inl st))) q op' ⟹ op' = q"
-  by (erule nop_leaf.cases) blast
-
-lemma nop_leafD_frontier_selfloop:
-  "nop_leaf (Some F) q ⟹ step (Inp None (Inl (Inr F))) q op' ⟹ op' = q"
-  by (erule nop_leaf.cases) blast
-
-lemma nop_leafD_Tau:
-  "nop_leaf k q ⟹ step Tau q op' ⟹ nop_leaf k op'"
-  by (erule nop_leaf.cases) blast
-
-lemma nop_leafD_data_in:
-  "nop_leaf k q ⟹ step (Inp (Some p) (Inr v)) q op' ⟹ nop_leaf k op'"
-  by (erule nop_leaf.cases) blast
-
-lemma nop_leafD_data_out:
-  "nop_leaf k q ⟹ step (Out (Some p) v) q op' ⟹ is_Inr v ∧ nop_leaf k op'"
-  by (erule nop_leaf.cases) blast
-
-lemma nop_leafD_progress:
-  "nop_leaf k q ⟹ step (Out None (Inl (Inl st))) q op' ⟹ nop_leaf k op'"
-  by (erule nop_leaf.cases) blast
-
-lemma nop_leafD_frontier:
-  "nop_leaf k q ⟹ step (Inp None (Inl (Inr F))) q op' ⟹ nop_leaf (Some F) op'"
-  by (erule nop_leaf.cases) blast
-
-subsection ‹Builder operators satisfy the leaf invariant›
-
-definition logic_frontier_stable where
-  "logic_frontier_stable logic ⟷
-     (∀ os os'. os' |∈| logic os ⟶ front os' = front os ∧ initia os' = initia os)"
-
-lemma front_initia_produces[simp]:
-  "front (produces os b) = front os"
-  "initia (produces os b) = initia os"
-  unfolding produces_def by simp_all
-
-lemma front_initia_drop_caps[simp]:
-  "front (drop_caps os caps) = front os"
-  "initia (drop_caps os caps) = initia os"
-  unfolding drop_caps_def by simp_all
-
-lemma front_initia_add_caps[simp]:
-  "front (add_caps os caps) = front os"
-  "initia (add_caps os caps) = initia os"
-  unfolding add_caps_def by simp_all
-
-lemma front_initia_consumes[simp]:
-  "front (consumes os p t d) = front os"
-  "initia (consumes os p t d) = initia os"
-  unfolding consumes_def by simp_all
-
-lemma front_initia_obtain_progress[simp]:
-  "front (fst (obtain_progress os)) = front os"
-  "initia (fst (obtain_progress os)) = initia os"
-  unfolding obtain_progress_def by simp_all
-
-lemma nop_leaf_builder_op:
-  assumes stable: "logic_frontier_stable logic"
-    and "k = None ∨ (∃ F. k = Some F ∧ front os = F ∧ initia os)"
-  shows "nop_leaf k (builder_op fb tps sps os logic)"
-  using assms(2)
-proof (coinduction arbitrary: k os)
-  case (nop_leaf k os)
-  note prem = nop_leaf
-  note stable' = stable[unfolded logic_frontier_stable_def, rule_format]
-  show ?case
-    apply (rule exI[of _ "builder_op fb tps sps os logic"])
-    apply (rule exI[of _ k])
-    apply (intro conjI)
-    subgoal by (rule refl)
-    subgoal by (rule refl)
-    subgoal
-      by (intro allI impI, erule step_builder_op_elim)
-         (auto dest: obtain_progress_no_progressD[OF sym])
-    subgoal
-      apply (insert prem)
-      apply (intro allI impI)
-      apply (erule step_builder_op_elim)
-      apply (auto simp add: operator_state_front_initia_upd_triv)
-      done
-    subgoal
-      apply (insert prem)
-      apply (intro allI impI)
-      apply (erule step_builder_op_elim)
-      apply (auto simp flip: cin.rep_eq)
-      apply (frule stable')
-      apply auto
-      done
-    subgoal
-      apply (insert prem)
-      apply (intro allI impI)
-      apply (erule step_builder_op_elim)
-      apply auto
-      done
-    subgoal
-      apply (insert prem)
-      apply (intro allI impI)
-      apply (erule step_builder_op_elim)
-      apply auto
-      done
-    subgoal
-      apply (insert prem)
-      apply (intro allI impI)
-      apply (erule step_builder_op_elim)
-      apply auto
-      apply (metis front_initia_obtain_progress(1) front_initia_obtain_progress(2) fst_conv)
-      done
-    subgoal
-      by (intro allI impI, erule step_builder_op_elim) auto
-    done
-qed
+type-erased leaf invariant @{term nop_leaf} from theory Builder_Op. All
+operators built with @{const builder_op} satisfy it.›
 
 subsection ‹The compiled-tree invariant›
 
@@ -730,9 +595,9 @@ proof -
     unfolding tree_nopP_def using g' fix' by simp
 qed
 
-theorem nop_invariant_tree_nopP:
-  "nop_invariant (tree_nopP N)"
-  unfolding nop_invariant_def
+theorem nop_invar_tree_nopP:
+  "nop_invar (tree_nopP N)"
+  unfolding nop_invar_def
   apply (intro conjI allI impI)
   subgoal for sg op
     unfolding tree_nopP_def nop_sound_def
@@ -752,7 +617,7 @@ theorem nop_invariant_tree_nopP:
 subsection ‹Compiled trees satisfy the invariant›
 
 fun builder_tree where
-  "builder_tree (Logic q su) = (∃ k. nop_leaf k q)"
+  "builder_tree (Logic logic su) = (∃ k. nop_leaf k logic)"
 | "builder_tree (Comp wire dt1 dt2) = (builder_tree dt1 ∧ builder_tree dt2)"
 | "builder_tree (Loop wire dt) = builder_tree dt"
 
@@ -857,11 +722,11 @@ qed
 
 subsection ‹The generic equivalence theorems›
 
-theorem compile_dataflow_opt_wbisim_generic:
+lemma compile_dataflow_opt_wbisim_generic:
   assumes "builder_tree dt"
     and "distinct (fst (tree_ids 0 dt))"
   shows "compile_dataflow_opt chns dt ≈ compile_dataflow chns dt"
-  by (rule compile_dataflow_opt_wbisim[OF nop_invariant_tree_nopP tree_nopP_compile[OF assms]])
+  by (rule compile_dataflow_opt_wbisim[OF nop_invar_tree_nopP tree_nopP_compile[OF assms]])
 
 theorem compile_dataflow_opt_wtraces_generic:
   assumes "builder_tree dt"

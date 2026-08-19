@@ -158,7 +158,16 @@ proof (induction \<open>ltakeWhile (Not \<circ> is_Data) (es os p)\<close> arbit
     by force
   ultimately have \<open>os'' |\<in>| ooo_input_op_logic ops os\<close> using LNil(2,3,7,8) ooo_input_op_logic_def
     by force
-  thus ?case using LNil(4,5,9) ocaps_not_empty step_builder_op_Silent ooo_input_op_def by blast
+  then show ?case
+    unfolding LNil(4,9)
+    apply -
+    apply (rule r_into_rtranclp)
+    apply (rule step_builder_op_Silent)
+       apply (rule refl)
+      apply (rule LNil(5))
+     apply assumption
+    apply (simp add: ooo_input_op_logic_collapse)
+    done
 next
   case LCons
   obtain e where lhd_es: \<open>\<not> is_Data e\<close> \<open>lhd (es os p) = e\<close> \<open>es os p = LCons e (ltl (es os p))\<close>
@@ -169,7 +178,14 @@ next
     using LCons(5) lhd_es(1,3) event.case_eq_if llist.case(2) cin_cimage_cfilter input_state.fold_congs(13)
       operator_state.unfold_congs input_state.fold_congs(14) by (smt (verit, ccfv_SIG))
   hence \<open>step Tau op (ooo_input_op ops ?os1)\<close>
-    using LCons(6,7) ocaps_not_empty step_builder_op_Silent ooo_input_op_def by blast
+    unfolding LCons(6) ooo_input_op_def
+    apply -
+    apply (rule step_builder_op_Silent)
+       apply (rule refl)
+      apply (rule LCons(7))
+     apply assumption
+    apply (simp add: ooo_input_op_logic_collapse)
+    done
   moreover have \<open>(step Tau)\<^sup>*\<^sup>* (ooo_input_op ops ?os1) op'\<close>
   proof -
     have es_os1: \<open>es ?os1 p = ltl (es os p)\<close> using lhd_es(1)

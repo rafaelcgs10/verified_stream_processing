@@ -37,7 +37,8 @@ abbreviation eval_builder_op_aux where
 corec builder_op where
   \<open>builder_op fb tps sps os logic =
   Choice (cimage (eval_builder_op_aux (\<lambda>os'. builder_op fb tps sps os' logic) os) (cUn (cUn (cUn (cUn
-    (if initia os then cimage builder_Silent_aux (logic os) else {||})
+    (if initia os then cimage (\<lambda>os'. builder_Silent_aux
+       (os'\<lparr>front := front os, initia := initia os\<rparr>)) (logic os) else {||})
     (cimage builder_Write_aux (cfilter (\<lambda>p. outpu os p \<noteq> []) sps)))
     (if fb then {|builder_ReadFrontier_aux|} else {||}))
     (cimage builder_ReadData_aux tps))
@@ -45,7 +46,8 @@ corec builder_op where
 
 lemma builder_op_code:
   \<open>builder_op fb tps sps os logic = Choice (cUn (cUn (cUn (cUn
-    (if initia os then cimage (\<lambda>os'. Silent (builder_op fb tps sps os' logic)) (logic os) else {||})
+    (if initia os then cimage (\<lambda>os'. Silent (builder_op fb tps sps
+       (os'\<lparr>front := front os, initia := initia os\<rparr>) logic)) (logic os) else {||})
     (cimage (\<lambda>p. case outpu os p of
        x # xs \<Rightarrow> send_output (builder_op fb tps sps (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
      (cfilter (\<lambda>p. outpu os p \<noteq> []) sps)))
@@ -76,7 +78,8 @@ lemma step_builder_op_elim:
   | (write_data) p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| sps\<close> \<open>outpu os p = x # xs\<close>
     \<open>op = builder_op fb tps sps (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
   | (silent) os' where \<open>io = Tau\<close> \<open>initia os\<close>
-    \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb tps sps os' logic\<close>
+    \<open>os' |\<in>| logic os\<close>
+    \<open>op = builder_op fb tps sps (os'\<lparr>front := front os, initia := initia os\<rparr>) logic\<close>
 proof (cases io)
   case (Inp p x)
   show ?thesis
@@ -153,7 +156,8 @@ next
     apply (subst (asm) builder_op.code)
     apply (auto split: if_splits list.splits prod.splits)
     done
-  moreover obtain os' where \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb tps sps os' logic\<close>
+  moreover obtain os' where \<open>os' |\<in>| logic os\<close>
+    \<open>op = builder_op fb tps sps (os'\<lparr>front := front os, initia := initia os\<rparr>) logic\<close>
   proof -
     have \<open>Silent op |\<in>| choices (builder_op fb tps sps os logic)\<close> using Tau assms step_choicesE by blast
     thus ?thesis using that
@@ -226,7 +230,7 @@ lemma steps_builder_op_Read_Some[intro]:
 
 lemma step_builder_op_Silent[intro]:
   assumes \<open>io = Tau\<close> \<open>initia os\<close> \<open>os' |\<in>| logic os\<close>
-    \<open>op = builder_op fb tps sps os' logic\<close>
+    \<open>op = builder_op fb tps sps (os'\<lparr>front := front os, initia := initia os\<rparr>) logic\<close>
   shows \<open>step io (builder_op fb tps sps os logic) op\<close>
 proof -
   have \<open>Silent op |\<in>| choices (builder_op fb tps sps os logic)\<close> using assms(2-)
@@ -236,7 +240,9 @@ qed
 
 lemma step_builder_op_n_Silents[intro]:
   assumes 
-    \<open>os' |\<in>| ((\<lambda> oss. (cUnion (cimage logic (cfilter (\<lambda> os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) oss)))) ^^ n) {| os |}\<close>
+    \<open>os' |\<in>| ((\<lambda> oss. (cUnion (cimage (\<lambda> os. cimage
+       (\<lambda> os''. os''\<lparr>front := front os, initia := initia os\<rparr>) (logic os))
+       (cfilter (\<lambda> os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) oss)))) ^^ n) {| os |}\<close>
     \<open>op = builder_op fb tps sps os' logic\<close>
   shows \<open>(step Tau ^^ n) (builder_op fb tps sps os logic) op\<close>
   using assms apply -
@@ -256,6 +262,171 @@ lemma step_builder_op_n_Silents[intro]:
     done
   done
 
+text \<open>Variant with the collapsed iterate for logics that preserve
+@{const front} and @{const initia}.\<close>
+
+lemma step_builder_op_n_Silents_collapse:
+  assumes collapse: "\<And>os os'. os' |\<in>| logic os \<Longrightarrow>
+      os'\<lparr>front := front os, initia := initia os\<rparr> = os'"
+    and "os' |\<in>| ((\<lambda> oss. (cUnion (cimage logic
+      (cfilter (\<lambda> os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) oss)))) ^^ n) {| os |}"
+    and "op = builder_op fb tps sps os' logic"
+  shows "(step Tau ^^ n) (builder_op fb tps sps os logic) op"
+  using assms(2,3)
+proof (induct n arbitrary: os' op)
+  case 0
+  then show ?case by auto
+next
+  case (Suc n)
+  from Suc.prems(1) obtain os1 where
+    os1: "os1 |\<in>| ((\<lambda> oss. (cUnion (cimage logic
+      (cfilter (\<lambda> os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) oss)))) ^^ n) {| os |}"
+    and initia: "initia os1" and mem: "os' |\<in>| logic os1"
+    by (auto simp flip: cin.rep_eq)
+  have IH: "(step Tau ^^ n) (builder_op fb tps sps os logic) (builder_op fb tps sps os1 logic)"
+    by (rule Suc.hyps[OF os1 refl])
+  have "step Tau (builder_op fb tps sps os1 logic) (builder_op fb tps sps os' logic)"
+    apply (rule step_builder_op_Silent)
+       apply (rule refl)
+      apply (rule initia)
+     apply (rule mem)
+    apply (simp add: collapse[OF mem])
+    done
+  then show ?case
+    unfolding Suc.prems(2) by (rule relpowp_Suc_I[OF IH])
+qed
+
+
+subsection \<open>The leaf invariant\<close>
+
+text \<open>@{term "nop_leaf k q"} states that the leaf operator @{term q}
+answers empty progress writes with a self-loop, answers a re-read of the
+frontier it currently knows (@{term k}, if any) with a self-loop, only
+emits @{const Inr}-shaped data values, and that all of this is preserved
+by every step. A frontier read updates the known frontier.\<close>
+
+coinductive nop_leaf :: "('p \<Rightarrow> 't antichain) option \<Rightarrow>
+  ('p option, 'p option, (('p, 't, 'm) shared_state_scheme + ('p \<Rightarrow> 't antichain)) + 'dd \<times> 't) op \<Rightarrow> bool" where
+  nop_leafI: "\<lbrakk>
+     \<And>st op'. \<not> has_progress st \<Longrightarrow> step (Out None (Inl (Inl st))) q op' \<Longrightarrow> op' = q;
+     \<And>F op'. k = Some F \<Longrightarrow> step (Inp None (Inl (Inr F))) q op' \<Longrightarrow> op' = q;
+     \<And>op'. step Tau q op' \<Longrightarrow> nop_leaf k op';
+     \<And>p v op'. step (Inp (Some p) (Inr v)) q op' \<Longrightarrow> nop_leaf k op';
+     \<And>p v op'. step (Out (Some p) v) q op' \<Longrightarrow> is_Inr v \<and> nop_leaf k op';
+     \<And>st op'. step (Out None (Inl (Inl st))) q op' \<Longrightarrow> nop_leaf k op';
+     \<And>F op'. step (Inp None (Inl (Inr F))) q op' \<Longrightarrow> nop_leaf (Some F) op'
+   \<rbrakk> \<Longrightarrow> nop_leaf k q"
+
+lemma nop_leafD_progress_selfloop:
+  "nop_leaf k q \<Longrightarrow> \<not> has_progress st \<Longrightarrow> step (Out None (Inl (Inl st))) q op' \<Longrightarrow> op' = q"
+  by (erule nop_leaf.cases) blast
+
+lemma nop_leafD_frontier_selfloop:
+  "nop_leaf (Some F) q \<Longrightarrow> step (Inp None (Inl (Inr F))) q op' \<Longrightarrow> op' = q"
+  by (erule nop_leaf.cases) blast
+
+lemma nop_leafD_Tau:
+  "nop_leaf k q \<Longrightarrow> step Tau q op' \<Longrightarrow> nop_leaf k op'"
+  by (erule nop_leaf.cases) blast
+
+lemma nop_leafD_data_in:
+  "nop_leaf k q \<Longrightarrow> step (Inp (Some p) (Inr v)) q op' \<Longrightarrow> nop_leaf k op'"
+  by (erule nop_leaf.cases) blast
+
+lemma nop_leafD_data_out:
+  "nop_leaf k q \<Longrightarrow> step (Out (Some p) v) q op' \<Longrightarrow> is_Inr v \<and> nop_leaf k op'"
+  by (erule nop_leaf.cases) blast
+
+lemma nop_leafD_progress:
+  "nop_leaf k q \<Longrightarrow> step (Out None (Inl (Inl st))) q op' \<Longrightarrow> nop_leaf k op'"
+  by (erule nop_leaf.cases) blast
+
+lemma nop_leafD_frontier:
+  "nop_leaf k q \<Longrightarrow> step (Inp None (Inl (Inr F))) q op' \<Longrightarrow> nop_leaf (Some F) op'"
+  by (erule nop_leaf.cases) blast
+
+subsection \<open>Builder operators satisfy the leaf invariant\<close>
+
+text \<open>The silent case of @{const builder_op} restores @{const front} and
+@{const initia} on every state the logic returns, so the invariant holds
+for arbitrary logics.\<close>
+
+lemma front_initia_produces[simp]:
+  "front (produces os b) = front os"
+  "initia (produces os b) = initia os"
+  unfolding produces_def by simp_all
+
+lemma front_initia_drop_caps[simp]:
+  "front (drop_caps os caps) = front os"
+  "initia (drop_caps os caps) = initia os"
+  unfolding drop_caps_def by simp_all
+
+lemma front_initia_add_caps[simp]:
+  "front (add_caps os caps) = front os"
+  "initia (add_caps os caps) = initia os"
+  unfolding add_caps_def by simp_all
+
+lemma front_initia_consumes[simp]:
+  "front (consumes os p t d) = front os"
+  "initia (consumes os p t d) = initia os"
+  unfolding consumes_def by simp_all
+
+lemma front_initia_obtain_progress[simp]:
+  "front (fst (obtain_progress os)) = front os"
+  "initia (fst (obtain_progress os)) = initia os"
+  unfolding obtain_progress_def by simp_all
+
+lemma nop_leaf_builder_op:
+  assumes "k = None \<or> (\<exists> F. k = Some F \<and> front os = F \<and> initia os)"
+  shows "nop_leaf k (builder_op fb tps sps os logic)"
+  using assms
+proof (coinduction arbitrary: k os)
+  case (nop_leaf k os)
+  note prem = nop_leaf
+  show ?case
+    apply (rule exI[of _ "builder_op fb tps sps os logic"])
+    apply (rule exI[of _ k])
+    apply (intro conjI)
+    subgoal by (rule refl)
+    subgoal by (rule refl)
+    subgoal
+      by (intro allI impI, erule step_builder_op_elim)
+         (auto dest: obtain_progress_no_progressD[OF sym])
+    subgoal
+      apply (insert prem)
+      apply (intro allI impI)
+      apply (erule step_builder_op_elim)
+      apply (auto simp add: operator_state_front_initia_upd_triv)
+      done
+    subgoal
+      apply (insert prem)
+      apply (intro allI impI)
+      apply (erule step_builder_op_elim)
+      apply (auto simp flip: cin.rep_eq)
+      done
+    subgoal
+      apply (insert prem)
+      apply (intro allI impI)
+      apply (erule step_builder_op_elim)
+      apply auto
+      done
+    subgoal
+      apply (insert prem)
+      apply (intro allI impI)
+      apply (erule step_builder_op_elim)
+      apply auto
+      done
+    subgoal
+      apply (insert prem)
+      apply (intro allI impI)
+      apply (erule step_builder_op_elim)
+      apply auto
+      apply (metis front_initia_obtain_progress(1) front_initia_obtain_progress(2) fst_conv)
+      done
+    subgoal
+      by (intro allI impI, erule step_builder_op_elim) auto
+    done
+qed
 
 subsection \<open>Inputs of builder_op\<close>
 

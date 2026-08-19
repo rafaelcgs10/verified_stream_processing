@@ -30,23 +30,6 @@ proof -
   then show ?thesis using assms unfolding obtain_progress_def by simp
 qed
 
-lemma obtain_progress_no_progressD:
-  assumes "obtain_progress os = (os', st)" and "¬ has_progress st"
-  shows "os' = os" and "consu os = []" and "inter os = []" and "produ os = []"
-proof -
-  have os': "os' = os⦇ consu := [], inter := [], produ := [] ⦈" and
-       st: "st = ⦇ cons = consu os, inte = inter os, prod = produ os ⦈"
-    using assms(1) unfolding obtain_progress_def by auto
-  have e1: "consu os = []" and e2: "inter os = []" and e3: "produ os = []"
-    using assms(2) unfolding st has_progress_def by auto
-  have "os' = os⦇ consu := consu os, inter := inter os, produ := produ os ⦈"
-    unfolding os' using e1 e2 e3 by simp
-  then show "os' = os" by simp
-  show "consu os = []" by (rule e1)
-  show "inter os = []" by (rule e2)
-  show "produ os = []" by (rule e3)
-qed
-
 subsection ‹Extracted progress and multiplicity changes of empty batches›
 
 lemma extract_progress_empty[simp]:
@@ -87,15 +70,6 @@ proof -
 qed
 
 subsection ‹Builder self-loops›
-
-lemma operator_state_front_initia_upd_triv[simp]:
-  "front os = v ⟹ initia os ⟹ os⦇ front := v, initia := True ⦈ = os"
-proof -
-  assume "front os = v" and "initia os"
-  then have "os⦇ front := v, initia := True ⦈ = os⦇ front := front os, initia := initia os ⦈"
-    by simp
-  then show ?thesis by simp
-qed
 
 lemma builder_op_frontier_read_self_loop:
   "front os = v ⟹ initia os ⟹

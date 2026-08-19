@@ -14,4 +14,9 @@ definition \<open>tmap_op ip op os f = builder_op False {|ip|} {|op|} os (\<lamb
     |}
    )\<close>
 
+lemma nop_leaf_tmap_op:
+  "nop_leaf None (tmap_op ip op os f)"
+  unfolding tmap_op_def
+  by (rule nop_leaf_builder_op) simp
+
 end

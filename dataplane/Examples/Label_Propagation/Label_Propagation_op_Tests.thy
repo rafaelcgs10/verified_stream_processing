@@ -1,7 +1,7 @@
 theory Label_Propagation_op_Tests
 
 imports
-  Label_Propagation_op_Correctness_Extras
+  Label_Propagation_Nop_Invariant
 begin
 
 section ‹Executable Tests for the Label Propagation Program›

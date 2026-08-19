@@ -1,15 +1,15 @@
 theory Collatz
 
 imports
-  Ooo_Input_op
-  "../Lib/LList_Haskell_Setup"
-  Source_op
-  Tmap_op
-  Concat_op
-  Branch_op
-  Increment_op
-  "../Timely/Dataflow_Op"
-  "../Timely/Dataflow_Opt_Op"
+  "../Ooo_Input_op"
+  "../../Lib/LList_Haskell_Setup"
+  "../Source_op"
+  "../Tmap_op"
+  "../Concat_op"
+  "../Branch_op"
+  "../Increment_op"
+  "../../Timely/Dataflow_Op"
+  "../../Timely/Dataflow_Opt_Op"
 begin
 
 abbreviation init_input_state where

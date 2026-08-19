@@ -2677,20 +2677,45 @@ lemma steps_label_propagation_op_Read_Some[intro]:
   shows \<open>steps ys (label_propagation_op os) op\<close>
   using assms unfolding label_propagation_op_def by (auto simp add: filter_True filter_False BULK_BENQ_right_empty BULK_BENQ_left_empty list_emb_Nil2 in_filter_zmset_in_zmset pos_filter_zmset_pos_zmset neg_filter_zmset_neg_zmset set_antichain1 set_antichain2 mset_set.infinite cin.rep_eq simp del: cin.rep_eq[symmetric] cong del: if_cong)
 
+lemma label_propagation_op_logic_front_initia[simp]:
+  "os' |\<in>| label_propagation_op_logic os \<Longrightarrow> front os' = front os"
+  "os' |\<in>| label_propagation_op_logic os \<Longrightarrow> initia os' = initia os"
+  unfolding label_propagation_op_logic_def
+  by (auto simp add: Let_def split: list.splits prod.splits if_splits
+      simp flip: cin.rep_eq)
+
+lemma label_propagation_op_logic_collapse[simp]:
+  "os' |\<in>| label_propagation_op_logic os \<Longrightarrow>
+   os'\<lparr>front := front os, initia := initia os\<rparr> = os'"
+  by simp
+
+lemma nop_leaf_label_propagation_op:
+  "nop_leaf None (label_propagation_op os)"
+  unfolding label_propagation_op_def
+  by (rule nop_leaf_builder_op) simp
+
 lemma step_label_propagation_op_Silent[intro]:
   assumes \<open>io = Tau\<close>
     and \<open>initia os\<close>
     and \<open>os' |\<in>| label_propagation_op_logic os\<close>
     and \<open>op = label_propagation_op os'\<close>
   shows \<open>step io (label_propagation_op os) op\<close>
-  using assms unfolding label_propagation_op_def by auto
+  unfolding assms(1,4) label_propagation_op_def
+  apply (rule step_builder_op_Silent)
+     apply (rule refl)
+    apply (rule assms(2))
+   apply (rule assms(3))
+  apply (simp add: label_propagation_op_logic_collapse[OF assms(3)])
+  done
 
 lemma step_label_propagation_op_n_Silents[intro]:
   assumes \<open>os' |\<in>| ((\<lambda>oss. cUnion (cimage label_propagation_op_logic
       (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
     and \<open>op = label_propagation_op os'\<close>
   shows \<open>(step Tau ^^ n) (label_propagation_op os) op\<close>
-  using assms unfolding label_propagation_op_def by auto
+  using assms unfolding label_propagation_op_def
+  by (intro step_builder_op_n_Silents_collapse)
+     (auto simp: label_propagation_op_logic_collapse)
 
 lemma steps_label_propagation_op_n_Silents[intro]:
   assumes \<open>os' |\<in>| ((\<lambda>oss. cUnion (cimage label_propagation_op_logic
