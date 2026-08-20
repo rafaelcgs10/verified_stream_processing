@@ -1,4 +1,4 @@
-theory Increment_op
+theory Increment_Op
 
 imports
   "../Timely/Builder_Op"

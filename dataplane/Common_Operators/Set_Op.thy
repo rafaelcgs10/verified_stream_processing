@@ -1,4 +1,4 @@
-theory Set_op
+theory Set_Op
 
 imports
   Nondeterministic_Dataflow.Operator

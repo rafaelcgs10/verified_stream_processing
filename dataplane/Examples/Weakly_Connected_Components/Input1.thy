@@ -8,7 +8,7 @@ imports
   "../../Correctness/Consumes"
   "../../Correctness/Init"
   "../../Correctness/Timely_Collections"
-  Label_Propagation_op_Correctness_Extras
+  Label_Propagation_Op_Correctness_Extras
 begin
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del] 

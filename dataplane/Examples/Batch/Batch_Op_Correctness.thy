@@ -1,7 +1,7 @@
-theory Batch_op_Correctness
+theory Batch_Op_Correctness
 
 imports
-  Batch_op
+  Batch_Op
   "../../Correctness/Consumes"
   "../../Correctness/Progress"
   "../../Correctness/Produces"
@@ -9,7 +9,7 @@ imports
   "../../Correctness/Timely_Collections"
   "../../Correctness/OCapsReorder"
   "../../Correctness/Init"
-  "../Set_op"
+  "../../Common_Operators/Set_Op"
 begin
 no_notation shiftr  (infixl \<open>>>\<close> 55)
 

@@ -1,4 +1,4 @@
-theory Label_Propagation_op_Correctness
+theory Label_Propagation_Op_Correctness
 
 imports
   Dataplane_Inv

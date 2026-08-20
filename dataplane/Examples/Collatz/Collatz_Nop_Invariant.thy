@@ -1,7 +1,7 @@
 theory Collatz_Nop_Invariant
 
 imports
-  Collatz
+  Collatz_Op
   "../../Timely/Tree_Nop_Invariant"
 begin
 

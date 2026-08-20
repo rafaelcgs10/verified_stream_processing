@@ -1,8 +1,8 @@
-theory Increment_op_Correctness
+theory Increment_Op_Correctness
 
 imports
-  Ooo_Input_op_Correctness
-  Increment_op
+  Ooo_Input_Op_Correctness
+  Increment_Op
 begin
 
 (* TODO Move. *)

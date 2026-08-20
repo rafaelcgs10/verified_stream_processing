@@ -1,7 +1,7 @@
-theory Batch_op
+theory Batch_Op
 
 imports
-  "../Ooo_Input_op"
+  "../../Common_Operators/Ooo_Input_Op"
   "../../Timely/Dataflow_Op"
   "../../Timely/Dataflow_Opt_Op"
   "../../Lib/LList_Haskell_Setup"

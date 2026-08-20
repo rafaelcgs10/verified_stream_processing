@@ -1,13 +1,13 @@
-theory Collatz
+theory Collatz_Op
 
 imports
-  "../Ooo_Input_op"
+  "../../Common_Operators/Ooo_Input_Op"
   "../../Lib/LList_Haskell_Setup"
-  "../Source_op"
-  "../Tmap_op"
-  "../Concat_op"
-  "../Branch_op"
-  "../Increment_op"
+  "../../Common_Operators/Source_Op"
+  "../../Common_Operators/Tmap_Op"
+  "../../Common_Operators/Concat_Op"
+  "../../Common_Operators/Branch_Op"
+  "../../Common_Operators/Increment_Op"
   "../../Timely/Dataflow_Op"
   "../../Timely/Dataflow_Opt_Op"
 begin

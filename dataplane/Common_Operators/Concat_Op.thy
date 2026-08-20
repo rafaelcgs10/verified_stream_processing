@@ -1,4 +1,4 @@
-theory Concat_op
+theory Concat_Op
 
 imports
   "../Timely/Builder_Op"

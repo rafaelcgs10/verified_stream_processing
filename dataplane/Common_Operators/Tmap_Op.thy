@@ -1,4 +1,4 @@
-theory Tmap_op
+theory Tmap_Op
 
 imports
   "../Timely/Builder_Op"

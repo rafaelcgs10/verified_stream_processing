@@ -1,7 +1,7 @@
-theory Batch_op_Tests
+theory Batch_Op_Tests
 
 imports
-  Batch_op_Nop_Invariant
+  Batch_Op_Nop_Invariant
 begin
 
 section ‹Executable Tests for the Batch Program›

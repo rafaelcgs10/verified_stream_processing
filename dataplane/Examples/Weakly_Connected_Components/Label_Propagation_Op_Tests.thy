@@ -1,4 +1,4 @@
-theory Label_Propagation_op_Tests
+theory Label_Propagation_Op_Tests
 
 imports
   Label_Propagation_Nop_Invariant

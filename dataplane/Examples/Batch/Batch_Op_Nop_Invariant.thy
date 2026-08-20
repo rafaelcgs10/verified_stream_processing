@@ -1,7 +1,7 @@
-theory Batch_op_Nop_Invariant
+theory Batch_Op_Nop_Invariant
 
 imports
-  Batch_op
+  Batch_Op
   "../../Timely/Tree_Nop_Invariant"
 begin
 

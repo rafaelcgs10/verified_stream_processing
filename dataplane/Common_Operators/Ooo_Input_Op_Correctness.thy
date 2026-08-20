@@ -1,8 +1,8 @@
-theory Ooo_Input_op_Correctness
+theory Ooo_Input_Op_Correctness
 
 imports
-  Ooo_Input_op
-  Source_op
+  Ooo_Input_Op
+  Source_Op
   "../Timely/Dataflow_Op"
   "../Lib/SimulationProofMethods"
 begin

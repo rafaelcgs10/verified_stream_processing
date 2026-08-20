@@ -1,4 +1,4 @@
-theory Branch_op
+theory Branch_Op
 
 imports
   "../Timely/Builder_Op"

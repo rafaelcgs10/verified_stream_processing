@@ -1,4 +1,4 @@
-theory Ooo_Input_op
+theory Ooo_Input_Op
 
 imports
   "../Timely_Stream"

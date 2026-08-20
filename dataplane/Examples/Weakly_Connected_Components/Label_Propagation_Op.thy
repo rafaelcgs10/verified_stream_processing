@@ -1,4 +1,4 @@
-theory Label_Propagation_op
+theory Label_Propagation_Op
 
 imports
   "../../Timely/Builder_Op"

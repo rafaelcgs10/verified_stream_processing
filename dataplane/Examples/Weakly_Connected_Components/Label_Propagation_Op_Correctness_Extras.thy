@@ -1,10 +1,10 @@
-theory Label_Propagation_op_Correctness_Extras
+theory Label_Propagation_Op_Correctness_Extras
 
 imports
-  Label_Propagation_op
-  "../Ooo_Input_op"
-  "../Increment_op"
-  "../Set_op"
+  Label_Propagation_Op
+  "../../Common_Operators/Ooo_Input_Op"
+  "../../Common_Operators/Increment_Op"
+  "../../Common_Operators/Set_Op"
   "../../Timely/Dataflow_Op"
   "../../Timely/Dataflow_Opt_Op"
   "../../Correctness/General"
