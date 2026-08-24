@@ -141,41 +141,6 @@ lemma in_frontier_iff:
   "t \<in>\<^sub>A frontier M \<longleftrightarrow> ((\<forall> t'. zcount M t' > 0 \<longrightarrow> \<not> t' < t) \<and> zcount M t > 0)"
   by (metis trivial_dataflow_topology_interpretation.in_frontier_least trivial_dataflow_topology_interpretation.obtain_elem_frontier le_less member_frontier_pos_zmset)
 
-lemma frontier_below_eq_frontier_plus[simp]:
-  "(frontier (zmset_of (mset_set (set_antichain (frontier M))) + zmset_of (mset_set (set_antichain (frontier N))))) 
-  \<le>
-  (frontier (N + M))"
-  unfolding less_eq_antichain_def
-  apply safe
-  subgoal for tMN
-    apply (cases "(\<exists> t. t \<le> tMN \<and> t \<in>\<^sub>A frontier M \<and> (\<forall> t'. t' \<in>\<^sub>A frontier N \<longrightarrow> \<not> t' < t)) \<or> (\<exists> t. t \<le> tMN \<and> t \<in>\<^sub>A frontier N \<and> (\<forall> t'. t' \<in>\<^sub>A frontier M \<longrightarrow> \<not> t' < t))")
-    subgoal
-      apply (elim disjE conjE exE)
-      subgoal for t
-        apply (rule exI[of _ t])
-        apply (intro conjI)
-        subgoal
-          by (smt (verit, ccfv_threshold) trivial_dataflow_topology_interpretation.mem_zmset_frontier frontier_idempotent in_frontier_iff not_in_iff_zmset zcount_union)
-        subgoal
-          by order
-        done
-      subgoal for t
-        apply (rule exI[of _ t])
-        apply (intro conjI)
-        subgoal
-          by (smt (verit, ccfv_threshold) trivial_dataflow_topology_interpretation.mem_zmset_frontier frontier_idempotent in_frontier_iff not_in_iff_zmset zcount_union)
-        subgoal
-          by order
-        done
-      done
-    subgoal
-      apply (rule ccontr)
-      apply auto
-      apply (smt (verit, best) trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_frontier_elem dual_order.strict_trans1 frontier_comparable_False order_less_imp_le)
-      done
-    done
-  done
-
 lemma frontier_below_eq_frontier_plus_neg:
   "(\<forall> t. zcount M t \<le> 0) \<Longrightarrow>
    (frontier N) \<le> (frontier (N + M))"
@@ -245,12 +210,6 @@ lemma frontier_singleton:
   "frontier {#x#}\<^sub>z = antichain {x}"
   by (smt (verit, ccfv_threshold) add_0 finite.emptyI finite_insert frontier_le_add_singleton in_antichain_minimal_antichain less_eq_antichain_def member_frontier_pos_zmset minimal_antichain_singleton order_antisym_conv
       order_less_le singleton_iff zcount_empty zcount_single)
-
-lemma frontier_le_zmset_of[simp]:
-  "frontier {#t#}\<^sub>z \<le> frontier (zmset_of {#t. x \<in># mset xs#})"
-  apply (induct xs)
-  using frontier_le_add apply fastforce+
-  done
 
 lemma frontier_le_singletonD:
   "frontier A \<le> frontier {#t#}\<^sub>z \<Longrightarrow>

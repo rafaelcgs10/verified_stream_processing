@@ -193,26 +193,12 @@ lemma empty_is_empty_antichain[simp]:
   "is_empty_antichain (antichain {})"
   by (metis Set.is_empty_iff empty_antichain.rep_eq empty_antichain_def is_empty_antichain.rep_eq)
 
-lemma is_empty_antichain_plus[simp]:
-  "is_empty_antichain (A + B) \<longleftrightarrow> is_empty_antichain A \<and> is_empty_antichain B"
-  apply transfer
-  apply (clarsimp simp add: minimal_antichain_def incomparable_def)
-  apply (metis Un_iff empty_iff ex_min_if_finite finite_Un)
-  done
-
 
 lemma not_in_empty[simp]:
   "a \<in>\<^sub>A {}\<^sub>A \<Longrightarrow> False"
   using mem_antichain_nonempty by blast
 
 declare zmultiset_of_antichain_def[code]
-
-lemma antichain_sum_empty[simp]:
-  "A + {}\<^sub>A = A"
-  apply transfer
-  apply simp
-   apply (smt (verit, ccfv_threshold) in_minimal_antichain incomparable_def order_class.order_eq_iff order_less_imp_not_eq subset_iff)
-  done
 
 lemma antichain_sum_empty_2[simp]:
   "{}\<^sub>A + A = A"
@@ -353,14 +339,6 @@ lemma antichain_from_list_is_empty:
   apply (cases xs)
      apply (auto simp add: filter_empty_conv incomparable_def split: if_splits)
   apply (metis (mono_tags, lifting) Collect_empty_eq)
-  done
-
-lemma set_antichain_antichain_from_list[simp]:
-  "set_antichain (antichain_from_list xs) = {x \<in> set xs. \<forall> y \<in> set xs - {x}. \<not> x < y \<and> \<not> y < x}"
-  unfolding antichain_from_list_def 
-  apply simp
-    apply (subst antichain_inverse)
-   apply (auto simp add: incomparable_def)
   done
 
 

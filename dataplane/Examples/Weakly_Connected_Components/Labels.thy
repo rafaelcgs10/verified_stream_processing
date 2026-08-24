@@ -244,11 +244,6 @@ lemma label_prop_covered_inv_release_caps[simp]:
   unfolding release_caps_def Let_def by simp
 
 
-lemma label_prop_covered_inv_input_tl[simp]:
-  "label_prop_covered_inv (input_tl os p) M = label_prop_covered_inv os M"
-  unfolding label_prop_covered_inv_def all_edges_def all_vertices_def neighbors_def min_label_def input_tl_def
-  by simp
-
 
 
 

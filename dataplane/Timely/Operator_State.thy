@@ -175,22 +175,6 @@ lemma consu_obtain_progress[simp]:
 
 subsection \<open>Operator-state extension field preservation\<close>
 
-lemma is_en1_delay_cap[simp]:
-  "is_en1 (delay_cap os cap incr) = is_en1 os"
-  unfolding delay_cap_def by auto
-
-lemma is_en2_delay_cap[simp]:
-  "is_en2 (delay_cap os cap incr) = is_en2 os"
-  unfolding delay_cap_def by auto
-
-lemma is_en1_consume[simp]:
-  "is_en1 (consume os p t len) = is_en1 os"
-  unfolding consume_def by auto
-
-lemma is_en2_consume[simp]:
-  "is_en2 (consume os p t len) = is_en2 os"
-  unfolding consume_def by auto
-
 lemma is_en1_produces[simp]:
   "is_en1 (produces os batch) = is_en1 os"
   unfolding produces_def by auto
@@ -347,14 +331,6 @@ lemma is_en2_fold_consumes[simp]:
   "is_en2 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = is_en2 os"
   by (induct xs arbitrary: os) auto
 
-lemma is_en1_obtain_progress[simp]:
-  "is_en1 (fst (obtain_progress os)) = is_en1 os"
-  unfolding obtain_progress_def by auto
-
-lemma is_en2_obtain_progress[simp]:
-  "is_en2 (fst (obtain_progress os)) = is_en2 os"
-  unfolding obtain_progress_def by auto
-
 lemma en1_input_tl[simp]:
   "en1 (input_tl os p) = en1 os"
   unfolding input_tl_def by auto
@@ -378,11 +354,6 @@ lemma de2_input_tl[simp]:
 lemma is_en2_input_tl[simp]:
   "is_en2 (input_tl os p) = is_en2 os"
   unfolding input_tl_def by auto
-
-lemma outpu_consumes[simp]:
-  "outpu (consumes os p t d) p' = outpu os p'"
-  unfolding consumes_def BENQ_def add_caps_def
-  by (auto simp add: operator_state.defs)
 
 lemma consu_add_caps[simp]:
   "consu (add_caps os caps) = consu os"
@@ -571,14 +542,6 @@ lemma initia_drop_caps[simp]:
   unfolding drop_caps_def
   by auto
 
-lemma drop_caps_intsum_update[simp]:
-  \<open>drop_caps (os\<lparr>intsum := I\<rparr>) caps = (drop_caps os caps)\<lparr>intsum := I\<rparr>\<close>
-  unfolding drop_caps_def by simp
-
-lemma drop_caps_consu_update[simp]:
-  \<open>drop_caps (os\<lparr>consu := C\<rparr>) caps = (drop_caps os caps)\<lparr>consu := C\<rparr>\<close>
-  unfolding drop_caps_def by simp
-
 lemma drop_caps_produ_update[simp]:
   \<open>drop_caps (os\<lparr>produ := P\<rparr>) caps = (drop_caps os caps)\<lparr>produ := P\<rparr>\<close>
   unfolding drop_caps_def by simp
@@ -592,14 +555,6 @@ lemma drop_caps_outpu_update[simp]:
   unfolding drop_caps_def by simp
 
 
-
-lemma drop_caps_front_update[simp]:
-  \<open>drop_caps (os\<lparr>front := F\<rparr>) caps = (drop_caps os caps)\<lparr>front := F\<rparr>\<close>
-  unfolding drop_caps_def by simp
-
-lemma drop_caps_initia_update[simp]:
-  \<open>drop_caps (os\<lparr>initia := B\<rparr>) caps = (drop_caps os caps)\<lparr>initia := B\<rparr>\<close>
-  unfolding drop_caps_def by simp
 
 lemma ocaps_drop_caps_all:
   \<open>ocaps (drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))) p = []\<close>
@@ -904,9 +859,5 @@ subsection \<open>Consolidated State Laws\<close>
 lemma intsum_CONSUMES[simp]:
   \<open>intsum (CONSUMES p xs os) = intsum os\<close>
   by (induct xs arbitrary: os) (auto split: prod.splits)
-
-lemma de1_CONSUMES[simp]:
-  \<open>de1 (CONSUMES p xs os) = de1 os\<close>
-  by simp
 
 end

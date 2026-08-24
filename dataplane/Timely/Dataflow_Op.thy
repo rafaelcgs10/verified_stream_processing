@@ -85,14 +85,6 @@ lemma step_Inp_dataflow_op_Inp_Inr_intro[intro!]:
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
 
-lemma steps_Tau_dataflow_op_Tau_intro[intro]:
-  "steps (replicate n Tau) op op' \<Longrightarrow>
-   (step Tau ^^ n) (dataflow_op sg op) (dataflow_op sg op')"
-  apply (induct n arbitrary: op op' sg)
-   apply clarsimp+
-  apply (metis (no_types, lifting) relcompp_apply relpowp_commute step_Tau_dataflow_op_Tau_intro)
-  done
-
 lemma steps_Tau_dataflow_op_steps_Out_intro[intro]:
   "steps (map (\<lambda> x. Out (Inr (nid, p)) (Inr x)) xs) op op' \<Longrightarrow>
    ys = map (\<lambda> x. Out (nid, p) x) xs \<Longrightarrow>

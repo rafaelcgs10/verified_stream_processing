@@ -283,15 +283,5 @@ abbreviation AF where
 notation "AF" (infixl \<open>-++-\<close> 65)
 
 
-subsection \<open>Compiled Summaries Form a Dataflow Topology\<close>
-
-text \<open>Every summary produced by compiling a dataflow tree satisfies the
-  \<^locale>\<open>dataflow_topology\<close> assumptions. This discharges, once and for all, the
-  goals of the form \<^term>\<open>dataflow_topology (summ sg) (-+-)\<close> that recur
-  throughout the correctness proofs.\<close>
-
-lemmas dataflow_topology_dataflow_tree_to_graph[simp] =
-  dataflow_topology_from_tree.dataflow_topology_axioms
-
 
 end

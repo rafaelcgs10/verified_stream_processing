@@ -34,9 +34,7 @@ lemma lt_le_lt:
 lemma int_sum_minus_cases:
   "(0 :: int) < V \<Longrightarrow> V = n + m - p \<Longrightarrow> 0 \<le> p \<Longrightarrow> 0 < n \<or> 0 < m"
   by auto
-lemma sum_singleton:
-  "sum f {t} = f t"
-  by auto
+
 lemma gt_0_plusD:
   "0 < a + b \<Longrightarrow> 0 < a \<or> 0 < (b :: int)"
   by auto

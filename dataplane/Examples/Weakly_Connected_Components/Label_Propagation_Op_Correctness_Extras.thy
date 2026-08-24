@@ -971,18 +971,11 @@ lemma cfilter_False:
   "\<forall> x. x |\<in>| A \<longrightarrow> \<not> P x \<Longrightarrow>
    cfilter P A = {||}"
   by auto
-lemma MyPair_zero_zero_sum[simp]:
-  "MyPair (0 :: nat) (0 :: nat) + a = a"
-  by (simp add: zero_myprod_def)
+
 
 lemma MyPair_zero_zero_sum2[simp]:
   "a -+- MyPair 0 0 = a"
   by (simp add: zero_myprod_def)
-
-lemma all_edges_add_caps[simp]:
-  "all_edges (add_caps os caps) = all_edges os"
-  unfolding add_caps_def all_edges_def all_vertices_def neighbors_def
-  by auto
 
 lemma ccs_insert_swap:
   "ccs (insert (v1, v2) X) = ccs (insert (v2, v1) X)"

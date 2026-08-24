@@ -126,37 +126,6 @@ lemma step_Inp_dataflow_opt_op_Inp_Inr_intro[intro!]:
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
 
-lemma steps_Tau_dataflow_opt_op_Tau_intro[intro]:
-  "steps (replicate n Tau) op op' ⟹
-   (step Tau ^^ n) (dataflow_opt_op sg op) (dataflow_opt_op sg op')"
-  apply (induct n arbitrary: op op' sg)
-   apply clarsimp+
-  apply (metis (no_types, lifting) relcompp_apply relpowp_commute step_Tau_dataflow_opt_op_Tau_intro)
-  done
-
-lemma steps_Tau_dataflow_opt_op_steps_Out_intro[intro]:
-  "steps (map (λ x. Out (Inr (nid, p)) (Inr x)) xs) op op' ⟹
-   ys = map (λ x. Out (nid, p) x) xs ⟹
-   (steps ys) (dataflow_opt_op sg op) (dataflow_opt_op sg op')"
-  apply hypsubst_thin
-  apply (induct xs arbitrary: op op' sg rule: rev_induct)
-   apply clarsimp+
-  apply fastforce
-  done
-
-lemma step_Taus_dataflow_opt_op_Taus_intro[intro]:
-  "(step Tau)⇧*⇧* op op' ⟹
-   (step Tau)⇧*⇧* (dataflow_opt_op sg op) (dataflow_opt_op sg op')"
-  apply (induct op' rule: rtranclp_induct)
-   apply force
-  apply (meson rtranclp.intros(2) step_Tau_dataflow_opt_op_Tau_intro)
-  done
-
-lemma step_tau_pow_dataflow_opt_op[intro]:
-  "(step Tau ^^ n) op op' ⟹
-   (step Tau ^^ n) (dataflow_opt_op sg op) (dataflow_opt_op sg op')"
-  by (induct n arbitrary: op') auto
-
 lemma dataflow_opt_op_simps[simp]:
   "¬ is_Read (dataflow_opt_op sg op)"
   "¬ is_Write (dataflow_opt_op sg op)"

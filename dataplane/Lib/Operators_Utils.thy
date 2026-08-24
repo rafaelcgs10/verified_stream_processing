@@ -306,10 +306,6 @@ definition wsim_set (\<open>_ \<leadsto>\<^sup>^<_> _\<close> [80, 80, 80] 80)
   where
     "P \<leadsto>\<^sup>^<Rel> Q \<equiv> \<forall>io Q'. step io Q Q' \<longrightarrow> (\<exists>P'. wstep io P P' \<and> (P', Q') \<in> Rel)"
 
-lemma rel2_in_rel[simp]:
-  "in_rel = rel2p"
-  unfolding rel2p_def by force
-
 lemma in_p2_rel_simp[simp]:
   "(op1, op2) \<in> p2rel X \<longleftrightarrow> X op1 op2"
   by (metis case_prodI mem_Collect_eq p2relD p2rel_def)
@@ -694,11 +690,6 @@ lemma weakBisimWeakUptoBisimCong[case_names SIM1 SIM2, consumes 1]:
       done
     done
   done
-
-lemma SR'[intro]:
-  "y = (f xa) \<Longrightarrow>
-   step (Inp p xa) (Read p f) y"
-  by auto
 
 lemma steps_comp_op_R_Out[intro!]:
   "steps (map (Out p) xs) op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> ys = map (Out (Inr p)) xs \<Longrightarrow> steps ys (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"

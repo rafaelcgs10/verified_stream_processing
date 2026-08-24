@@ -17,11 +17,6 @@ lemma incomparable_bots[simp]:
   unfolding incomparable_def
   using bots_class.minimal by blast
 
-lemma minimal_antichain_bots[simp]:
-  "minimal_antichain (set bots) = set bots"
-  unfolding minimal_antichain_def
-  using bots_class.minimal by blast
-
 end
 
 

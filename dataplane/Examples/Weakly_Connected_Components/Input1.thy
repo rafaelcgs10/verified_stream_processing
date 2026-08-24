@@ -244,15 +244,6 @@ proof -
             [OF inp vl_eq refl refl refl refl refl refl ini])
 qed
 
-lemma step_compower_label_propagation_op_input1[intro]:
-  assumes \<open>input os 1 = msgs @ ys\<close>
-    and \<open>n = length msgs\<close>
-    and \<open>os_next |\<in>| ((\<lambda>oss. cUnion (cimage label_propagation_op_logic
-      (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
-    and \<open>op = label_propagation_op os_next\<close>
-  shows \<open>(step Tau ^^ n) (label_propagation_op os) op\<close>
-  using assms by auto
-
 lemma step_compower_label_propagation_op_input1_eq[intro]:
   assumes \<open>input os 1 = msgs @ ys\<close>
     and   \<open>n = length msgs\<close>
@@ -813,12 +804,6 @@ next
     by (simp add: append_assoc)
 qed
 
-
-lemma filter_label_prop_input1_step_batch_out_neq[simp]:
-  assumes \<open>p \<noteq> (1 :: 2)\<close>
-  shows \<open>filter (\<lambda>(x, cap). out cap = p) (label_prop_input1_step_batch os d t) = []\<close>
-  using assms
-  by (auto simp add: filter_empty_conv elim!: label_prop_input1_step_batch_memberD)
 
 
 lemma filter_snd_label_prop_input1_batched_out_neq[simp]:
@@ -1671,11 +1656,6 @@ qed
 subsection \<open>Frame facts for label_prop_input1_loop_updates\<close>
 
 
-lemma fst_label_prop_input1_loop_updates[simp]:
-  \<open>fst (label_prop_input1_loop_updates cbufs os_label_prop os) =
-   cbufs((2, 1) := [], (1, 1) := [])\<close>
-  unfolding label_prop_input1_loop_updates_def Let_def by simp
-
 
 lemma filter_cap_out_map_neq[simp]:
   assumes \<open>p \<noteq> q\<close>
@@ -1809,20 +1789,6 @@ subsection \<open>Operational normal forms for label_prop_input1_loop_updates\<c
 
 
 
-lemma fst_label_prop_input1_loop_updates_update[simp]:
-  \<open>fst (label_prop_input1_loop_updates cbufs os_label_prop (os(n := X))) =
-    fst (label_prop_input1_loop_updates cbufs os_label_prop os)\<close>
-  unfolding label_prop_input1_loop_updates_def
-  by clarsimp
-
-
-lemma fst_snd_label_prop_input1_loop_updates_update[simp]:
-  assumes n2: \<open>n \<noteq> (2 :: 3)\<close>
-  shows \<open>fst (snd (label_prop_input1_loop_updates cbufs os_label_prop (os(n := X)))) =
-    fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))\<close>
-  using n2
-  unfolding label_prop_input1_loop_updates_def
-  by clarsimp
 
 
 lemma snd_snd_label_prop_input1_loop_updates_unchanged[simp]:
@@ -1835,44 +1801,9 @@ lemma snd_snd_label_prop_input1_loop_updates_unchanged[simp]:
 
 
 
-lemma snd_snd_label_prop_input1_loop_updates_update[simp]:
-  assumes nm: \<open>n \<noteq> m\<close>
-  shows \<open>snd (snd (label_prop_input1_loop_updates cbufs os_label_prop (os(n := X)))) m =
-    snd (snd (label_prop_input1_loop_updates cbufs os_label_prop os)) m\<close>
-  using nm
-  unfolding label_prop_input1_loop_updates_def
-  by (clarsimp simp del: label_propagation_op_logic_front_initia
-      ooo_input_op_logic_front_initia increment_op_logic_front_initia
-      operator_state_front_initia_upd_collapse)
-
-
-lemma fst_label_prop_input1_loop_updates_cbufs_cleared[simp]:
-  assumes k: \<open>k = (((1 :: 3), (1 :: 2))) \<or> k = (((2 :: 3), (1 :: 2)))\<close>
-  shows \<open>fst (label_prop_input1_loop_updates (cbufs(k := X)) os_label_prop os) =
-    fst (label_prop_input1_loop_updates cbufs os_label_prop os)\<close>
-  using k
-  unfolding label_prop_input1_loop_updates_def
-  by (auto simp add: fun_upd_twist)
 
 
 
-lemma fst_snd_label_prop_input1_loop_updates_cbufs_irrelevant[simp]:
-  assumes k11: \<open>k \<noteq> (((1 :: 3), (1 :: 2)))\<close>
-    and k21: \<open>k \<noteq> (((2 :: 3), (1 :: 2)))\<close>
-  shows \<open>fst (snd (label_prop_input1_loop_updates (cbufs(k := X)) os_label_prop os)) =
-    fst (snd (label_prop_input1_loop_updates cbufs os_label_prop os))\<close>
-  using k11 k21
-  unfolding label_prop_input1_loop_updates_def
-  by clarsimp
-
-
-lemma snd_snd_label_prop_input1_loop_updates_cbufs_irrelevant[simp]:
-  assumes k21: \<open>k \<noteq> (((2 :: 3), (1 :: 2)))\<close>
-  shows \<open>snd (snd (label_prop_input1_loop_updates (cbufs(k := X)) os_label_prop os)) =
-    snd (snd (label_prop_input1_loop_updates cbufs os_label_prop os))\<close>
-  using k21
-  unfolding label_prop_input1_loop_updates_def
-  by clarsimp
 
 
 
@@ -3023,11 +2954,6 @@ lemma label_propagation_state_extend_decompose:
       vertices = vertices os, label = label os\<rparr>\<close>
   by (simp add: op_state_base_def operator_state.defs)
 
-
-lemma label_prop_input1_step_state_graph[simp]:
-  \<open>graph (label_prop_input1_step_state os d t) = graph os\<close>
-  unfolding label_prop_input1_step_state_def
-  by (simp add: Let_def)
 
 
 

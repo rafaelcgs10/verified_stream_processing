@@ -341,15 +341,6 @@ lemma edge_vertices_empty[simp]:
   unfolding edge_vertices_def
   by simp
 
-lemma edge_vertices_Un[simp]:
-  "edge_vertices (A \<union> B) = edge_vertices A \<union> edge_vertices B"
-  unfolding edge_vertices_def
-  by auto
-
-lemma edge_vertices_insert_loop[simp]:
-  "edge_vertices (insert (v, v) E) = insert v (edge_vertices E)"
-  by simp
-
 lemma reachable_empty[simp]:
   "reachable {} x y \<longleftrightarrow> x = y"
   unfolding reachable_def
@@ -359,11 +350,6 @@ lemma reachable_empty[simp]:
 
 lemma reachable_insert_edge[simp]:
   "reachable (insert (x, y) E) x y"
-  unfolding reachable_def
-  by (rule r_into_rtrancl) simp
-
-lemma reachable_insert_edge_sym[simp]:
-  "reachable (insert (x, y) E) y x"
   unfolding reachable_def
   by (rule r_into_rtrancl) simp
 
@@ -456,30 +442,7 @@ proof -
     unfolding cc_of_def reachable_def edge_vertices_def using rel_eq field_eq by simp
 qed
 
-lemma cc_of_insert_other_endpoint[simp]:
-  "cc_of (insert (v1, v2) A) v2 = insert v1 (insert v2 ((cc_of A v1) \<union> (cc_of A v2)))"
-  by (subst cc_of_insert_commute) (simp add: insert_commute sup_commute)
 
-lemma cc_of_insert_loop[simp]:
-  "cc_of (insert (v, v) A) v = insert v (cc_of A v)"
-  by simp
-
-
-
-lemma is_subcc_empty[simp]:
-  "is_subcc E {}"
-  unfolding is_subcc_def
-  by simp
-
-lemma ccs_empty[simp]:
-  "ccs {} = {}"
-  unfolding is_cc_def is_subcc_def
-  by auto
-
-lemma components_from_labels_empty[simp]:
-  "components_from_labels {} l = {}"
-  unfolding components_from_labels_def
-  by simp
 
 
 

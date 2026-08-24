@@ -115,33 +115,6 @@ lemma set_op_not_step_Inp[simp]:
   apply (elim step_set_op_elim; simp)
   done
 
-lemma wstep_Out_set_op[intro]:
-  "wstep (Out p x) op op' \<Longrightarrow>
-   \<not> (p, x) |\<in>| S' \<Longrightarrow>
-   op'' = set_op (cinsert (p, x) S) (cinsert (p, x) S') op' \<Longrightarrow>
-   wstep (Out p x) (set_op S S' op) op''"
-  unfolding wstep_def
-  apply (clarsimp  simp flip: cin.rep_eq)
-  apply hypsubst_thin+
-  apply (intro "relcomppI")
-    prefer 3
-  apply (rule step_Taus_set_op[rotated])
-     apply (rule refl)+
-    prefer 3
-      apply (rule step_set_op_intro_Out)
-  apply (rule refl)
-    defer
-      defer
-      apply (rule refl)
-     defer
-  apply (rule rtranclp.intros(2)[rotated])
-      apply (rule step_set_op_intro_Tau_1)
-        apply assumption
-  apply simp
-      apply (rule refl)
-     apply auto
-  done
-
 lemma step_taus_set_op_elim:
   assumes "(step Tau)\<^sup>*\<^sup>* (set_op S S' op) op'"
   obtains op'' xs where "wsteps (map (\<lambda> (p, x). VOut p x) xs) op op''"
@@ -1002,10 +975,6 @@ proof (coinduction arbitrary: S S' T T' rule: op.coinduct_upto)
     done
   thus ?case unfolding R_def by (simp add: set_spec_op_simps)
 qed
-
-lemma set_spec_op_collapse:
-  "set_spec_op S S' = set_spec_op (S - S') {||}"
-  by (rule set_spec_op_cong) (simp add: cDiff_cempty)
 
 section \<open>The Specification Operator\<close>
 

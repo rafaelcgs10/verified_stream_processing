@@ -77,12 +77,6 @@ lemma inputs_increment_op_le_alt[dest!]:
 
 section \<open>Introduction rules for increment_op steps\<close>
 
-lemma step_increment_op_Read_Some[intro]:
-  assumes \<open>io = Inp (Some ip) (Inr (d, t))\<close>
-    and \<open>op' = increment_op ip op inc (consumes os ip t d)\<close>
-  shows \<open>step io (increment_op ip op inc os) op'\<close>
-  using assms unfolding increment_op_def by auto
-
 lemma step_increment_op_Write_None[intro]:
   assumes \<open>io = Out None (Inl (Inl st))\<close>
     and \<open>(os', st) = obtain_progress os\<close>
@@ -95,13 +89,6 @@ lemma step_increment_op_Write_None_alt[intro]:
     and \<open>op' = increment_op ip op inc (fst (obtain_progress os))\<close>
   shows \<open>step io (increment_op ip op inc os) op'\<close>
   by (rule step_increment_op_Write_None[OF assms(1) _ assms(2)]) (rule prod.collapse)
-
-lemma step_increment_op_Write_Some[intro]:
-  assumes \<open>io = Out (Some op) (Inr x)\<close>
-    and \<open>outpu os op = x # xs\<close>
-    and \<open>op' = increment_op ip op inc (os\<lparr>outpu := (outpu os)(op := xs)\<rparr>)\<close>
-  shows \<open>step io (increment_op ip op inc os) op'\<close>
-  using assms unfolding increment_op_def by auto
 
 lemma steps_increment_op_Write_Some[intro]:
   assumes \<open>outpu os op = xs @ ys\<close>

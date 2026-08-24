@@ -49,35 +49,6 @@ lemma no_step_source_op_Inp[simp]:
   apply (auto split: llist.splits)
   done
 
-lemma wstep_step_source_op[simp]:
-  "io \<noteq> Tau \<Longrightarrow> wstep io (source_op inps) op' = step io (source_op inps) op'"
- apply (rule iffI)
-  subgoal
-    unfolding wstep_def
-    apply (erule relcomppE)
-    apply rotate_tac
-    subgoal for op''
-      apply (cases io)
-        apply (simp_all add: OO_def)
-       apply (metis converse_rtranclpE no_step_source_op_Inp no_step_source_op_Tau)
-      subgoal
-        apply safe
-        apply hypsubst_thin
-        apply (subgoal_tac "op'' = source_op inps")
-        subgoal
-          apply hypsubst_thin
-          apply (elim step_source_op_elim)
-          apply (metis converse_rtranclpE no_step_source_op_Tau step_source_op_Out_intro)
-          done
-        subgoal
-          using converse_rtranclpE by force
-        done
-      done
-    done
-  subgoal
-    by auto
-  done
-
 coinductive port_interleave where
   "port_interleave (inps(p := inpsp)) lxs \<Longrightarrow> inps p = LCons x inpsp \<Longrightarrow>
    p \<notin> defaults \<Longrightarrow> port_interleave inps (LCons (VOut p x) lxs)"

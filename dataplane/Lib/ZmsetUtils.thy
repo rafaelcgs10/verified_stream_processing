@@ -42,12 +42,6 @@ lemma add_zmset_to_zmset:
   "add_zmset x (to_zmset xs) = to_zmset (x # xs)"
   by auto
 
-lemma to_zmset_tl[simp]:
-  "xs ≠ [] ⟹
-   to_zmset (tl xs) = to_zmset xs - {# hd xs #}⇩z"
-  by (induct xs)
-    auto
-
 lemma to_zmset_map:
   "to_zmset (map f xs) = {#f x. x ∈#⇩z to_zmset xs#}"
   by (induct xs) auto
@@ -98,16 +92,6 @@ lemma zcount_del_zmset[simp]:
   by transfer auto
 
 
-
-lemma del_zmset_commute[simp]:
-  "del_zmset a (del_zmset b M) = del_zmset b (del_zmset a M)"
-  by (auto simp: zmultiset_eq_iff)
-
-lemma zmset_in_add_zmset[simp]:
-  "a ∈#⇩z add_zmset b M ⟷ a ≠ b ∧ a ∈#⇩z M ∨ a = b ∧ zcount M a ≠ -1"
-  apply transfer
-  apply auto
-  done
 
 
 (* -------------------------------------------------------------------------- *)
@@ -174,19 +158,6 @@ lemma update_zmultiset_plus_comm:
     done
   done
 
-lemma zmset_map_neg[simp]:
-  "zmset (map (λ (t, m). (t, - m)) xs) = - zmset xs"
-  apply (induct xs)
-   apply clarsimp+
-  apply (metis Executable.update_zmultiset_plus add_eq_0_iff update_zmultiset_plus_comm update_zmultiset_simps(1))
-  done
-
-lemma zmset_map_alt[simp]:
-  "zmset (map (λx. (fst (snd x), snd (snd x))) xs) = zmset (map snd xs)"
-  apply (induct xs)
-   apply clarsimp+
-  done
-
 lemma zmset_neg_alt[simp]:
   "zmset (map (λx. (fst (snd x), - snd (snd x))) xs) = - zmset (map snd xs)"
   apply (induct xs)
@@ -233,11 +204,6 @@ lemma zcount_zmset_gt_0I:
   apply (smt (verit, best) case_prodI2 zcount_zmset_ge_0I)
   done
 
-lemma zmset_replicate[simp]:
-  "zmset (replicate n (x, m)) = update_zmultiset {#}⇩z x (n * m)"
-  by (induct n)
-    (auto simp add: Groups.add_ac(2) distrib_right)
-
 lemma zmset_emptyI:
   "xs = [] ⟹ zmset xs = {#}⇩z"
   by auto
@@ -247,12 +213,12 @@ lemma zmset_emptyI:
 (* Aggregation lemmas over zmset                                              *)
 (* -------------------------------------------------------------------------- *)
 
+
 lemma sum_list_zmset:
   "(∑x←xs. zmset (f x)) = (zmset (concat (map f xs)))"
   apply (induct xs)
    apply auto
   done
-
 
 lemma zmset_map_filter_aux[simp]:
   "finite S ⟹
@@ -293,13 +259,6 @@ lemma zmset_map_minus_one[simp]:
   apply (induction xs)
    apply clarsimp+
   apply (metis add_zmset_add_single neg_neg_multiset update_zmultiset_one(1))
-  done
-
-lemma sum_list_zmset_emptyI[intro]:
-  "(∀ nid ∈ set nids. xs nid = []) ⟹
-   (∑x←nids. zmset (map snd (xs x))) = {#}⇩z"
-  apply (induct nids)
-   apply auto
   done
 
 lemma sum_list_filter[simp]:
@@ -348,12 +307,6 @@ lemma pos_zcount_image_zmset_inj:
     done
   done
 
-
-lemma zcount_image_zmset_image_zmset[simp]:
-  "zcount (Auxiliary.image_zmset f (Auxiliary.image_zmset g (M t))) t = zcount {#f (g xa). xa ∈#⇩z M t#} t"
-  apply transfer
-  apply (auto simp add: split_beta)
-  done
 
 lemma to_zmset_BULK_BENQ[simp]:
   "to_zmset ((xs >> ys) p) = to_zmset (xs p) + to_zmset (ys p)"

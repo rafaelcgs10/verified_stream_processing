@@ -563,10 +563,6 @@ next
 qed
 
 
-lemma outpu_0_fst_label_prop_input0_batched[simp]:
-  \<open>outpu (fst (label_prop_input0_batched os msgs)) (0 :: 2) = outpu os 0\<close>
-  by simp
-
 
 lemma all_edges_eq_graph_entries:
   assumes inv: \<open>label_prop_upd_inv os\<close>

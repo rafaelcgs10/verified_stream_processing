@@ -61,10 +61,6 @@ definition label_prop_upd_inv where
     (\<forall>t v. t \<notin> set (timestamps os) \<longrightarrow> label os t v = v) \<and>
     (\<forall>t v. label os t v \<le> v)"
 
-lemma label_prop_upd_inv_intsum_update[simp]:
-  "label_prop_upd_inv (os\<lparr>intsum := xs\<rparr>) = label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
-
 lemma label_prop_upd_inv_consu_update[simp]:
   "label_prop_upd_inv (os\<lparr>consu := xs\<rparr>) = label_prop_upd_inv os"
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
@@ -91,26 +87,6 @@ lemma label_prop_upd_inv_ocaps_update[simp]:
 
 lemma label_prop_upd_inv_initia_update[simp]:
   "label_prop_upd_inv (os\<lparr>initia := b\<rparr>) = label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma label_prop_upd_inv_en1_update[simp]:
-  "label_prop_upd_inv (os\<lparr>en1 := f\<rparr>) = label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma label_prop_upd_inv_is_en1_update[simp]:
-  "label_prop_upd_inv (os\<lparr>is_en1 := f\<rparr>) = label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma label_prop_upd_inv_en2_update[simp]:
-  "label_prop_upd_inv (os\<lparr>en2 := f\<rparr>) = label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma label_prop_upd_inv_de2_update[simp]:
-  "label_prop_upd_inv (os\<lparr>de2 := f\<rparr>) = label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma label_prop_upd_inv_is_en2_update[simp]:
-  "label_prop_upd_inv (os\<lparr>is_en2 := f\<rparr>) = label_prop_upd_inv os"
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
 
 lemma label_prop_upd_inv_input_update_port0[simp]:
@@ -1072,11 +1048,6 @@ lemma graph_release_caps[simp]:
   unfolding release_caps_def
   by auto
 
-lemma neighbors_release_caps[simp]:
-  "neighbors (release_caps os p) = neighbors os"
-  unfolding release_caps_def neighbors_def
-  by auto
-
 lemma all_vertices_drop_caps[simp]:
   "all_vertices (drop_caps os caps) = all_vertices os"
   unfolding all_vertices_def drop_caps_def
@@ -1128,20 +1099,10 @@ lemma all_edges_input_tl[simp]:
   unfolding input_tl_def all_edges_def all_vertices_def neighbors_def
   by auto
 
-lemma all_edges_input_tl_label_state_update[simp]:
-  "all_edges ((input_tl os p)\<lparr>timestamps := ts, graph := G, vertices := V, label := L\<rparr>) =
-   all_edges (os\<lparr>timestamps := ts, graph := G, vertices := V, label := L\<rparr>)"
-  unfolding input_tl_def all_edges_def all_vertices_def neighbors_def
-  by auto
-
 lemma all_edges_label_update[simp]:
   "all_edges (os\<lparr>label := L\<rparr>) = all_edges os"
   unfolding all_edges_def all_vertices_def neighbors_def
   by auto
-
-lemma all_edges_intsum_update[simp]:
-  "all_edges (os\<lparr>intsum := xs\<rparr>) = all_edges os"
-  unfolding all_edges_def all_vertices_def neighbors_def by auto
 
 lemma all_edges_consu_update[simp]:
   "all_edges (os\<lparr>consu := xs\<rparr>) = all_edges os"
@@ -1167,34 +1128,6 @@ lemma all_edges_initia_update[simp]:
   "all_edges (os\<lparr>initia := b\<rparr>) = all_edges os"
   unfolding all_edges_def all_vertices_def neighbors_def by auto
 
-lemma all_edges_en1_update[simp]:
-  "all_edges (os\<lparr>en1 := f\<rparr>) = all_edges os"
-  unfolding all_edges_def all_vertices_def neighbors_def by auto
-
-lemma all_edges_de1_update[simp]:
-  "all_edges (os\<lparr>de1 := f\<rparr>) = all_edges os"
-  unfolding all_edges_def all_vertices_def neighbors_def by auto
-
-lemma all_edges_is_en1_update[simp]:
-  "all_edges (os\<lparr>is_en1 := f\<rparr>) = all_edges os"
-  unfolding all_edges_def all_vertices_def neighbors_def by auto
-
-lemma all_edges_en2_update[simp]:
-  "all_edges (os\<lparr>en2 := f\<rparr>) = all_edges os"
-  unfolding all_edges_def all_vertices_def neighbors_def by auto
-
-lemma all_edges_de2_update[simp]:
-  "all_edges (os\<lparr>de2 := f\<rparr>) = all_edges os"
-  unfolding all_edges_def all_vertices_def neighbors_def by auto
-
-lemma all_edges_is_en2_update[simp]:
-  "all_edges (os\<lparr>is_en2 := f\<rparr>) = all_edges os"
-  unfolding all_edges_def all_vertices_def neighbors_def by auto
-
-lemma min_label_intsum_update[simp]:
-  "min_label (os\<lparr>intsum := xs\<rparr>) = min_label os"
-  unfolding min_label_def by auto
-
 lemma min_label_consu_update[simp]:
   "min_label (os\<lparr>consu := xs\<rparr>) = min_label os"
   unfolding min_label_def by auto
@@ -1219,75 +1152,15 @@ lemma min_label_initia_update[simp]:
   "min_label (os\<lparr>initia := b\<rparr>) = min_label os"
   unfolding min_label_def by auto
 
-lemma min_label_en1_update[simp]:
-  "min_label (os\<lparr>en1 := f\<rparr>) = min_label os"
-  unfolding min_label_def by auto
-
-lemma min_label_de1_update[simp]:
-  "min_label (os\<lparr>de1 := f\<rparr>) = min_label os"
-  unfolding min_label_def by auto
-
-lemma min_label_is_en1_update[simp]:
-  "min_label (os\<lparr>is_en1 := f\<rparr>) = min_label os"
-  unfolding min_label_def by auto
-
-lemma min_label_en2_update[simp]:
-  "min_label (os\<lparr>en2 := f\<rparr>) = min_label os"
-  unfolding min_label_def by auto
-
-lemma min_label_de2_update[simp]:
-  "min_label (os\<lparr>de2 := f\<rparr>) = min_label os"
-  unfolding min_label_def by auto
-
-lemma min_label_is_en2_update[simp]:
-  "min_label (os\<lparr>is_en2 := f\<rparr>) = min_label os"
-  unfolding min_label_def by auto
-
 lemma all_edges_add_caps[simp]:
   "all_edges (add_caps os caps) = all_edges os"
   unfolding add_caps_def all_edges_def all_vertices_def neighbors_def
-  by auto
-
-lemma all_edges_delay_cap[simp]:
-  "all_edges (delay_cap os cap incr) = all_edges os"
-  unfolding delay_cap_def all_edges_def all_vertices_def neighbors_def
-  by auto
-
-lemma all_edges_consume[simp]:
-  "all_edges (consume os p t' len) = all_edges os"
-  unfolding consume_def all_edges_def all_vertices_def neighbors_def
-  by (auto split: if_splits)
-
-lemma all_edges_consumes[simp]:
-  "all_edges (consumes os p t' d) = all_edges os"
-  unfolding consumes_def add_caps_def BENQ_def all_edges_def all_vertices_def neighbors_def
-  by auto
-
-lemma all_edges_obtain_progress[simp]:
-  "all_edges (fst (obtain_progress os)) = all_edges os"
-  unfolding obtain_progress_def all_edges_def all_vertices_def neighbors_def
   by auto
 
 lemma all_edges_label_prop_label_record_update[simp]:
   "all_edges (label_prop_label_record_update os event_t vertex assigned_label) = all_edges os"
   unfolding label_prop_label_record_update_def all_edges_def all_vertices_def neighbors_def
   by auto
-
-lemma label_prob_ty2_check_timestamps_update[simp]:
-  "label_prob_ty2_check (os\<lparr>timestamps := T\<rparr>) bufs = label_prob_ty2_check os bufs"
-  unfolding label_prob_ty2_check_def by auto
-
-lemma label_prob_ty2_check_graph_update[simp]:
-  "label_prob_ty2_check (os\<lparr>graph := G\<rparr>) bufs = label_prob_ty2_check os bufs"
-  unfolding label_prob_ty2_check_def by auto
-
-lemma label_prob_ty2_check_vertices_update[simp]:
-  "label_prob_ty2_check (os\<lparr>vertices := V\<rparr>) bufs = label_prob_ty2_check os bufs"
-  unfolding label_prob_ty2_check_def by auto
-
-lemma label_prob_ty2_check_label_update[simp]:
-  "label_prob_ty2_check (os\<lparr>label := L\<rparr>) bufs = label_prob_ty2_check os bufs"
-  unfolding label_prob_ty2_check_def by auto
 
 lemma label_prob_ty2_check_drop_caps[simp]:
   "label_prob_ty2_check (drop_caps os caps) bufs = label_prob_ty2_check os bufs"
@@ -1301,19 +1174,6 @@ lemma label_prob_ty2_check_release_caps[simp]:
 lemma label_prob_ty2_check_add_caps[simp]:
   "label_prob_ty2_check (add_caps os caps) bufs = label_prob_ty2_check os bufs"
   unfolding label_prob_ty2_check_def add_caps_def by auto
-
-lemma label_prob_ty2_check_delay_cap[simp]:
-  "label_prob_ty2_check (delay_cap os cap incr) bufs = label_prob_ty2_check os bufs"
-  unfolding label_prob_ty2_check_def delay_cap_def by auto
-
-lemma label_prob_ty2_check_consume[simp]:
-  "label_prob_ty2_check (consume os p t' len) bufs = label_prob_ty2_check os bufs"
-  unfolding label_prob_ty2_check_def consume_def
-  by (auto split: if_splits)
-
-lemma label_prob_ty2_check_obtain_progress[simp]:
-  "label_prob_ty2_check (fst (obtain_progress os)) bufs = label_prob_ty2_check os bufs"
-  unfolding label_prob_ty2_check_def obtain_progress_def by auto
 
 lemma label_prob_ty2_check_label_prop_edge_record_update[simp]:
   "label_prob_ty2_check (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) bufs = label_prob_ty2_check os bufs"
@@ -1376,95 +1236,9 @@ lemma min_label_add_caps[simp]:
   unfolding add_caps_def min_label_def
   by (auto cong: if_cong)
 
-lemma min_label_delay_cap[simp]:
-  "min_label (delay_cap os cap incr) = min_label os"
-  unfolding delay_cap_def min_label_def
-  by (auto cong: if_cong)
-
-lemma min_label_consume[simp]:
-  "min_label (consume os p t' len) = min_label os"
-  unfolding consume_def min_label_def
-  by (auto split: if_splits cong: if_cong)
-
-lemma min_label_consumes[simp]:
-  "min_label (consumes os p t' d) = min_label os"
-  unfolding consumes_def add_caps_def BENQ_def min_label_def
-  by (auto cong: if_cong)
-
-lemma min_label_obtain_progress[simp]:
-  "min_label (fst (obtain_progress os)) = min_label os"
-  unfolding obtain_progress_def min_label_def
-  by (auto cong: if_cong)
-
-lemma min_label_input_tl[simp]:
-  "min_label (input_tl os p) = min_label os"
-  unfolding input_tl_def min_label_def
-  by (auto cong: if_cong)
-
 lemma min_label_input_update[simp]:
   "min_label (os\<lparr>input := input'\<rparr>) = min_label os"
   unfolding min_label_def
-  by auto
-
-lemma min_label_input_tl_label_state_update[simp]:
-  "min_label ((input_tl os p)\<lparr>timestamps := ts, graph := G, vertices := V, label := L\<rparr>) =
-   min_label (os\<lparr>timestamps := ts, graph := G, vertices := V, label := L\<rparr>)"
-  unfolding input_tl_def min_label_def
-  by auto
-
-lemma labels_inv_drop_caps[simp]:
-  "labels_inv (all_edges (drop_caps os caps) t) (min_label (drop_caps os caps) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def drop_caps_def
-  by auto
-
-lemma labels_inv_release_caps[simp]:
-  "labels_inv (all_edges (release_caps os p) t) (min_label (release_caps os p) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding release_caps_def Let_def trace_simp
-  by simp
-
-lemma labels_inv_produces[simp]:
-  "labels_inv (all_edges (produces os batch) t) (min_label (produces os batch) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def produces_def
-  by auto
-
-lemma labels_inv_delay_cap[simp]:
-  "labels_inv (all_edges (delay_cap os cap incr) t) (min_label (delay_cap os cap incr) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def delay_cap_def
-  by auto
-
-lemma labels_inv_consume[simp]:
-  "labels_inv (all_edges (consume os p t' len) t) (min_label (consume os p t' len) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def consume_def
-  by auto
-
-lemma labels_inv_add_caps[simp]:
-  "labels_inv (all_edges (add_caps os caps) t) (min_label (add_caps os caps) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def add_caps_def
-  by auto
-
-lemma labels_inv_consumes[simp]:
-  "labels_inv (all_edges (consumes os p t' d) t) (min_label (consumes os p t' d) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def consumes_def add_caps_def BENQ_def
-  by auto
-
-lemma labels_inv_fold_consumes[simp]:
-  "labels_inv (all_edges (fold (\<lambda>(d, t') os'. consumes os' p t' d) xs os) t)
-     (min_label (fold (\<lambda>(d, t') os'. consumes os' p t' d) xs os) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def fold_consumes
-  by auto
-
-lemma labels_inv_obtain_progress[simp]:
-  "labels_inv (all_edges (fst (obtain_progress os)) t) (min_label (fst (obtain_progress os)) t) =
-   labels_inv (all_edges os t) (min_label os t)"
-  unfolding labels_inv_def all_edges_def all_vertices_def neighbors_def min_label_def obtain_progress_def
   by auto
 
 lemma label_prop_upd_inv_produces[simp]:
@@ -1478,29 +1252,9 @@ lemma label_prop_upd_inv_drop_caps[simp]:
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def drop_caps_def
   by (simp add: set_neighbors)
 
-lemma label_prop_upd_inv_consume[simp]:
-  "label_prop_upd_inv (consume os p t len) \<longleftrightarrow> label_prop_upd_inv os"
-  by (cases "len = 0")
-    (simp_all add: consume_def label_prop_upd_inv_def all_vertices_def all_edges_def set_neighbors)
-
-lemma label_prop_upd_inv_delay_cap[simp]:
-  "label_prop_upd_inv (delay_cap os cap incr) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def delay_cap_def
-  by (simp add: set_neighbors)
-
 lemma label_prop_upd_inv_add_caps[simp]:
   "label_prop_upd_inv (add_caps os caps) \<longleftrightarrow> label_prop_upd_inv os"
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def add_caps_def
-  by (simp add: set_neighbors)
-
-lemma label_prop_upd_inv_obtain_progress[simp]:
-  "label_prop_upd_inv (fst (obtain_progress os)) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def obtain_progress_def
-  by (simp add: set_neighbors)
-
-lemma label_prop_upd_inv_upd_outpu[simp]:
-  "label_prop_upd_inv (os\<lparr>outpu := xs\<rparr>) = label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def obtain_progress_def
   by (simp add: set_neighbors)
 
 lemma label_prop_upd_inv_release_caps[simp]:
@@ -2638,12 +2392,6 @@ lemma step_label_propagation_op_Read_None[intro]:
   shows \<open>step io (label_propagation_op os) op\<close>
   using assms unfolding label_propagation_op_def by auto
 
-lemma step_label_propagation_op_Read_Some[intro]:
-  assumes \<open>io = Inp (Some p) (Inr (d, t))\<close>
-    and \<open>op = label_propagation_op (consumes os p t d)\<close>
-  shows \<open>step io (label_propagation_op os) op\<close>
-  using assms unfolding label_propagation_op_def by (auto simp add: filter_True filter_False BULK_BENQ_right_empty BULK_BENQ_left_empty list_emb_Nil2 in_filter_zmset_in_zmset pos_filter_zmset_pos_zmset neg_filter_zmset_neg_zmset set_antichain1 set_antichain2 mset_set.infinite cin.rep_eq simp del: cin.rep_eq[symmetric] cong del: if_cong)
-
 lemma step_label_propagation_op_Write_None[intro]:
   assumes \<open>io = Out None (Inl (Inl st))\<close>
     and \<open>(os', st) = obtain_progress os\<close>
@@ -2656,13 +2404,6 @@ lemma step_label_propagation_op_Write_None_alt[intro]:
     and \<open>op = label_propagation_op (fst (obtain_progress os))\<close>
   shows \<open>step io (label_propagation_op os) op\<close>
   by (rule step_label_propagation_op_Write_None[OF assms(1) _ assms(2)]) (rule prod.collapse)
-
-lemma step_label_propagation_op_Write_Some[intro]:
-  assumes \<open>io = Out (Some p) (Inr x)\<close>
-    and \<open>outpu os p = x # xs\<close>
-    and \<open>op = label_propagation_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>)\<close>
-  shows \<open>step io (label_propagation_op os) op\<close>
-  using assms unfolding label_propagation_op_def by (auto simp add: filter_True filter_False BULK_BENQ_right_empty BULK_BENQ_left_empty list_emb_Nil2 in_filter_zmset_in_zmset pos_filter_zmset_pos_zmset neg_filter_zmset_neg_zmset set_antichain1 set_antichain2 mset_set.infinite cin.rep_eq simp del: cin.rep_eq[symmetric] cong del: if_cong)
 
 lemma steps_label_propagation_op_Write_Some[intro]:
   assumes \<open>outpu os p = xs @ ys\<close>
@@ -2717,13 +2458,6 @@ lemma step_label_propagation_op_n_Silents[intro]:
   by (intro step_builder_op_n_Silents_collapse)
      (auto simp: label_propagation_op_logic_collapse)
 
-lemma steps_label_propagation_op_n_Silents[intro]:
-  assumes \<open>os' |\<in>| ((\<lambda>oss. cUnion (cimage label_propagation_op_logic
-      (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
-    and \<open>op = label_propagation_op os'\<close>
-  shows \<open>(step Tau ^^ n) (label_propagation_op os) op\<close>
-  using assms by (rule step_label_propagation_op_n_Silents)
-
 
 
 lemma label_propagation_op_logic_input0I[intro]:
@@ -2754,15 +2488,6 @@ lemma step_label_propagation_op_input0[intro]:
     and \<open>initia os\<close>
     and \<open>op = label_propagation_op os_next\<close>
   shows \<open>step Tau (label_propagation_op os) op\<close>
-  using assms by auto
-
-lemma step_compower_label_propagation_op_input0[intro]:
-  assumes \<open>input os 0 = msgs @ ys\<close>
-    and \<open>n = length msgs\<close>
-    and \<open>os_next |\<in>| ((\<lambda>oss. cUnion (cimage label_propagation_op_logic
-      (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
-    and \<open>op = label_propagation_op os_next\<close>
-  shows \<open>(step Tau ^^ n) (label_propagation_op os) op\<close>
   using assms by auto
 
 
@@ -2904,34 +2629,6 @@ next
 qed
 
 
-lemma vertices_CONSUMES[simp]:
-  \<open>vertices (CONSUMES p xs os) = vertices os\<close>
-  unfolding fold_consumes by simp
-
-lemma label_CONSUMES[simp]:
-  \<open>label (CONSUMES p xs os) = label os\<close>
-  unfolding fold_consumes by simp
-
-lemma all_vertices_CONSUMES[simp]:
-  \<open>all_vertices (CONSUMES p xs os) = all_vertices os\<close>
-  unfolding all_vertices_def by simp
-
-lemma all_edges_CONSUMES[simp]:
-  \<open>all_edges (CONSUMES p xs os) = all_edges os\<close>
-  unfolding all_edges_def all_vertices_def neighbors_def by simp
-
-lemma min_label_CONSUMES[simp]:
-  \<open>min_label (CONSUMES p xs os) = min_label os\<close>
-  unfolding min_label_def by simp
-
-lemma timestamps_CONSUMES[simp]:
-  \<open>timestamps (CONSUMES p xs os) = timestamps os\<close>
-  unfolding fold_consumes by simp
-
-lemma graph_CONSUMES[simp]:
-  \<open>label_propagation_state.graph (CONSUMES p xs os) = label_propagation_state.graph os\<close>
-  unfolding fold_consumes by simp
-
 lemma label_prop_upd_inv_CONSUMES_port1I:
   assumes inv: \<open>label_prop_upd_inv os\<close>
     and wf_upd: \<open>wf_label_prop_updates os (set xs)\<close>
@@ -2978,10 +2675,6 @@ lemma wf_label_prop_updates_CONSUMES[simp]:
   \<open>wf_label_prop_updates (CONSUMES p ys os) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
   by (induct ys arbitrary: os) clarsimp+
 
-lemma wf_label_prop_updates_intsum_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>intsum := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
 lemma wf_label_prop_updates_consu_update[simp]:
   \<open>wf_label_prop_updates (os\<lparr>consu := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
   unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
@@ -2992,10 +2685,6 @@ lemma wf_label_prop_updates_inter_update[simp]:
 
 lemma wf_label_prop_updates_produ_update[simp]:
   \<open>wf_label_prop_updates (os\<lparr>produ := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_input_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>input := xs\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
   unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
 
 lemma wf_label_prop_updates_outpu_update[simp]:
@@ -3012,30 +2701,6 @@ lemma wf_label_prop_updates_ocaps_update[simp]:
 
 lemma wf_label_prop_updates_initia_update[simp]:
   \<open>wf_label_prop_updates (os\<lparr>initia := b\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_en1_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>en1 := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_is_en1_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>is_en1 := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_en2_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>en2 := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_de2_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>de2 := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_is_en2_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>is_en2 := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
-  unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
-
-lemma wf_label_prop_updates_label_update[simp]:
-  \<open>wf_label_prop_updates (os\<lparr>label := f\<rparr>) S \<longleftrightarrow> wf_label_prop_updates os S\<close>
   unfolding wf_label_prop_updates_def all_vertices_def all_edges_def neighbors_def by simp
 
 lemma wf_label_prop_updates_cong:

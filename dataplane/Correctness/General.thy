@@ -272,18 +272,6 @@ lemma graph_summar_nt_input_tl[simp]:
   "graph_summar_nt su nt (os(nid := input_tl (os nid) p)) = graph_summar_nt su nt os"
   by (rule graph_summar_nt_intsum_cong) simp
 
-lemma graph_summar_nt_drop_caps[simp]:
-  "graph_summar_nt su nt (os(nid := drop_caps (os nid) caps)) = graph_summar_nt su nt os"
-  by (rule graph_summar_nt_intsum_cong) simp
-
-lemma graph_summar_nt_produces[simp]:
-  "graph_summar_nt su nt (os(nid := produces (os nid) batch)) = graph_summar_nt su nt os"
-  by (rule graph_summar_nt_intsum_cong) simp
-
-lemma graph_summar_nt_add_caps[simp]:
-  "graph_summar_nt su nt (os(nid := add_caps (os nid) caps)) = graph_summar_nt su nt os"
-  by (rule graph_summar_nt_intsum_cong) simp
-
 lemma single_valued_inv_to_nxt_inj_on:
   "bi_unique (op_conn su) \<Longrightarrow>
    inj_on (graph_to_nxt su) (dom (graph_to_nxt su))"
@@ -847,13 +835,6 @@ lemma zmset_Data_to_zmset:
   using update_zmultiset_one(2) apply fastforce
   done
 
-lemma outputs_at_target_updates[simp]:
-  "outputs_at_target su (os(nid := (os nid)\<lparr> inter := A, produ := B, ocaps := C, input := D, inter := E  \<rparr>)) = outputs_at_target su os"
-  unfolding outputs_at_target_def
-  apply (rule ext)
-  apply (auto split: prod.splits if_splits)
-  done
-
 lemma graph_to_nxt_not_Ex_op_conn[simp]:
   "graph_to_nxt su (nid, p) = None \<longleftrightarrow>
    \<not> (\<exists> nid' p'. op_conn su (nid, p) (nid', p'))"
@@ -1011,11 +992,6 @@ proof -
     qed
   qed
 qed
-
-lemma input_ocaps_inv_produces[simp]:
-  "input_ocaps_inv (produces os batch) = input_ocaps_inv os"
-  unfolding produces_def input_ocaps_inv_def
-  by auto
 
 (* add_caps only enlarges ocaps (and leaves input/intsum untouched),
    so any required witness remains present. *)

@@ -325,13 +325,6 @@ lemma step_ooo_input_op_n_Silents[intro]:
   using assms unfolding ooo_input_op_def
   by (intro step_builder_op_n_Silents_collapse) (auto simp: ooo_input_op_logic_collapse)
 
-lemma steps_ooo_input_op_n_Silents[intro]:
-  assumes \<open>os' |\<in>| ((\<lambda>oss. cUnion (cimage (ooo_input_op_logic ops)
-      (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
-    and \<open>op = ooo_input_op ops os'\<close>
-  shows \<open>(step Tau ^^ n) (ooo_input_op ops os) op\<close>
-  using assms by (rule step_ooo_input_op_n_Silents)
-
 
 lemma ooo_input_op_logic_LNilI[intro]:
   assumes \<open>ocaps os p \<noteq> []\<close>
@@ -345,16 +338,6 @@ lemma ooo_input_op_logic_LNilI[intro]:
   apply simp
   done
 
-lemma step_ooo_input_op_LNil[intro]:
-  assumes \<open>ocaps os p \<noteq> []\<close>
-    and \<open>p |\<in>| ops\<close>
-    and \<open>es os p = LNil\<close>
-    and \<open>os_next = drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))\<close>
-    and \<open>initia os\<close>
-    and \<open>op = ooo_input_op ops os_next\<close>
-  shows \<open>step Tau (ooo_input_op ops os) op\<close>
-  using assms by (metis ooo_input_op_logic_LNilI step_ooo_input_op_Silent)
-
 lemma ooo_input_op_logic_DataI[intro]:
   assumes \<open>ocaps os p \<noteq> []\<close>
     and \<open>p |\<in>| ops\<close>
@@ -366,16 +349,6 @@ lemma ooo_input_op_logic_DataI[intro]:
   apply (rule exI[of _ p])
   apply simp
   done
-
-lemma step_ooo_input_op_Data[intro]:
-  assumes \<open>ocaps os p \<noteq> []\<close>
-    and \<open>p |\<in>| ops\<close>
-    and \<open>es os p = LCons (Data t d) lxs\<close>
-    and \<open>os_next = produces (os\<lparr>es := (es os)(p := lxs)\<rparr>) [(en1 os d, Cap t p)]\<close>
-    and \<open>initia os\<close>
-    and \<open>op = ooo_input_op ops os_next\<close>
-  shows \<open>step Tau (ooo_input_op ops os) op\<close>
-  using assms by (metis ooo_input_op_logic_DataI step_ooo_input_op_Silent)
 
 lemma ooo_input_op_logic_DropI[intro]:
   assumes \<open>ocaps os p \<noteq> []\<close>
@@ -389,16 +362,6 @@ lemma ooo_input_op_logic_DropI[intro]:
   apply simp
   done
 
-lemma step_ooo_input_op_Drop[intro]:
-  assumes \<open>ocaps os p \<noteq> []\<close>
-    and \<open>p |\<in>| ops\<close>
-    and \<open>es os p = LCons (Drop t) lxs\<close>
-    and \<open>os_next = drop_caps (os\<lparr>es := (es os)(p := lxs)\<rparr>) [Cap t p]\<close>
-    and \<open>initia os\<close>
-    and \<open>op = ooo_input_op ops os_next\<close>
-  shows \<open>step Tau (ooo_input_op ops os) op\<close>
-  using assms by (metis ooo_input_op_logic_DropI step_ooo_input_op_Silent)
-
 lemma ooo_input_op_logic_MintI[intro]:
   assumes \<open>ocaps os p \<noteq> []\<close>
     and \<open>p |\<in>| ops\<close>
@@ -410,16 +373,6 @@ lemma ooo_input_op_logic_MintI[intro]:
   apply (rule exI[of _ p])
   apply simp
   done
-
-lemma step_ooo_input_op_Mint[intro]:
-  assumes \<open>ocaps os p \<noteq> []\<close>
-    and \<open>p |\<in>| ops\<close>
-    and \<open>es os p = LCons (Mint t) lxs\<close>
-    and \<open>os_next = add_caps (os\<lparr>es := (es os)(p := lxs)\<rparr>) [Cap t p]\<close>
-    and \<open>initia os\<close>
-    and \<open>op = ooo_input_op ops os_next\<close>
-  shows \<open>step Tau (ooo_input_op ops os) op\<close>
-  using assms by (metis ooo_input_op_logic_MintI step_ooo_input_op_Silent)
 
 
 

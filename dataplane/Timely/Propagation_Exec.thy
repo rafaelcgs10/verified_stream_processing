@@ -7,10 +7,6 @@ begin
 
 section \<open>Executable Propagation Primitives\<close>
 
-lemma AF_empty[simp]:
-  "A -++- {}\<^sub>A = {#}\<^sub>z"
-  by (metis after_summary_def dataflow_topology_from_tree.after_summary_empty_summary)
-
 lemma AP_simp[simp]:
   "M -++- S = (\<Sum>s \<in> set_antichain S. image_zmset (\<lambda>t. t -+- s) M)"
   by (metis after_summary_def dataflow_topology_from_tree.after_summary_def)
@@ -131,10 +127,6 @@ lemma take_step_comm:
   apply (rule ext)
   apply (auto simp add: fun_upd_twist update_zmultiset_comm)
   done
-
-lemma take_step_plus[simp]:
-  "take_step su (CM l t m) (take_step su (CM l t n) c) = take_step su (CM l t (m + n)) c"
-  by (cases c; auto simp add: add.commute)
 
 subsection \<open>Display Utilities\<close>
 

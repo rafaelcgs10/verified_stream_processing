@@ -21,39 +21,7 @@ section \<open>Graph Path Weights and Filtered Sums\<close>
 
 text \<open>Path-weight facts for the summary graph and sums over filtered
   signed multisets.\<close>
-lemma zero_in_graph_path_weight[simp,intro]:
-  "nt = graph_to_nxt su \<Longrightarrow>
-   Graph.graph su \<Longrightarrow>
-   (\<forall> nid nid' p p'. \<not> is_empty_antichain (su (Loc nid (Src p)) (Loc nid' (Trg p'))) \<longrightarrow> su (Loc nid (Src p)) (Loc nid' (Trg p')) = antichain {0}) \<Longrightarrow>
-   nt (nid', p') = Some (nid, p) \<Longrightarrow>
-   0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))"
-  unfolding graph_to_nxt_def Let_def
-  apply (subst graph.in_path_weight)
-   apply (clarsimp simp add: split: if_splits prod.splits)
-  apply hypsubst_thin
-  apply (drule spec2[of _ nid' nid])
-  apply (drule spec2[of _ p' p])
-  apply (subgoal_tac "su (Loc nid' (Src p')) (Loc nid (Trg p)) = antichain {0}")
-  subgoal
-    apply (auto simp add: minimal_antichain_def Graph.graph.path_weightp_def)
-    subgoal
-      apply (intro conjI exI)
-       apply (rule graph.path.intros(2))
-         apply assumption
-        apply (rule graph.path.intros(1))
-         apply assumption
-        apply (rule refl)
-       apply (simp add: member_antichain.rep_eq)
-      apply auto
-      done
-    subgoal for xs
-      using graph.sum_not_less_zero by blast
-    done
-  subgoal
-    apply (clarsimp simp add: member_antichain.rep_eq find_Some_iff split: if_splits prod.splits)
-    apply (metis surj_pair)
-    done
-  done
+
 
 
 
@@ -89,45 +57,6 @@ inductive srcs_to_trg for P su where
   direct: "su (Loc snid (Src sp)) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow> P nid p t m \<Longrightarrow> srcs_to_trg P su snid nid p t m"
 | step: "su (Loc snid' (Src sp)) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow> snid' \<noteq> snid \<Longrightarrow>
   (\<forall> p' s. s \<in>\<^sub>A su (Loc snid' (Trg p')) (Loc snid' (Src sp)) \<longrightarrow> (\<forall> t' m'. t = t' -+- s \<longrightarrow> P snid' p' t' m' \<longrightarrow> srcs_to_trg P su snid snid' p' t' m')) \<Longrightarrow> srcs_to_trg P su snid nid p t m"
-
-lemma graph_induct:
-  assumes G: "Graph.graph weights"
-    and "S \<inter> V = {}"
-  shows
-    "(\<forall> V. (\<forall> l' \<in> V. \<forall> l. weights l l' \<noteq> {}\<^sub>A \<longrightarrow> l \<in> S \<union> V) \<longrightarrow> P V) \<Longrightarrow>
-   (\<forall> V l l'. l \<notin> S \<union> V \<longrightarrow> l' \<in> V \<longrightarrow> weights l l' \<noteq> {}\<^sub>A \<longrightarrow> P (insert l V) \<longrightarrow> P V) \<Longrightarrow>
-   P V"
-  using assms(2) apply -
-  apply (induct "card (UNIV - V)" arbitrary:  V)
-  subgoal for V
-    apply (subgoal_tac "V = UNIV")
-    subgoal
-      by clarsimp
-    subgoal
-      by auto
-    done
-  subgoal for n V
-    apply (cases "(\<forall> l' \<in> V. \<forall> l. weights l l' \<noteq> {}\<^sub>A \<longrightarrow> l \<in> S \<union> V)")
-    subgoal
-      by metis
-    subgoal premises prems
-      using prems(6) apply -
-      apply clarsimp
-      subgoal for l' l
-        using prems(1,2) apply -
-        apply (drule meta_spec[of _ "insert l V"])
-        apply (drule meta_mp)
-        apply simp
-        apply (drule meta_mp)
-        using prems(3) apply fast
-        apply (drule meta_mp)
-        using prems(4) apply fast
-        apply (rule prems(4)[rule_format, of l])
-        apply (auto simp add: prems(5))
-        done
-      done
-    done
-  done
 
 section \<open>Zero Predecessors\<close>
 

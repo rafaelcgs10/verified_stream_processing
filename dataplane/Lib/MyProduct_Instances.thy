@@ -118,9 +118,6 @@ lemma mysnd_uminus [simp]: "mysnd (- x) = - mysnd x"
 lemma add_MyPair [simp]: "MyPair a b + MyPair c d = MyPair (a + c) (b + d)"
   unfolding plus_myprod_def by simp
 
-lemma diff_MyPair [simp]: "MyPair a b - MyPair c d = MyPair (a - c) (b - d)"
-  unfolding minus_myprod_def by simp
-
 lemma uminus_MyPair [simp, code]: "- MyPair a b = MyPair (- a) (- b)"
   unfolding uminus_myprod_def by simp
 
@@ -233,9 +230,6 @@ begin
 
 definition
   "sup x y = MyPair (sup (myfst x) (myfst y)) (sup (mysnd x) (mysnd y))"
-
-lemma sup_MyPair_MyPair [simp]: "sup (MyPair a b) (MyPair c d) = MyPair (sup a c) (sup b d)"
-  unfolding sup_myprod_def by simp
 
 lemma myfst_sup [simp]: "myfst (sup x y) = sup (myfst x) (myfst y)"
   unfolding sup_myprod_def by simp

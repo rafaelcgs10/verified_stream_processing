@@ -18,17 +18,9 @@ lemma set_rmdups[simp]:
   "set (rmdups S xs) = set xs - S"
   by (induct xs arbitrary: S) auto
 
-lemma rmdups_rmdups[simp]:
-  "rmdups S1 (rmdups S2 xs) = rmdups (S1 \<union> S2) xs"
-  by (induct xs arbitrary: S1 S2) (auto simp add: insert_absorb)
-
 lemma rmdups_append[simp]:
   "rmdups S (xs @ ys) = rmdups S xs @ rmdups (S \<union> set xs) ys"
   by (induct xs arbitrary: S ys) (auto simp add: insert_absorb)
-
-lemma distinct_rmdups[simp]:
-  "distinct (rmdups A xs)"
-  by (induct xs arbitrary: A) auto
 
 section \<open>Removing the Last Occurrence and List Difference\<close>
 
@@ -131,13 +123,6 @@ lemma remove_last_append_if:
         done
       done
     done
-  done
-
-lemma remove_last_append_singleton[simp]:
-  "remove_last x (xs @ [x]) = xs"
-  apply (induct x "xs @ [x]" rule: remove_last.induct)
-  apply simp_all
-  apply (metis append.right_neutral distinct.simps(2) distinct_singleton list.set_intros(1) remove_last_append_if remove_last_not_in_set_Cons)
   done
 
 
@@ -246,6 +231,7 @@ lemma find_SomeD'':
   "Some x = find P xs \<Longrightarrow> P x \<and> x\<in>set xs"
   using find_SomeD' by metis
 
+
 lemma find_Some_singleton:
   "{x \<in> set xs . P x} = {x} \<Longrightarrow>
    find P xs = Some x"
@@ -260,11 +246,6 @@ lemma filter_not_emptyI:
   "\<exists> x \<in> set xs. P x \<Longrightarrow>
    filter P xs \<noteq> []"
   by (metis List.empty_filter_conv)
-
-lemma filter_if_const[simp]:
-  "filter (\<lambda>x. p = fst x) (if P p then xs else []) =
-   filter (\<lambda>x. p = fst x \<and> P p) xs"
-  by auto
 
 
 section \<open>Sums and Mapped Filters\<close>
@@ -361,15 +342,6 @@ termination by (lexicographic_order simp add: list_span_length_le)
 
 definition insort_union where
   \<open>insort_union = fold insort_insert\<close>
-
-lemma set_insort_union[simp]:
-  \<open>set (insort_union xs ys) = set xs \<union> set ys\<close>
-  by (induction xs arbitrary: ys) (simp_all add: insort_union_def set_insort_insert)
-
-lemma distinct_insort_union[simp]:
-  \<open>distinct (insort_union xs ys) \<longleftrightarrow> distinct ys\<close>
-  by (induction xs arbitrary: ys)
-    (simp_all add: insort_union_def distinct_insort insort_insert_key_def)
 
 
 

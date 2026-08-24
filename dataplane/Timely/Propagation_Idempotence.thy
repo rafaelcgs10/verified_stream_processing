@@ -24,12 +24,4 @@ lemma propagate_all_idem:
   "propagate_all summary conf = Some conf' ⟹ propagate_all summary conf' = Some conf'"
   by (rule propagate_all_quiescent[OF propagate_all_empty_worklist])
 
-text ‹Re-propagation does not change the implied frontiers a node reads.›
-
-lemma propagate_all_twice_c_imp:
-  "propagate_all summary conf = Some conf' ⟹
-   propagate_all summary conf' = Some conf'' ⟹
-   c_imp conf'' = c_imp conf'"
-  by (drule propagate_all_idem) simp
-
 end
