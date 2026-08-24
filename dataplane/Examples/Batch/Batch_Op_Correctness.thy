@@ -1638,7 +1638,7 @@ next
                         using temp3 apply blast+
                         done
                       subgoal premises temp2
-                        apply (subst frontier_less_equal_iff2[symmetric])
+                        apply (subst frontier_less_equal_iff[symmetric])
                         apply (clarsimp simp add: SIM2(1,2,3,4,5) split_beta image_iff set_map_filter operator_state.defs intsum_consumes_fold inter_consumes_fold consu_consumes_fold produ_consumes_fold split: event.splits option.splits prod.splits)
                         subgoal for l t' m
                           apply (elim disjE)

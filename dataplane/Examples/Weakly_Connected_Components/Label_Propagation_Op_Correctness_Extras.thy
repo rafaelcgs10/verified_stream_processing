@@ -1042,7 +1042,7 @@ proof -
       a_in: \<open>a \<in>\<^sub>A ifrontier ?su (-+-) c ?L1T1\<close> and y_eq: \<open>myfst a = y\<close>
       using y_in by (rule exit_scope_memberE)
     have rhs_fle: \<open>frontier_less_equal (ifrontier ?su (-+-) c ?L1T1) a\<close>
-      using a_in unfolding frontier_less_equal_iff2 by blast
+      using a_in unfolding frontier_less_equal_iff by blast
     have decomp:
       \<open>\<exists>l s t. s \<in>\<^sub>A graph.path_weight ?su l ?L1T1 \<and>
         frontier_less_equal (frontier (c_pts c l)) t \<and> a = t -+- s\<close>
@@ -1077,7 +1077,7 @@ proof -
         using lhs_fle0 by simp
       obtain b :: \<open>(nat, nat) myprod\<close> where
         b_in: \<open>b \<in>\<^sub>A ifrontier ?su (-+-) c ?L1T0\<close> and b_le: \<open>b \<le> t\<close>
-        using lhs_fle unfolding frontier_less_equal_iff2 by blast
+        using lhs_fle unfolding frontier_less_equal_iff by blast
       have s_eq: \<open>s = MyPair 0 1\<close>
         using base s_in by (auto simp add: member_antichain.rep_eq)
       have myfst_b_le_y: \<open>myfst b \<le> y\<close>
@@ -1100,7 +1100,7 @@ proof -
     assume y_in: \<open>y \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T1)\<close>
     obtain x :: nat where x_in: \<open>x \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T0)\<close>
       and x_le: \<open>x \<le> y\<close>
-      using rhs_member_to_lhs_fle[OF y_in] unfolding frontier_less_equal_iff2 by blast
+      using rhs_member_to_lhs_fle[OF y_in] unfolding frontier_less_equal_iff by blast
     show \<open>\<exists>x. x \<in>\<^sub>A exit_scope myfst (ifrontier ?su (-+-) c ?L1T0) \<and> x \<le> y\<close>
       using x_in x_le by blast
   qed

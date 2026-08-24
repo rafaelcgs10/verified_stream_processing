@@ -245,7 +245,7 @@ lemma dataplane_tracker_inv_progress:
       subgoal
         apply safe
         subgoal for l t m
-          unfolding frontier_less_equal_iff2[symmetric]
+          unfolding frontier_less_equal_iff[symmetric]
           apply (rule frontier_less_equal_le_trans)
           apply (drule prems(11)[unfolded extract_prog_changes_above_impl_inv_def extract_prog_def changes_above_impl_inv_def, rule_format, of "[]" nid, simplified])
           apply simp

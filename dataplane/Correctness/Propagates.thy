@@ -114,7 +114,7 @@ lemma c_pts_change_multiplicities_cong:
     done
   done
 
-lemma propagate_all_frontier_change_multiplicities_c_imp_correctnessE:
+lemma change_multiplicities_and_propagate_all_correctness:
   "dataflow_topology (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) (-+-) \<Longrightarrow>
    reachable_locations summary = UNIV \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary (-+-) c \<Longrightarrow>

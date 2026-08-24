@@ -337,7 +337,7 @@ lemma timely_input_stream_DropI[intro]:
 lemma vacant_not_frontier_less_equal:
   "vacant t M \<Longrightarrow>
    \<not> frontier_less_equal (frontier (zmset_of M)) t"
-  unfolding vacant_def frontier_less_equal_iff2
+  unfolding vacant_def frontier_less_equal_iff
   apply safe
   subgoal for t'
     apply transfer

@@ -230,7 +230,7 @@ next
   ultimately show ?case by (rule transitive_closurep_trans'(6))
 qed
 
-abbreviation \<open>wrap \<equiv> case_option (Inl (1 :: 1)) (\<lambda>p. Inr (1 :: 1, p))\<close>
+abbreviation \<open>wrap \<equiv> case_option (Inl (0 :: 1)) (\<lambda>p. Inr (0 :: 1, p))\<close>
 
 lemma ooo_input_op_source_op:
   assumes \<open>initia os\<close> and \<open>en1 os = f\<close> and \<open>inj f\<close>
@@ -247,6 +247,13 @@ proof -
   define my_source_op where \<open>my_source_op g os' = map_op (\<lambda>p :: 'a. (0 :: 1, p)) (\<lambda>p. (0 :: 1, p))
   (source_op (\<lambda>p. outpu os' p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (g d, t)) (lfilter is_Data (es os' p))))\<close>
     for g :: \<open>'d \<Rightarrow> 'b\<close> and os' :: \<open>('a, 'b, 'd, 'c, 'e) input_state_scheme\<close>
+  have wrap_alt: \<open>wrap = case_option (Inl (1 :: 1)) (\<lambda>p. Inr (1 :: 1, p))\<close>
+    by (auto simp: fun_eq_iff split: option.splits)
+  have my_ooo_input_op_alt: \<open>my_ooo_input_op os' =
+    map_op (case_option (Inl (1 :: 1)) (\<lambda>p. Inr (1 :: 1, p)))
+      (case_option (Inl (1 :: 1)) (\<lambda>p. Inr (1 :: 1, p))) (ooo_input_op c\<UU> os')\<close>
+    for os' :: \<open>('a, 'b, 'd, 'c, 'e) input_state_scheme\<close>
+    unfolding my_ooo_input_op_def wrap_alt by (rule refl)
   have inv: \<open>invariant f os\<close> using assms unfolding invariant_def by blast
   have \<open>dataflow_op sg (my_ooo_input_op os) \<approx> my_source_op f os\<close>
     using inv
@@ -303,7 +310,7 @@ proof -
         using that unfolding R_def invariant_def my_source_op_def obtain_progress_def
         by (force intro!: wbc_base del: timely_input_stream_DataI)
       ultimately show ?thesis unfolding R_def[symmetric]
-        by (sim_cases sim: SIM1 defs: my_ooo_input_op_def ooo_input_op_def
+        by (sim_cases sim: SIM1 defs: my_ooo_input_op_alt ooo_input_op_def
             elims: step_dataflow_op_elim step_map_op_elim step_builder_op_elim
             intros: invariant_initia
             simps: ooo_input_op_logic_front_initia

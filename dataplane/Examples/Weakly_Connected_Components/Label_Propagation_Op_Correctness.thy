@@ -2786,7 +2786,7 @@ next
     \<open>dataflow_topology_from_tree.inv_implications_nonneg c'\<close>
     \<open>dataflow_topology_from_tree.inv_imp_plus_work_nonneg c'\<close>
     \<open>dataflow_topology.inv_imps_work_sum (antichain_from_list \<circ>\<circ> raw_summary) (-+-) c'\<close>
-    using propagate_all_frontier_change_multiplicities_c_imp_correctnessE
+    using change_multiplicities_and_propagate_all_correctness
       [OF D, of \<open>pt_tr sg\<close>
         \<open>extract_progress 0 (graph_to_nxt (antichain_from_list \<circ>\<circ> raw_summary))
           (snd (obtain_progress os_input))\<close>,
@@ -2815,7 +2815,7 @@ next
     subgoal
       apply clarsimp
       subgoal for l t m
-        apply (subst frontier_less_equal_iff2[symmetric])
+        apply (subst frontier_less_equal_iff[symmetric])
         apply (rule frontier_less_equal_le_trans[rotated])
         apply (rule dt_inv(5)[unfolded imp_front_inv_def, rule_format, of l])
         apply (rule dt_inv(9)[unfolded extract_prog_changes_above_impl_inv_def
@@ -5003,7 +5003,7 @@ next
         dataflow_topology_from_tree.inv_implications_nonneg c2 \<and>
         dataflow_topology_from_tree.inv_imp_plus_work_nonneg c2 \<and>
         dataflow_topology.inv_imps_work_sum (summ sg_first_propa) (-+-) c2\<close>
-        using propagate_all_frontier_change_multiplicities_c_imp_correctnessE
+        using change_multiplicities_and_propagate_all_correctness
           [OF D, of \<open>pt_tr sg_first_propa\<close> \<open>second_progress n\<close>,
             unfolded subgraph_inv(1), simplified]
         apply -
@@ -5079,7 +5079,7 @@ next
           apply (clarsimp simp add: second_progress_def)
 
           subgoal for l t m
-            apply (subst frontier_less_equal_iff2[symmetric])
+            apply (subst frontier_less_equal_iff[symmetric])
             apply (rule frontier_less_equal_le_trans
                 [of \<open>ifrontier (summ sg_first_propa) (+) (pt_tr sg_first_propa) l\<close>])
             subgoal
@@ -5454,7 +5454,7 @@ next
     assume t_zero: \<open>mysnd t = 0\<close>
     obtain y where y_in: \<open>y \<in>\<^sub>A exit_scope myfst (?input_frontier_after_prefix n)\<close>
       and y_le: \<open>y \<le> myfst t\<close>
-      using projected unfolding frontier_less_equal_iff2 by blast
+      using projected unfolding frontier_less_equal_iff by blast
     from y_in obtain x where x_in: \<open>x \<in>\<^sub>A ?input_frontier_after_prefix n\<close>
       and x_fst: \<open>myfst x = y\<close>
       by (rule exit_scope_memberE)
@@ -5464,7 +5464,7 @@ next
       using y_le x_fst x_zero t_zero
       by (cases x; cases t; simp)
     then show ?thesis
-      using x_in unfolding frontier_less_equal_iff2 by blast
+      using x_in unfolding frontier_less_equal_iff by blast
   qed
 
   have no_second_propa_output_frontier:

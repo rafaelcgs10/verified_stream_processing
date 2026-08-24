@@ -20,7 +20,7 @@ lemma frontier_less_equal_ifrontierI:
    apply (simp add: sum_nonneg zcount_sum)
   apply (rule frontier_less_equal_sumI[of _ _ t'])
      apply simp_all
-  unfolding frontier_less_equal_iff2
+  unfolding frontier_less_equal_iff
   apply clarsimp
   subgoal for t''
     apply (rule exI[of _ "t'' + t'"])
@@ -59,7 +59,7 @@ lemma frontier_less_equal_ifrontierE:
     using member_antichain.rep_eq apply blast
     subgoal premises prems
       using prems(3) apply -
-      unfolding frontier_less_equal_iff2
+      unfolding frontier_less_equal_iff
       apply (clarsimp simp add: in_frontier_zmset_image)
       apply (metis add.commute add.left_commute dataflow_topology_from_tree.le_plus(2) less_eqE)
       done
@@ -108,7 +108,7 @@ lemma frontier_less_equal_ifrontier_trans:
          apply (simp_all add: sum_nonneg zcount_sum)
       apply (rule frontier_less_equal_sumI[of _ _ u])
          apply (simp_all add: sum_nonneg zcount_sum)
-      unfolding frontier_less_equal_iff2
+      unfolding frontier_less_equal_iff
       apply (clarsimp simp add: in_frontier_zmset_image)
       apply (metis dataflow_topology_from_tree.plus_mono group_cancel.add1)
       done
@@ -219,7 +219,7 @@ lemma frontier_less_equal_change_multiplicities_ge_0:
          apply simp_all
         apply clarsimp
         subgoal for l3 s'
-          unfolding frontier_less_equal_iff2
+          unfolding frontier_less_equal_iff
           apply clarsimp
           subgoal for ft
             apply (subst (asm) in_frontier_zmset_image)
@@ -297,7 +297,7 @@ lemma frontier_less_equal_change_multiplicities_ge_0:
                               apply (rule bexI[rotated])
                                apply (clarsimp simp flip: member_antichain.rep_eq)
                                apply assumption
-                              unfolding frontier_less_equal_iff2
+                              unfolding frontier_less_equal_iff
                               apply clarsimp
                               apply (rule exI[of _ "ft' -+- u"])
                               apply (auto simp add: in_frontier_zmset_image)

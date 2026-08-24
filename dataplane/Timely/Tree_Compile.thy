@@ -106,7 +106,7 @@ definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,
      (\<forall> nid p1 p2. distinct (ints nid p1 p2)) \<and>
      bi_unique (op_conn s)
   then raw_s
-  else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. ((\<lambda> _ _. []))))"
+  else Code.abort (STR ''Control plane could not be built'') (\<lambda> _. ((\<lambda> _ _. []))))"
 
 subsection \<open>Structural Properties of Compiled Graphs\<close>
 

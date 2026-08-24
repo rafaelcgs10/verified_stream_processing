@@ -95,7 +95,7 @@ proof
   assume not_projected: "\<not> frontier_less_equal (exit_scope myfst A) (myfst t)"
   assume "frontier_less_equal A t"
   then obtain t' where t'_in: "t' \<in>\<^sub>A A" and t'_le: "t' \<le> t"
-    unfolding frontier_less_equal_iff2 by blast
+    unfolding frontier_less_equal_iff by blast
   have zcount_pos: "0 < zcount (zmset_of (mset_set (myfst ` set_antichain A))) (myfst t')"
     using t'_in by (simp add: member_antichain.rep_eq)
   have "frontier_less_equal (exit_scope myfst A) (myfst t')"
@@ -111,7 +111,7 @@ lemma frontier_less_equal_antichain_plusI1:
   shows "frontier_less_equal (A + B) t"
 proof -
   obtain a where a_in: "a \<in>\<^sub>A A" and a_le: "a \<le> t"
-    using assms unfolding frontier_less_equal_iff2 by blast
+    using assms unfolding frontier_less_equal_iff by blast
   have fin: "finite (set_antichain A \<union> set_antichain B)"
     by simp
   have "a \<in> set_antichain A \<union> set_antichain B"
@@ -123,7 +123,7 @@ proof -
   moreover have "a' \<le> t"
     using a'_le a_le by order
   ultimately show ?thesis
-    unfolding frontier_less_equal_iff2 by blast
+    unfolding frontier_less_equal_iff by blast
 qed
 
 lemma frontier_less_equal_antichain_plusI2:
@@ -209,14 +209,14 @@ proof (rule antisym)
         using exit_scope_memberE unfolding member_antichain.rep_eq by blast
       show ?thesis
         using frontier_less_equal_exit_scope_plusI1[OF x_in, of B]
-        unfolding frontier_less_equal_iff2 y_eq by blast
+        unfolding frontier_less_equal_iff y_eq by blast
     next
       assume "y \<in> set_antichain (exit_scope myfst B)"
       then obtain x where x_in: "x \<in>\<^sub>A B" and y_eq: "myfst x = y"
         using exit_scope_memberE unfolding member_antichain.rep_eq by blast
       show ?thesis
         using frontier_less_equal_exit_scope_plusI2[OF x_in, of A]
-        unfolding frontier_less_equal_iff2 y_eq by blast
+        unfolding frontier_less_equal_iff y_eq by blast
     qed
   qed
 next
@@ -239,7 +239,7 @@ next
         using frontier_less_equal_exit_scopeI[of x A] y_eq by simp
       then show ?thesis
         using frontier_less_equal_antichain_plusI1[of "exit_scope myfst A" y "exit_scope myfst B"]
-        unfolding frontier_less_equal_iff2 by blast
+        unfolding frontier_less_equal_iff by blast
     next
       assume "x \<in> set_antichain B"
       then have "x \<in>\<^sub>A B"
@@ -248,7 +248,7 @@ next
         using frontier_less_equal_exit_scopeI[of x B] y_eq by simp
       then show ?thesis
         using frontier_less_equal_antichain_plusI2[of "exit_scope myfst B" y "exit_scope myfst A"]
-        unfolding frontier_less_equal_iff2 by blast
+        unfolding frontier_less_equal_iff by blast
     qed
   qed
 qed

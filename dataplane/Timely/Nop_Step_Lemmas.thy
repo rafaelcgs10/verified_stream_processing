@@ -69,20 +69,7 @@ proof -
   then show ?thesis by simp
 qed
 
-subsection ‹Builder self-loops›
-
 declare operator_state_front_initia_upd_triv[simp]
-
-lemma builder_op_frontier_read_self_loop:
-  "front os = v ⟹ initia os ⟹
-   builder_op fb tps sps (os⦇ front := v, initia := True ⦈) logic = builder_op fb tps sps os logic"
-  by simp
-
-lemma builder_op_progress_write_self_loop:
-  "consu os = [] ⟹ inter os = [] ⟹ produ os = [] ⟹
-   (let (os', st) = obtain_progress os in Write (builder_op fb tps sps os' logic) None (Inl (Inl st))) =
-   Write (builder_op fb tps sps os logic) None (Inl (Inl ⦇ cons = [], inte = [], prod = [] ⦈))"
-  by (simp add: obtain_progress_empty)
 
 subsection ‹Lifting self-loops through composition and mapping›
 

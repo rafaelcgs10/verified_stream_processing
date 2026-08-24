@@ -114,7 +114,7 @@ section \<open>Timely Input Stream\<close>
 lemma not_frontier_less_equal_vacant:
   "\<not> frontier_less_equal (frontier (zmset_of M)) t \<Longrightarrow>
    vacant t M"
-  unfolding vacant_def frontier_less_equal_iff2
+  unfolding vacant_def frontier_less_equal_iff
   by (metis count_eq_zero_iff count_greater_zero_iff of_nat_0_less_iff order_trans_rules(23) trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_of_mset)
 lemma timely_input_stream_vacant_Data_not_in:
   "timely_input_stream lxs C \<Longrightarrow>
@@ -363,7 +363,7 @@ lemma time_monotone_frontier_less_equal:
    timely_monotone inps C \<Longrightarrow>
    is_Data x \<Longrightarrow>
    frontier_less_equal (frontier (zmset_of C)) (event.time x)"
-  unfolding  frontier_less_equal_iff2
+  unfolding  frontier_less_equal_iff
   apply (cases x; clarsimp; hypsubst_thin?)
   subgoal for t d
     apply (induct inps arbitrary: C rule: lset_induct)

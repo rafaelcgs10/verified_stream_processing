@@ -206,7 +206,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
             apply (drule frontier_less_equal_add_cases)
             apply (elim disjE)
             subgoal
-              apply (subst (asm) frontier_less_equal_iff2)
+              apply (subst (asm) frontier_less_equal_iff)
               apply clarsimp
               subgoal for ft
                 apply (drule in_frontier_sumEx)
@@ -288,7 +288,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                               apply (subst change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid])
                               apply simp_all
                               apply (simp add: zmset_filter_extract_progress_Trg_consumes_diff c_pts_change_multiplicities zmset_filter_extract_progress_Trg_consumes_alt)
-                              unfolding frontier_less_equal_iff2
+                              unfolding frontier_less_equal_iff
                               apply (rule exI[of _ ft])
                               apply auto
                               done
@@ -376,7 +376,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
               apply (rule frontier_less_equal_addI)
               subgoal
                 apply (rule disjI2)
-                apply (subst (asm) frontier_less_equal_iff2)
+                apply (subst (asm) frontier_less_equal_iff)
                 apply clarsimp
                 subgoal for ft
                   apply (drule in_frontier_sumEx)
@@ -403,7 +403,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                           subgoal
                             apply (rule frontier_less_equal_sumI[where l=s])
                             apply simp_all
-                            unfolding frontier_less_equal_iff2
+                            unfolding frontier_less_equal_iff
                             apply (subst in_frontier_zmset_image)
                             apply simp_all
                             apply (subst change_multiplicities_extract_prog_consumes)
@@ -442,7 +442,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
             apply (drule frontier_less_equal_add_cases)
             apply (elim disjE)
             subgoal
-              apply (subst (asm) frontier_less_equal_iff2)
+              apply (subst (asm) frontier_less_equal_iff)
               apply clarsimp
               subgoal for ft
                 apply (drule in_frontier_sumEx)
@@ -524,7 +524,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                               apply (subst change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid])
                               apply simp_all
                               apply (simp add: zmset_filter_extract_progress_Trg_consumes_diff c_pts_change_multiplicities zmset_filter_extract_progress_Trg_consumes_alt)
-                              unfolding frontier_less_equal_iff2
+                              unfolding frontier_less_equal_iff
                               apply (rule exI[of _ ft])
                               apply auto
                               done
@@ -614,7 +614,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                 apply (rule frontier_less_equal_addI)
                 subgoal
                   apply (rule disjI2)
-                  apply (subst (asm) frontier_less_equal_iff2)
+                  apply (subst (asm) frontier_less_equal_iff)
                   apply clarsimp
                   subgoal for ft
                     apply (drule in_frontier_sumEx)
@@ -641,7 +641,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                             subgoal
                               apply (rule frontier_less_equal_sumI[where l=s])
                               apply simp_all
-                              unfolding frontier_less_equal_iff2
+                              unfolding frontier_less_equal_iff
                               apply (subst in_frontier_zmset_image)
                               apply simp_all
                               apply (subst change_multiplicities_extract_prog_consumes)
@@ -760,7 +760,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                     apply (drule frontier_less_equal_add_cases)
                     apply (elim disjE)
                     subgoal
-                      apply (subst (asm) frontier_less_equal_iff2)
+                      apply (subst (asm) frontier_less_equal_iff)
                       apply clarsimp
                       subgoal for ft
                         apply (drule in_frontier_sumEx)
@@ -842,7 +842,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                                       apply (subst change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid])
                                       apply simp_all
                                       apply (simp add: zmset_filter_extract_progress_Trg_consumes_diff c_pts_change_multiplicities zmset_filter_extract_progress_Trg_consumes_alt)
-                                      unfolding frontier_less_equal_iff2
+                                      unfolding frontier_less_equal_iff
                                       apply (rule exI[of _ ft])
                                       apply auto
                                       done
@@ -932,7 +932,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                         apply (rule frontier_less_equal_addI)
                         subgoal
                           apply (rule disjI2)
-                          apply (subst (asm) frontier_less_equal_iff2)
+                          apply (subst (asm) frontier_less_equal_iff)
                           apply clarsimp
                           subgoal for ft
                             apply (drule in_frontier_sumEx)
@@ -960,7 +960,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                                       supply filter_True[simp] filter_False[simp] list_emb_Nil2[simp] BULK_BENQ_right_empty[simp] BULK_BENQ_left_empty[simp]
                                       apply (rule frontier_less_equal_sumI[where l=s])
                                       apply simp_all
-                                      unfolding frontier_less_equal_iff2
+                                      unfolding frontier_less_equal_iff
                                       apply (subst in_frontier_zmset_image)
                                       apply simp_all
                                       apply (subst change_multiplicities_extract_prog_consumes)

@@ -26,9 +26,9 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
 
 
 section \<open>Core Dataplane Invariants\<close>
-definition "c_pts_inv c caps = (\<forall> l. c_pts c l = caps l)"
-definition "Src_caps_inv caps os = (\<forall> nid p. caps (Loc nid (Src p)) = to_zmset (ocaps (os nid) p))"
-definition "Trg_caps_inv caps bufs = (\<forall> nid p. caps (Loc nid (Trg p)) = to_zmset (map snd (bufs (nid, p))))"
+definition "c_pts_inv c cpts = (\<forall> l. c_pts c l = cpts l)"
+definition "Src_caps_inv cpts os = (\<forall> nid p. cpts (Loc nid (Src p)) = to_zmset (ocaps (os nid) p))"
+definition "Trg_caps_inv cpts bufs = (\<forall> nid p. cpts (Loc nid (Trg p)) = to_zmset (map snd (bufs (nid, p))))"
 definition "extract_prog xs eds os = concat (map (\<lambda> nid. extract_progress nid eds (snd (obtain_progress (os nid)))) xs)"
 definition "front_inv os c = (\<forall> nid p. front (os nid) p \<le> frontier (c_imp c (Loc nid (Trg p))))"
 definition "imp_front_inv su c = (\<forall> l. frontier (c_imp c l) \<le> ifrontier su (+) c l)"
@@ -117,14 +117,14 @@ definition "extract_prog_changes_above_impl_inv su nt c os =
 
 section \<open>The main invariant connecting the control and data planes\<close>
 definition "dataplane_tracker_inv os cbufs sg = 
-   (\<exists> c c' cgs chns caps.
+   (\<exists> c c' cgs chns cpts.
      c = pt_tr sg \<and>
      cgs = extract_prog Enum.enum (nxt sg) os \<and>
      chns = outputs_at_target (summ sg) os >> cbufs \<and>
-     Src_caps_inv caps os \<and>
-     Trg_caps_inv caps chns \<and>
+     Src_caps_inv cpts os \<and>
+     Trg_caps_inv cpts chns \<and>
      c' = change_multiplicities (summ sg) cgs c \<and>
-     c_pts_inv c' caps \<and>
+     c_pts_inv c' cpts \<and>
      front_inv os c \<and>
      imp_front_inv (summ sg) c \<and>
      chnls_imp_front_inv (summ sg) c chns \<and>
@@ -777,7 +777,7 @@ lemma frontier_less_equal_ifrontier_from_Src:
    s \<in>\<^sub>A graph.path_weight su (Loc nid (Src p)) l \<Longrightarrow>
    extract_prog_changes_above_impl_inv su nt c os \<Longrightarrow>
    frontier_less_equal (ifrontier su (-+-) c l) (t -+- s)"
-  apply (subst (asm) frontier_less_equal_iff2)
+  apply (subst (asm) frontier_less_equal_iff)
   apply clarsimp
   subgoal for t'
     apply (simp add: c_pts_change_multiplicities)
@@ -787,7 +787,7 @@ lemma frontier_less_equal_ifrontier_from_Src:
       apply clarsimp
       apply (rule frontier_less_equal_ifrontierI[OF D, of s "Loc nid (Src p)", simplified])
        apply assumption
-      unfolding frontier_less_equal_iff2
+      unfolding frontier_less_equal_iff
       subgoal for t''
         apply (rule exI[of _ t''])
         apply auto

@@ -866,7 +866,7 @@ lemma dataplane_tracker_inv_produces_drops:
                             apply (drule zcount_gt_0_in_frontierD)
                             apply clarsimp
                             apply (subst (2) filter_False)
-                            using frontier_less_equal_iff2 apply auto
+                            using frontier_less_equal_iff apply auto
                             done
                           done
                         subgoal

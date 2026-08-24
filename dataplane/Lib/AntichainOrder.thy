@@ -424,7 +424,7 @@ lemma frontier_less_equal_empty_antichain[simp]:
   done
 
 
-lemma frontier_less_equal_iff:
+lemma frontier_less_equal_iff2:
   "frontier_less_equal f t \<longleftrightarrow> f \<le> frontier {#t#}\<^sub>z"
   unfolding frontier_less_equal_def less_eq_antichain_def
   apply (auto simp add: in_frontier_iff)
@@ -444,7 +444,7 @@ lemma frontier_less_equal_le_trans:
   "frontier_less_equal f1 t \<Longrightarrow>
    f2 \<le> f1 \<Longrightarrow> 
    frontier_less_equal f2 t"
-  unfolding frontier_less_equal_iff
+  unfolding frontier_less_equal_iff2
   apply (rule Orderings.preorder_class.order_trans)
    apply assumption+
   done
@@ -453,11 +453,11 @@ lemma frontier_less_equal_trans:
   "frontier_less_equal A t' \<Longrightarrow>
    t' \<le> t \<Longrightarrow> 
    frontier_less_equal A t"
-  unfolding frontier_less_equal_iff
+  unfolding frontier_less_equal_iff2
   by (meson frontier_le_singletons order_trans_rules(23))
 
 
-lemma frontier_less_equal_iff2:
+lemma frontier_less_equal_iff:
   "frontier_less_equal f t \<longleftrightarrow> (\<exists> t'. t' \<in>\<^sub>A f \<and> t' \<le> t)"
   unfolding frontier_less_equal_def
   apply (auto simp add: in_frontier_iff)
@@ -478,7 +478,7 @@ lemma frontier_less_equal_addI:
    (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
    (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
    frontier_less_equal (frontier (A + B)) t"
-  unfolding frontier_less_equal_iff
+  unfolding frontier_less_equal_iff2
   apply safe
   using frontier_le_remove_l apply blast
   using frontier_le_remove_left apply blast
@@ -487,20 +487,20 @@ lemma frontier_less_equal_addI:
 lemma frontier_less_equal_add_cases:
   "frontier_less_equal (frontier (A + B)) t \<Longrightarrow>
    frontier_less_equal (frontier A) t \<or> frontier_less_equal (frontier B) t"
-  unfolding frontier_less_equal_iff2
+  unfolding frontier_less_equal_iff
   using in_frontier_addD order_trans_rules(23) by blast
 
 lemma frontier_less_equal_add_cases_stronger:
   "frontier_less_equal (frontier (A + B)) t \<Longrightarrow>
    (\<exists> t'. (zcount A t' > 0 \<and> frontier_less_equal (frontier A) t \<or> zcount B t' > 0 \<and> frontier_less_equal (frontier B) t) \<and> t' \<le> t \<and> zcount A t' + zcount B t' > 0 \<and> t' \<in>\<^sub>A frontier (A + B))"
-  unfolding frontier_less_equal_iff2 in_frontier_iff
+  unfolding frontier_less_equal_iff in_frontier_iff
   apply (auto del: )
   by (smt (verit) order.trans order_zmset_exists_foundation')
 
 lemma frontier_less_equal_zcount_pos:
   " 0 < zcount A x \<Longrightarrow>
     frontier_less_equal (frontier A) x"
-  unfolding frontier_less_equal_iff
+  unfolding frontier_less_equal_iff2
   by (metis dual_order.irrefl less_eq_antichain_def member_frontier_pos_zmset trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_single)
 
 lemma frontier_less_equal_sumI:
@@ -690,7 +690,7 @@ lemma frontier_less_equal_add_frontier_le_alt:
   unfolding frontier_less_equal_def less_eq_antichain_def
   apply auto
   subgoal for t
-    by (metis antisym_conv1 frontier_comparable_False frontier_less_equal_add_cases_stronger frontier_less_equal_def frontier_less_equal_iff2 order_trans rel_simps(70) zcount_ne_zero_iff)
+    by (metis antisym_conv1 frontier_comparable_False frontier_less_equal_add_cases_stronger frontier_less_equal_def frontier_less_equal_iff order_trans rel_simps(70) zcount_ne_zero_iff)
   done
 
 
@@ -698,7 +698,7 @@ lemma set_antichain_frontier_add_update_zmultiset_le:
   "0 < zcount A t + m \<Longrightarrow>
    \<not> frontier_less_equal (frontier A) t \<Longrightarrow>
    set_antichain (frontier (A + update_zmultiset {#}\<^sub>z t m)) = {t' \<in> set_antichain (frontier A). \<not> t < t'} \<union> {t}"
-  unfolding frontier_less_equal_iff2
+  unfolding frontier_less_equal_iff
   apply transfer'
   subgoal for A t m
   apply (auto simp add: zcount_update_zmultiset minimal_antichain_def )
@@ -821,11 +821,11 @@ lemma in_sum_antichainD:
 
 lemma  frontier_less_equal_pluss_le:
   \<open>frontier_less_equal (A + B) t \<Longrightarrow> A \<le> B \<Longrightarrow> frontier_less_equal A t\<close>
-  by (meson frontier_less_equal_iff2 frontier_less_equal_le_trans in_sum_antichainD)
+  by (meson frontier_less_equal_iff frontier_less_equal_le_trans in_sum_antichainD)
 
 lemma not_frontier_less_equal_sum:
   "\<not> frontier_less_equal (A + B) t \<Longrightarrow> \<not> frontier_less_equal A t \<and> \<not> frontier_less_equal B t"
-  unfolding frontier_less_equal_iff2
+  unfolding frontier_less_equal_iff
   apply clarsimp
   apply safe
   subgoal for t'
