@@ -972,7 +972,6 @@ lemma cfilter_False:
    cfilter P A = {||}"
   by auto
 
-
 lemma MyPair_zero_zero_sum2[simp]:
   "a -+- MyPair 0 0 = a"
   by (simp add: zero_myprod_def)

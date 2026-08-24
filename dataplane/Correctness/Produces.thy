@@ -45,14 +45,6 @@ termination
 
 declare find_timestamp.simps[simp del]
 
-section \<open>Backtracking Induction over Summaries\<close>
-
-text \<open>The backtracks predicate walks timestamps backwards along summary
-  edges, and graph_induct is the derived induction principle.\<close>
-definition "backtracks su P T = (\<forall> t l. t \<in> set (T l) \<longrightarrow> (\<exists> l' t' s. l \<noteq> l' \<and> s \<in>\<^sub>A su l' l \<and> t = t' -+- s \<and> t' \<in> set (T l')) \<or> P l t)"
-
-
-
 inductive srcs_to_trg for P su where
   direct: "su (Loc snid (Src sp)) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow> P nid p t m \<Longrightarrow> srcs_to_trg P su snid nid p t m"
 | step: "su (Loc snid' (Src sp)) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow> snid' \<noteq> snid \<Longrightarrow>

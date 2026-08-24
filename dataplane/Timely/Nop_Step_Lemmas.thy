@@ -6,13 +6,11 @@ imports
   Dataflow_Op
 begin
 
-section ‹Self-Loop Lemmas for Nop Choices›
+section ‹Nop Step Simp Rules›
 
-text ‹Toolbox for the weak bisimulation between @{const dataflow_op} and its
-pruned variant. The pruned choices are (a) frontier reads with a stale
-@{const upfro} flag and (b) progress writes without progress. The lemmas
-below show that these choices are self-loops: they change nothing except
-the @{const upfro} bookkeeping field of the subgraph record.›
+text ‹Simp rules showing that steps without progress are no-ops: empty
+progress states have no progress to extract, empty batches cause no
+multiplicity changes, and trivial record updates collapse.›
 
 subsection ‹Empty progress states›
 

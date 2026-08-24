@@ -231,7 +231,6 @@ lemma find_SomeD'':
   "Some x = find P xs \<Longrightarrow> P x \<and> x\<in>set xs"
   using find_SomeD' by metis
 
-
 lemma find_Some_singleton:
   "{x \<in> set xs . P x} = {x} \<Longrightarrow>
    find P xs = Some x"
