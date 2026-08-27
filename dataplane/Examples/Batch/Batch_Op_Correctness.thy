@@ -140,7 +140,7 @@ subsection \<open>The Wired Operators\<close>
 text \<open>The input, transform, and graph operators of the batch pipeline.\<close>
 
 abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
-abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_op os f)"
+abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_op {|1 :: 1|} f id os)"
 
 abbreviation "G_op f ip_state os2 chns \<equiv>
    dataflow_tree_to_operator chns (G f (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2))"
@@ -1501,9 +1501,7 @@ next
                       apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 1) (_ x)) (outpu (os 1) 1)"])
                         apply (rule refl)+
                        apply force
-                      apply (subst batch_op_def)
-                      apply (subst batch_op_logic_def)
-                      apply (subst notifier_op_def)
+                      apply (unfold batch_op_def notifier_op_def batch_op_logic_def)
                       apply simp
                       apply (rule steps_builder_op_Write_Some[where ys=Nil and p=1])
                          apply simp
@@ -2374,9 +2372,7 @@ next
                                                apply (rule refl)+
                                               prefer 2
 
-                                              apply (subst batch_op_def)
-                                              apply (subst batch_op_logic_def)
-                                              apply (subst notifier_op_def)
+                                              apply (unfold batch_op_def notifier_op_def batch_op_logic_def)
                                               apply simp
                                               apply (rule steps_builder_op_Read_Some[where xs="cbufs (1, 1)" and p=1])
                                                apply simp
@@ -2849,9 +2845,7 @@ next
                                               apply simp
                                              apply simp
                                             apply simp
-                                            apply (subst batch_op_def)
-                                            apply (subst batch_op_logic_def)
-                                            apply (subst notifier_op_def)
+                                            apply (unfold batch_op_def notifier_op_def batch_op_logic_def)
                                             apply simp
                                             apply (rule arg_cong5[where f=builder_op])
                                                 apply simp
