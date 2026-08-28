@@ -1570,7 +1570,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 using buffers_inv(2) apply simp
                 subgoal premises aux
                   apply (rule dataplane_tracker_inv_release_caps_update[OF D])
-                  apply (rule dataplane_tracker_inv_add_caps_produces_drop_caps_update[OF D])
+                  apply (rule dataplane_tracker_inv_add_produce_drop_caps[OF D])
                   using dataplane_inv apply simp
                   using G apply simp
                   using subgraph_inv(2) apply assumption 
@@ -1865,7 +1865,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 using buffers_inv(2) apply simp
                 subgoal
                   apply (rule dataplane_tracker_inv_release_caps_update[OF D])
-                  apply (rule dataplane_tracker_inv_add_caps_produces_drop_caps_update[OF D])
+                  apply (rule dataplane_tracker_inv_add_produce_drop_caps[OF D])
                   subgoal
                     using dataplane_inv by simp
                   subgoal

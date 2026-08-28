@@ -2278,7 +2278,7 @@ proof -
     \<open>dataplane_tracker_inv
       (os(nid := drop_caps (produces (add_caps (op_state_base ?ls2) (map snd ?batch)) ?batch) (map snd ?batch)))
       cbufs sg\<close>
-    by (rule dataplane_tracker_inv_add_caps_produces_drop_caps_update[OF D inv_base2 G_base2 Nxt batch_caps])
+    by (rule dataplane_tracker_inv_add_produce_drop_caps[OF D inv_base2 G_base2 Nxt batch_caps])
   have G_drop:
     \<open>graph_summar_nt (summ sg) (nxt sg)
       (os(nid := drop_caps (produces (add_caps (op_state_base ?ls2) (map snd ?batch)) ?batch) (map snd ?batch)))\<close>

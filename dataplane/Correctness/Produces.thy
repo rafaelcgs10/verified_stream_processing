@@ -1776,7 +1776,7 @@ lemma dataplane_tracker_inv_release_caps_update:
   using dataplane_tracker_inv_release_caps[OF D Inv G Nxt, where nid=nid and p=p]
   by simp
 
-lemma dataplane_tracker_inv_add_caps_produces_drop_caps_update:
+lemma dataplane_tracker_inv_add_produce_drop_caps:
   assumes D: "dataflow_topology (summ sg) (-+-)"
     and Inv: "dataplane_tracker_inv (os(nid := os')) cbufs sg"
     and G: "graph_summar_nt (summ sg) (nxt sg) (os(nid := os'))"
