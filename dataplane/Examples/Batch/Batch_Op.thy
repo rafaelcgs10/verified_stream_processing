@@ -13,7 +13,7 @@ definition batch_op_logic where
     let batches = (\<lambda>p t. map (de1 os \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (caps' p)) (input os p)));
         ts = (\<lambda>p. remdups (map snd (filter (\<lambda>(d, t). t \<in> set (caps' p)) (input os p))));
         os' = os\<lparr>input := (\<lambda>p. filter (\<lambda>(d, t). t \<notin> set (caps' p)) (input os p))\<rparr>;
-        outs_drops = cUnion (cimage (\<lambda>p. {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t p)) (f (batches p t))) (ts p)), map (\<lambda>t. Cap t p) (caps p))|}) ps)
+        outs_drops = cUnion (cimage (\<lambda>p. {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t p)) (f (batches p t))) (ts p)), map (\<lambda>t. Cap t p) (caps' p))|}) ps)
     in cimage (\<lambda>(outs, drops).
       trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops))
       (drop_caps (produces os' (map (\<lambda>(d, cap). (en2 os' d, cap)) outs)) drops)) outs_drops)\<close>
