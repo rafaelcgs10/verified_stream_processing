@@ -145,7 +145,7 @@ lemma dataplane_tracker_inv_front_update:
   shows  "propagate_all ((summ sg) :: _ \<Rightarrow> _ \<Rightarrow> 't:: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) (pt_tr sg) = Some c \<Longrightarrow>
    graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
    dataplane_tracker_inv os cbufs sg \<Longrightarrow>
-   dataplane_tracker_inv (map_entry nid (front_update (\<lambda>_. frontier \<circ> (\<lambda>p. c_imp c (Loc nid (Trg p))))) os) cbufs (sg\<lparr>pt_tr := c\<rparr>)"
+   dataplane_tracker_inv (os(nid := (os nid)\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc nid (Trg p)))\<rparr>)) cbufs (sg\<lparr>pt_tr := c\<rparr>)"
   unfolding dataplane_tracker_inv_def
   apply (elim conjE exE)
   apply simp
