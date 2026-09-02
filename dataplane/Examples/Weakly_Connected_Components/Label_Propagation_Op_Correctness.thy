@@ -2786,7 +2786,7 @@ next
     \<open>dataflow_topology_from_tree.inv_implications_nonneg c'\<close>
     \<open>dataflow_topology_from_tree.inv_imp_plus_work_nonneg c'\<close>
     \<open>dataflow_topology.inv_imps_work_sum (antichain_from_list \<circ>\<circ> raw_summary) (-+-) c'\<close>
-    using change_multiplicities_and_propagate_all_correctness
+    using change_multiplicities_and_propagate_all_converges
       [OF D, of \<open>pt_tr sg\<close>
         \<open>extract_progress 0 (graph_to_nxt (antichain_from_list \<circ>\<circ> raw_summary))
           (snd (obtain_progress os_input))\<close>,
@@ -5003,7 +5003,7 @@ next
         dataflow_topology_from_tree.inv_implications_nonneg c2 \<and>
         dataflow_topology_from_tree.inv_imp_plus_work_nonneg c2 \<and>
         dataflow_topology.inv_imps_work_sum (summ sg_first_propa) (-+-) c2\<close>
-        using change_multiplicities_and_propagate_all_correctness
+        using change_multiplicities_and_propagate_all_converges
           [OF D, of \<open>pt_tr sg_first_propa\<close> \<open>second_progress n\<close>,
             unfolded subgraph_inv(1), simplified]
         apply -
