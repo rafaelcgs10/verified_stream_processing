@@ -65,17 +65,37 @@ abbreviation init_operator_state_ty2 where
    is_en2 = isr
    \<rparr>"
 
-abbreviation "input_dt ip_state \<equiv> ((Logic (ooo_input_op {|1 :: 1|} ip_state) default_internal_summary) :: ('a, _, (_, 't) shared_state + (1 \<Rightarrow> 't antichain), 'c \<times> 't, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)"
-abbreviation "batch_dt os2 f \<equiv> Logic (batch_op [1 :: 1] f id os2) default_internal_summary"
-abbreviation "G f ip_state os2 \<equiv>
-  (input_dt (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) :: (2, _, _, _, _) dataflow_tree)
-    \<sqdot>\<^bsub>1\<^esub> batch_dt (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f"
+abbreviation "input_dt inp_os \<equiv> ((Logic (ooo_input_op {|1 :: 1|} inp_os) default_internal_summary) :: ('a, _, (_, 't) shared_state + (1 \<Rightarrow> 't antichain), 'c \<times> 't, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)"
 
-abbreviation "compiled_batch_op inps f \<equiv> compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary inps) (init_operator_state_ty2 default_internal_summary) )"
+abbreviation "batch_dt bat_os f \<equiv> Logic (batch_op [1 :: 1] f id bat_os) default_internal_summary"
 
-abbreviation "compiled_batch_op_opt inps f \<equiv>
-  compile_dataflow_opt (\<lambda> _. [])
-    (G f (init_input_state default_internal_summary inps)
-         (init_operator_state_ty2 default_internal_summary))"
+abbreviation "G_dt f inp_os bat_os \<equiv>
+  (input_dt (inp_os :: (1, 'd1 + 'd2, 'd1, _) input_state) :: (2, _, _, _, _) dataflow_tree)
+    \<sqdot>\<^bsub>1\<^esub> batch_dt (bat_os :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f"
+
+abbreviation "G_op f inp_os bat_os chns \<equiv> dataflow_tree_to_operator chns (G_dt f inp_os bat_os)"
+
+abbreviation "batch_tree inps f \<equiv>
+  G_dt f (init_input_state default_internal_summary inps) (init_operator_state_ty2 default_internal_summary)"
+
+abbreviation "compiled_batch_op inps f \<equiv> compile_dataflow (\<lambda> _. []) (batch_tree inps f)"
+
+section \<open>The Batch Program Example\<close>
+
+text \<open>The input stream and program drawn in the thesis figure about the
+  two possible output orders.\<close>
+
+abbreviation "list_inps \<equiv>
+  [Mint (MyPair (1 :: nat) (0 :: nat)), Mint (MyPair 0 1), Drop (MyPair 0 0),
+   Data (MyPair 1 0) (10 :: nat), Data (MyPair 0 1) 7,
+   Drop (MyPair 0 1), Drop (MyPair 1 0)]"
+
+abbreviation "inps \<equiv> (\<lambda> p :: 1. llist_of list_inps)"
+
+abbreviation "batch_max \<equiv> (\<lambda> b. if b = [] then [] else [Max (set b)])"
+
+abbreviation "prog \<equiv> compile_dataflow_opt (\<lambda> p. [])
+  ((input_dt (init_input_state default_internal_summary inps) :: (2, _, _, _, _) dataflow_tree)
+     \<sqdot>\<^bsub>1\<^esub> batch_dt (init_operator_state_ty2 default_internal_summary) batch_max)"
 
 end

@@ -135,17 +135,6 @@ lemma dataflow_tree_to_graph_to_my_summ_tscomp[simp]:
   "dataflow_tree_to_graph (Logic op1 default_internal_summary \<sqdot>\<^bsub>1\<^esub> Logic op2 default_internal_summary) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ list)"
   unfolding tscomp_op_wire_eq by (rule dataflow_tree_to_graph_to_my_summ)
 
-subsection \<open>The Wired Operators\<close>
-
-text \<open>The input, transform, and graph operators of the batch pipeline.\<close>
-
-abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
-abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_op [1 :: 1] f id os)"
-
-abbreviation "G_op f ip_state os2 chns \<equiv>
-   dataflow_tree_to_operator chns (G f (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2))"
-
-
 lemma outputs_at_target_my_summ[simp]:
   "outputs_at_target (antichain_from_list oo my_summ) os = (\<lambda> p. if p = (1, 0) then outpu (os 0) 0 else [])"
   unfolding outputs_at_target_def my_summ_def
@@ -196,7 +185,7 @@ lemma correctness_gen:
     and sg :: \<open>(2, 1, 't) subgraph\<close>
   assumes
     SUBGRAPH_INV:
-    \<open>raw_s = dataflow_tree_to_graph (G f ip_state bt_state)\<close>
+    \<open>raw_s = dataflow_tree_to_graph (G_dt f ip_state bt_state)\<close>
     \<open>summ sg = antichain_from_list oo raw_s\<close>
     \<open>nxt sg = graph_to_nxt (summ sg)\<close>
     and
@@ -3911,8 +3900,8 @@ lemma correctness_aux:
   assumes T: "timely_input_stream (inps 1) (mset bots)"
   shows  "set_op {||} {||}
      (dataflow_op my_sg
-       (dataflow_tree_to_operator (\<lambda>_. [])        ((input_dt (init_input_state default_internal_summary inps) :: (2, _, _, _, _) dataflow_tree)
-          \<sqdot>\<^bsub>1\<^esub> batch_dt (init_operator_state_ty2 default_internal_summary) f))) \<approx>
+       (G_op f (init_input_state default_internal_summary inps)
+          (init_operator_state_ty2 default_internal_summary) (\<lambda>_. []))) \<approx>
     set_spec_op
      (cUn (cUn {||} {||})
        (cUnion
