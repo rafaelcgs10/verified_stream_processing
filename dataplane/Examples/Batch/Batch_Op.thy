@@ -9,17 +9,18 @@ begin
 
 definition batch_op_logic where
   \<open>batch_op_logic ps f g os caps =
-  (let caps' = g caps in if \<forall>p. p |\<in>| ps \<longrightarrow> caps' p = [] then trace (STR ''No capabilities'') {||} else
+  (let caps' = g caps in if \<exists>p. p \<in> set ps \<and> caps' p \<noteq> [] then
     let batches = (\<lambda>p t. map (de1 os \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (caps' p)) (input os p)));
         ts = (\<lambda>p. remdups (map snd (filter (\<lambda>(d, t). t \<in> set (caps' p)) (input os p))));
         os' = os\<lparr>input := (\<lambda>p. filter (\<lambda>(d, t). t \<notin> set (caps' p)) (input os p))\<rparr>;
-        outs_drops = cUnion (cimage (\<lambda>p. {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t p)) (f (batches p t))) (ts p)), map (\<lambda>t. Cap t p) (caps' p))|}) ps)
-    in cimage (\<lambda>(outs, drops).
-      trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops))
-      (drop_caps (produces os' (map (\<lambda>(d, cap). (en2 os' d, cap)) outs)) drops)) outs_drops)\<close>
+        outs = concat (map (\<lambda>p. concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t p)) (f (batches p t))) (ts p))) ps);
+        drops = concat (map (\<lambda>p. map (\<lambda>t. Cap t p) (caps' p)) ps)
+    in {|trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops))
+      (drop_caps (produces os' (map (\<lambda>(d, cap). (en2 os' d, cap)) outs)) drops)|}
+  else trace (STR ''No capabilities'') {||})\<close>
 
 definition batch_op where
-  \<open>batch_op ps f g os = notifier_op ps ps os (batch_op_logic ps f g)\<close>
+  \<open>batch_op ps f g os = notifier_op (cset_from_list ps) (cset_from_list ps) os (batch_op_logic ps f g)\<close>
 
 lemma nop_leaf_batch_op:
   "nop_leaf None (batch_op ps f g os)"
@@ -65,7 +66,7 @@ abbreviation init_operator_state_ty2 where
    \<rparr>"
 
 abbreviation "input_dt ip_state \<equiv> ((Logic (ooo_input_op {|1 :: 1|} ip_state) default_internal_summary) :: ('a, _, (_, 't) shared_state + (1 \<Rightarrow> 't antichain), 'c \<times> 't, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)"
-abbreviation "batch_dt os2 f \<equiv> Logic (batch_op {|1 :: 1|} f id os2) default_internal_summary"
+abbreviation "batch_dt os2 f \<equiv> Logic (batch_op [1 :: 1] f id os2) default_internal_summary"
 abbreviation "G f ip_state os2 \<equiv>
   (input_dt (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) :: (2, _, _, _, _) dataflow_tree)
     \<sqdot>\<^bsub>1\<^esub> batch_dt (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f"
