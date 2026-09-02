@@ -36,7 +36,7 @@ lemma vacant_diff:
 
 definition "timely_progress lxs C =
    (\<forall> t.
-     (\<exists> n \<le> llength lxs.
+     (\<exists>n. enat n \<le> llength lxs \<and>
        vacant t (C + mset (map time (filter is_Mint (ltaken n lxs))) - mset (map time (filter is_Drop (ltaken n lxs))))))"
 
 section \<open>Timely Input Streams\<close>
