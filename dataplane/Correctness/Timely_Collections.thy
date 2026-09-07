@@ -230,11 +230,44 @@ lemma map_filter_is_Data_Inl_ltaken_ldropn_coll:
   done
 
 
+lemma vacant_monotone_ltaken_Data:
+  "timely_monotone lxs C \<Longrightarrow>
+   enat n \<le> llength lxs \<Longrightarrow>
+   vacant t (C + mset (map event.time (filter is_Mint (ltaken n lxs))) - mset (map event.time (filter is_Drop (ltaken n lxs)))) \<Longrightarrow>
+   Data t d \<in> lset lxs \<Longrightarrow>
+   Data t d \<in> set (ltaken n lxs)"
+  apply (induct n arbitrary: lxs C)
+  subgoal
+    using vacant_monotone_not_in_lset by fastforce
+  subgoal for n lxs' C'
+    apply (cases lxs'; (clarsimp split: if_splits))
+    subgoal
+      by blast
+    subgoal
+      using Suc_ile_eq by auto
+    subgoal
+      using Suc_ile_eq by auto
+    subgoal
+      using Suc_ile_eq by auto
+    done
+  done
+
+lemma timely_input_stream_advances_frontier_Data:
+  "timely_input_stream lxs C \<Longrightarrow>
+   enat n \<le> llength lxs \<Longrightarrow>
+   \<not> frontier_less_equal (frontier (zmset_of (C + mset (map event.time (filter is_Mint (ltaken n lxs))) - mset (map event.time (filter is_Drop (ltaken n lxs)))))) t \<Longrightarrow>
+   \<forall> d. Data t d \<in> lset lxs \<longrightarrow> Data t d \<in> set (ltaken n lxs)"
+  unfolding timely_input_stream_def
+  apply (intro allI impI)
+  apply (elim conjE)
+  apply (rule vacant_monotone_ltaken_Data[OF _ _ not_frontier_less_equal_vacant])
+     apply assumption+
+  done
+
 lemma timely_input_stream_advances_frontier:
   "timely_input_stream lxs C \<Longrightarrow>
    \<exists> n \<le> llength lxs.
    \<not> frontier_less_equal (frontier (zmset_of (C + mset (map event.time (filter is_Mint (ltaken n lxs))) - mset (map event.time (filter is_Drop (ltaken n lxs)))))) t \<and>
-   (\<forall> d. Data t d \<in> lset lxs \<longrightarrow> Data t d \<in> set (ltaken n lxs)) \<and>
    map fst (filter (\<lambda> (d, t'). t' = t) (map (case_event (\<lambda> t d. (d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))) = coll lxs t"
   unfolding timely_input_stream_def timely_progress_def
   apply clarsimp
@@ -246,25 +279,6 @@ lemma timely_input_stream_advances_frontier:
     apply (intro conjI)
     subgoal
       by (metis vacant_not_frontier_less_equal)
-    subgoal
-      apply safe
-      subgoal for d'
-        apply (induct n arbitrary: lxs C)
-        subgoal
-          using vacant_monotone_not_in_lset by fastforce
-        subgoal for n lxs' C'
-          apply (cases lxs'; (clarsimp split: if_splits))
-          subgoal
-            by blast
-          subgoal
-            using Suc_ile_eq by auto
-          subgoal
-            using Suc_ile_eq by auto
-          subgoal
-            using Suc_ile_eq by auto
-          done
-        done
-      done
     subgoal
       unfolding coll_def
       apply simp
@@ -358,6 +372,27 @@ lemma timely_input_stream_advances_frontier:
           done
         done
       done
+    done
+  done
+
+lemma timely_input_stream_advances_frontier_full:
+  "timely_input_stream lxs C \<Longrightarrow>
+   \<exists> n \<le> llength lxs.
+   \<not> frontier_less_equal (frontier (zmset_of (C + mset (map event.time (filter is_Mint (ltaken n lxs))) - mset (map event.time (filter is_Drop (ltaken n lxs)))))) t \<and>
+   (\<forall> d. Data t d \<in> lset lxs \<longrightarrow> Data t d \<in> set (ltaken n lxs)) \<and>
+   map fst (filter (\<lambda> (d, t'). t' = t) (map (case_event (\<lambda> t d. (d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))) = coll lxs t"
+  apply (frule timely_input_stream_advances_frontier[where t=t])
+  apply (elim exE conjE)
+  subgoal for n
+    apply (rule exI[of _ n])
+    apply (intro conjI)
+       apply assumption
+      apply assumption
+     apply (rule timely_input_stream_advances_frontier_Data)
+       apply assumption
+      apply assumption
+     apply assumption
+    apply assumption
     done
   done
 

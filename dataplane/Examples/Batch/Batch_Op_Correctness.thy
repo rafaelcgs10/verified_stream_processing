@@ -1584,7 +1584,7 @@ next
                 by (simp add: operator_state.defs SIM2(1,2,3,4,5))
               done
             subgoal
-              using timely_input_stream_advances_frontier[OF SIM2(13), of t] apply -
+              using timely_input_stream_advances_frontier_full[OF SIM2(13), of t] apply -
               apply (clarsimp simp flip: cin.rep_eq )
               subgoal premises N_inv for n
                 using N_inv(1,2,3,4) apply -

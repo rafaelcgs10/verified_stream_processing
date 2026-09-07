@@ -6072,7 +6072,7 @@ next
             done
           done
         subgoal premises prems
-          using timely_input_stream_advances_frontier[OF input_stream_inv, of t] apply -
+          using timely_input_stream_advances_frontier_full[OF input_stream_inv, of t] apply -
           apply clarsimp
           subgoal premises stream_move for n
 
