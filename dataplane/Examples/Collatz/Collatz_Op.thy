@@ -70,12 +70,12 @@ definition "input_dt = Logic (ooo_input_op {|0 :: 2|} (init_input_state inps)) d
 definition "concat_dt = Logic (concat_op {|0, 1|} 0 init_operator_state) default_internal_summary"
 definition "collatz_dt = Logic (tmap_op 0 0 init_operator_state_ty2 (\<lambda> (n, x). if even x then (n, x div 2) else (n, 3 * x + 1))) default_internal_summary"
 definition "branch_dt = Logic (branch_op 0 0 1 (\<lambda> (x, t). snd x \<le> 1 \<or> t > 100) init_operator_state) default_internal_summary"
-definition "increment_dt = Logic (increment_op 1 1 1 init_operator_state) (\<lambda> p1 p2. if 1 = p2 then [1] else [])"
+definition "incr_dt = Logic (incr_op 1 1 1 init_operator_state) (\<lambda> p1 p2. if 1 = p2 then [1] else [])"
 
 abbreviation dt :: "(5, 2, (2, nat) shared_state + (2 \<Rightarrow> nat antichain), (nat \<times> nat) \<times> nat, nat) dataflow_tree" where
   "dt \<equiv>
     input_dt \<sqdot>\<^bsub>0\<^esub>
-      (concat_dt \<sqdot>\<^bsub>0\<^esub> collatz_dt \<sqdot>\<^bsub>0\<^esub> branch_dt \<sqdot>\<^bsub>1\<^esub> increment_dt) \<hookleftarrow>\<^bsub>1\<^esub>"
+      (concat_dt \<sqdot>\<^bsub>0\<^esub> collatz_dt \<sqdot>\<^bsub>0\<^esub> branch_dt \<sqdot>\<^bsub>1\<^esub> incr_dt) \<hookleftarrow>\<^bsub>1\<^esub>"
 
 abbreviation "compiled \<equiv> compile_dataflow_opt (\<lambda> _. []) dt"
 

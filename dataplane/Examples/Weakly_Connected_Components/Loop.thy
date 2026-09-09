@@ -5,7 +5,7 @@ imports
 begin
 
 lemma loop_move_all_data:
-  assumes I: "intsum (os 2) = increment_summary (MyPair 0 1)"
+  assumes I: "intsum (os 2) = incr_intsum (MyPair 0 1)"
     and N: "initia (os 2)"
     and C1: "input_ocaps_inv (os 2)"
   shows  "(step Tau)\<^sup>*\<^sup>*
@@ -15,7 +15,7 @@ lemma loop_move_all_data:
            comp_wire
            (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
            (logic_map (1 :: 3) (label_propagation_op (os_label_prop :: (nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state)))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
+           (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
        (loop_op loop_wire ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2,1) := [], Inr (1,1) := []))
        (comp_map
          (comp_op
@@ -23,7 +23,7 @@ lemma loop_move_all_data:
            ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2,1) := [], Inr (1,1) := []))
            (logic_map (1 :: 3) (label_propagation_op (fold (\<lambda>(d, t) os. consumes os 1 t d) (map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
                  (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu (os 2) 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (1, 1)) (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>))))))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (((drop_caps
+           (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) (((drop_caps
                  (produces (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu os_label_prop 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (2, 1)) (os 2)))
                    (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1)) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
                  (map (\<lambda>t. Cap t 1) (ocaps (os 2) 1 @  (map (\<lambda>(d, t). t -+- MyPair 0 (Suc 0)) (cbufs (2, 1) @ outpu os_label_prop 1)))))\<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>)))))))"
@@ -38,7 +38,7 @@ lemma loop_move_all_data:
         apply (subst comp_op_buf_cong[where buf'="case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := []))"])
         apply (rule refl)+
         subgoal
-          apply (clarsimp simp add: prems increment_op_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)
+          apply (clarsimp simp add: prems incr_op_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)
           done
         apply (subst loop_op_buf_cong[where buf'="(case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := [])))"])
         apply (rule refl)+
@@ -58,7 +58,7 @@ lemma loop_move_all_data:
           apply (auto simp add: fold_consumes produ_consumes_fold inter_consumes_fold consu_consumes_fold intsum_consumes_fold intro!: operator_state_eqI )
           done
         apply (rule arg_cong[where f="logic_map 2"])
-        apply (rule arg_cong[where f="increment_op 1 1 (MyPair 0 (Suc 0))"])
+        apply (rule arg_cong[where f="incr_op 1 1 (MyPair 0 (Suc 0))"])
         using prems apply -
         apply (auto simp add: produces_def drop_caps_def intro!: operator_state_eqI)
         done
@@ -68,7 +68,7 @@ lemma loop_move_all_data:
         apply (rule step_map_op)
         apply (rule step_comp_op_R_Tau)
         apply (rule step_map_op)
-        apply (rule step_increment_op_Silent)
+        apply (rule step_incr_op_Silent)
         apply simp
         apply (rule refl)+
         using N apply assumption
@@ -80,7 +80,7 @@ lemma loop_move_all_data:
         apply (subst comp_op_buf_cong[where buf'="case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := []))"])
         apply (rule refl)+
         subgoal
-          using prems by (fastforce simp add: prems increment_op_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)
+          using prems by (fastforce simp add: prems incr_op_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)
         apply (subst loop_op_buf_cong[where buf'="(case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := [])))"])
         apply (rule refl)+
         subgoal
@@ -99,7 +99,7 @@ lemma loop_move_all_data:
           apply (auto simp add: fold_consumes produ_consumes_fold inter_consumes_fold consu_consumes_fold intsum_consumes_fold intro!: operator_state_eqI )
           done
         apply (rule arg_cong[where f="logic_map 2"])
-        apply (rule arg_cong[where f="increment_op 1 1 (MyPair 0 (Suc 0))"])
+        apply (rule arg_cong[where f="incr_op 1 1 (MyPair 0 (Suc 0))"])
         using prems apply -
         apply (auto simp add: produces_def drop_caps_def intro!: operator_state_eqI)
         done
@@ -117,7 +117,7 @@ lemma loop_move_all_data:
         apply (rule steps_map_op[where xs="map (\<lambda> x. Out _ (_ x)) ( outpu (os 2) 1)"])
         apply (rule refl)+
         apply force
-        apply (rule steps_increment_op_Write_Some[where ys=Nil])
+        apply (rule steps_incr_op_Write_Some[where ys=Nil])
         apply simp
         apply (rule refl)+
         apply simp
@@ -158,7 +158,7 @@ lemma loop_move_all_data:
         apply (subst comp_op_buf_cong[where buf'="case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := []))"])
         apply (rule refl)+
         subgoal
-          apply (clarsimp simp add: prems2 prems increment_op_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)
+          apply (clarsimp simp add: prems2 prems incr_op_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)
           using prems apply blast
           done
         apply (rule arg_cong3[where f="comp_op comp_wire"])
@@ -172,7 +172,7 @@ lemma loop_move_all_data:
           done
         subgoal
           apply (rule arg_cong[where f="logic_map 2"])
-          apply (rule arg_cong[where f="increment_op 1 1 (MyPair 0 (Suc 0))"])
+          apply (rule arg_cong[where f="incr_op 1 1 (MyPair 0 (Suc 0))"])
           using prems apply -
           apply (auto simp add: produces_def drop_caps_def C1 intro!: operator_state_eqI)
           done
@@ -184,7 +184,7 @@ lemma loop_move_all_data:
         apply (rule step_map_op)
         apply (rule step_comp_op_R_Tau)
         apply (rule step_map_op)
-        apply (rule step_increment_op_Silent)
+        apply (rule step_incr_op_Silent)
         using prems3    apply simp
         apply (rule refl)+
         using N apply assumption
@@ -204,7 +204,7 @@ lemma loop_move_all_data:
         apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 1) (_ x)) ( outpu (os 2) 1)"])
         apply (rule refl)+
         apply force
-        apply (rule steps_increment_op_Write_Some[where ys=Nil])
+        apply (rule steps_incr_op_Write_Some[where ys=Nil])
         apply simp
         apply (rule refl)+
         using prems apply (fastforce simp add: prems2 prems prems3 comp_def split_beta filter_empty_conv)[1]
@@ -246,7 +246,7 @@ lemma loop_move_all_data:
         apply (subst comp_op_buf_cong[where buf'="case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := []))"])
         apply (rule refl)+
         subgoal
-          apply (clarsimp simp add: prems2 prems increment_op_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)
+          apply (clarsimp simp add: prems2 prems incr_op_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)
           using prems apply blast
           done
         apply (rule arg_cong3[where f="comp_op comp_wire"])
@@ -260,7 +260,7 @@ lemma loop_move_all_data:
           done
         subgoal
           apply (rule arg_cong[where f="logic_map 2"])
-          apply (rule arg_cong[where f="increment_op 1 1 (MyPair 0 (Suc 0))"])
+          apply (rule arg_cong[where f="incr_op 1 1 (MyPair 0 (Suc 0))"])
           using prems apply -
           apply (auto simp add: produces_def drop_caps_def C1 intro!: operator_state_eqI)
           done
@@ -291,7 +291,7 @@ lemma loop_move_all_data:
     apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Some 1) (Inr x)) (cbufs (2, 1) @ outpu (os_label_prop) 1)"])
     apply (rule refl)+
     apply simp
-    apply (rule steps_increment_op_Read_Some)
+    apply (rule steps_incr_op_Read_Some)
     apply (rule refl)+
     apply simp
     apply simp
@@ -304,7 +304,7 @@ lemma loop_move_all_data:
     apply (rule step_map_op)
     apply (rule step_comp_op_R_Tau)
     apply (rule step_map_op)
-    apply (rule step_increment_op_Silent)
+    apply (rule step_incr_op_Silent)
     subgoal    
       apply (cases "input (os 2) 1")
       subgoal
@@ -342,7 +342,7 @@ lemma loop_move_all_data:
     apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 1) (Inr x)) ( outpu (os 2) 1) @ map (\<lambda>(d, t). Out (Some 1) (Inr (d, t -+- MyPair 0 (Suc 0)))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1)"])
     apply (rule refl)+
     apply force
-    apply (rule steps_increment_op_Write_Some[where ys=Nil])
+    apply (rule steps_incr_op_Write_Some[where ys=Nil])
     apply simp
     apply (rule refl)+
     apply simp
@@ -397,7 +397,7 @@ lemma loop_move_all_data:
     apply simp
     apply simp
     apply (rule arg_cong[where f="logic_map 2"])
-    apply (rule arg_cong[where f="increment_op 1 1 (MyPair 0 (Suc 0))"])
+    apply (rule arg_cong[where f="incr_op 1 1 (MyPair 0 (Suc 0))"])
     using prems apply -
     apply (auto simp add: prems  produces_def drop_caps_def C1 intro!: operator_state_eqI split: if_splits)
     apply (auto simp add: filter_empty_conv comp_def split_beta map_concat)
@@ -414,14 +414,14 @@ lemma loop_label_prop_input1:
                comp_wire
                cbufs
                (logic_map (1 :: 3) (label_propagation_op (os_label_prop :: (nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state)))
-               (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
+               (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
          (loop_op loop_wire cbufs
            (comp_map
              (comp_op
                comp_wire
                cbufs
                (logic_map (1 :: 3) (label_propagation_op (fst (label_prop_input1_batched os_label_prop (input os_label_prop 1)))))
-               (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))"
+               (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))"
   apply (rule relpowp_imp_rtranclp[where n="length (input os_label_prop 1)"]) 
   apply (rule step_taus_loop_op_steps_intro)
   apply (rule step_tau_pow_map_op)
@@ -447,7 +447,7 @@ subsection \<open>One-step input-1 loop update\<close>
 
 lemma loop_move_all_data_label_prop_input1:
   assumes NO: "initia os_label_prop"
-    and I: "intsum (os 2) = increment_summary (MyPair 0 1)"
+    and I: "intsum (os 2) = incr_intsum (MyPair 0 1)"
     and N: "initia (os 2)"
     and C1: "input_ocaps_inv (os 2)"
   shows  "(step Tau)\<^sup>*\<^sup>*
@@ -457,7 +457,7 @@ lemma loop_move_all_data_label_prop_input1:
            comp_wire
            (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
            (logic_map (1 :: 3) (label_propagation_op (os_label_prop :: (nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state)))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
+           (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
      (loop_op loop_wire ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2, 1) := [], Inr (1, 1) := []))
        (comp_map
          (comp_op
@@ -470,7 +470,7 @@ lemma loop_move_all_data_label_prop_input1:
                         (CONSUMES 1 (cbufs (1, 1) @ outpu (os 2) 1 @ map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
                           (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>))
                         1)))))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (drop_caps (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2)) (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1)) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
+           (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) (drop_caps (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2)) (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1)) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
                  (map (\<lambda>t. Cap t 1) (ocaps (os 2) 1 @ map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- MyPair 0 (Suc 0)) (cbufs (2, 1) @ outpu os_label_prop 1)))
                 \<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>))))))"
   apply (rule rtranclp_trans)
@@ -494,7 +494,7 @@ lemma loop_move_all_data_label_prop_input1_updates:
   assumes UPDATES:
     \<open>(cbufs', os_label_prop', os') = label_prop_input1_loop_updates cbufs os_label_prop os\<close>
     and NO: \<open>initia os_label_prop\<close>
-    and I: \<open>intsum (os 2) = increment_summary (MyPair 0 1)\<close>
+    and I: \<open>intsum (os 2) = incr_intsum (MyPair 0 1)\<close>
     and N: \<open>initia (os 2)\<close>
     and C1: "input_ocaps_inv (os 2)"
   shows  \<open>(step Tau)\<^sup>*\<^sup>*
@@ -504,14 +504,14 @@ lemma loop_move_all_data_label_prop_input1_updates:
            comp_wire
            (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
            (logic_map (1 :: 3) (label_propagation_op os_label_prop))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))
+           (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))
      (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs' x)))
        (comp_map
          (comp_op
            comp_wire
            (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs' x)))
            (logic_map (1 :: 3) (label_propagation_op os_label_prop'))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os' 2))))))\<close>
+           (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) (os' 2))))))\<close>
 proof -
   let ?buf = \<open>case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))\<close>
   let ?buf' = \<open>?buf(Inr (2, 1) := [], Inr (1, 1) := [])\<close>
@@ -538,12 +538,12 @@ proof -
         (comp_map
           (comp_op comp_wire ?buf
             (logic_map (1 :: 3) (label_propagation_op os_label_prop))
-            (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))
+            (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))
       (loop_op loop_wire ?buf'
         (comp_map
           (comp_op comp_wire ?buf'
             (logic_map (1 :: 3) (label_propagation_op ?os_label_prop_new))
-            (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ?os2_new)))))\<close>
+            (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) ?os2_new)))))\<close>
     using loop_move_all_data_label_prop_input1[where os=os and os_label_prop=os_label_prop and cbufs=cbufs]
       NO I N C1 by blast
   have buf_eq:
@@ -558,12 +558,12 @@ proof -
       (comp_map
         (comp_op comp_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs' x)))
           (logic_map (1 :: 3) (label_propagation_op os_label_prop'))
-          (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os' 2))))) =
+          (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) (os' 2))))) =
      loop_op loop_wire ?buf'
       (comp_map
         (comp_op comp_wire ?buf'
           (logic_map (1 :: 3) (label_propagation_op ?os_label_prop_new))
-          (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ?os2_new))))\<close>
+          (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) ?os2_new))))\<close>
     using buf_eq states_eq by metis
 
   show ?thesis
@@ -836,14 +836,14 @@ lemma step_tau_pow_loop_updates:
            comp_wire
            (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
            (logic_map (1 :: 3) (label_propagation_op os_label_prop))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))
+           (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))
      (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs' x)))
        (comp_map
          (comp_op
            comp_wire
            (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs' x)))
            (logic_map (1 :: 3) (label_propagation_op os_label_prop'))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os' 2))))))\<close>
+           (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) (os' 2))))))\<close>
   using assms apply -
   apply (induct cbufs os_label_prop os rule: loop_updates.induct)
   apply simp
@@ -950,14 +950,14 @@ lemma step_tau_pow_loop_updates_alt:
            comp_wire
            (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
            (logic_map (1 :: 3) (label_propagation_op os_label_prop))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))
+           (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))
      (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (fst (loop_updates cbufs os_label_prop os) x)))
        (comp_map
          (comp_op
            comp_wire
            (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (fst (loop_updates cbufs os_label_prop os) x)))
            (logic_map (1 :: 3) (label_propagation_op (fst (snd (loop_updates cbufs os_label_prop os)))))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((snd (snd (loop_updates cbufs os_label_prop os))) 2))))))\<close>
+           (logic_map (2 :: 3) (incr_op 1 1 (MyPair 0 (Suc 0)) ((snd (snd (loop_updates cbufs os_label_prop os))) 2))))))\<close>
 proof -
   let ?res = \<open>loop_updates cbufs os_label_prop os\<close>
   have updates: \<open>(fst ?res, fst (snd ?res), snd (snd ?res)) = ?res\<close>

@@ -5,15 +5,6 @@ imports
   Input0
 begin
 
-
-
-
-
-
-
-
-
-
 lemma label_prop_upd_inv_loop_updatesI:
   fixes os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>

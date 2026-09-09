@@ -932,8 +932,8 @@ definition "label_prob_ty2_check os bufs \<equiv>
    (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x)) \<and>
    (\<forall> x \<in> fst ` set (outpu os 0). is_en2 os x) \<and> (\<forall> x \<in> fst ` set (outpu os 1). is_en1 os x)"
 
-definition label_propagation_op_logic where
-  \<open>label_propagation_op_logic os = cUn (cUn
+abbreviation label_prop_input0_case where
+  \<open>label_prop_input0_case os \<equiv>
     (case input os 0 of
       [] \<Rightarrow> {||}
     | (d, t) # _ \<Rightarrow>
@@ -945,7 +945,10 @@ definition label_propagation_op_logic where
         os' = input_tl os 0;
         os'' = label_prop_edge_record_update os' t1 v1 v2 v l;
         batch = label_prop_edge_batch os os'' t1 v l t
-      in {|release_caps (drop_caps (produces ((add_caps os'' (map snd batch))) batch)  (map snd batch)) 1|})
+      in {|release_caps (drop_caps (produces ((add_caps os'' (map snd batch))) batch)  (map snd batch)) 1|})\<close>
+
+abbreviation label_prop_input1_case where
+  \<open>label_prop_input1_case os \<equiv>
     (case input os 1 of
       [] \<Rightarrow> {||}
     | (d, t) # _ \<Rightarrow>
@@ -957,27 +960,28 @@ definition label_propagation_op_logic where
         os'' = label_prop_label_record_update os' t1 v l';
         batch = label_prop_label_batch os os'' t1 v l' t
       in
-        {|release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1|}))
-  (cUn (let
+        {|release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1|})\<close>
+
+abbreviation label_prop_output_case where
+  \<open>label_prop_output_case os \<equiv>
+    (let
       below_times = filter
         (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) \<and> myfst t \<in> set (timestamps os))
         (ocaps os 0);
       batch = label_prop_output_batch os below_times
     in
       if batch = [] then {||}
-      else {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)|})
+      else {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)|})\<close>
+
+definition label_propagation_op_logic where
+  \<open>label_propagation_op_logic os = cUn (cUn
+    (label_prop_input0_case os)
+    (label_prop_input1_case os))
+  (cUn (label_prop_output_case os)
     (case ocaps os 1 of [] \<Rightarrow> {||} | _ \<Rightarrow> {| release_caps os 1 |}))\<close>
 
-term components_from_labels
-
-
-(* @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)) *)
 definition label_propagation_op where
   \<open>label_propagation_op os = builder_op True cUNIV cUNIV os label_propagation_op_logic\<close>
-
-
-
-(* FIXME: move me closer to dependencies *)
 
 section \<open>Frame Facts for the Operator State\<close>
 
@@ -1023,10 +1027,6 @@ lemma min_label_release_caps[simp]:
   "min_label (release_caps os p) = min_label os"
   unfolding release_caps_def Let_def trace_simp
   by (auto split: list.splits)
-
-
-
-
 
 lemma neighbors_drop_caps[simp]:
   "neighbors (drop_caps os caps) = neighbors os"

@@ -11,7 +11,7 @@ text ‹The tests compare @{const lset} of the trace, not the trace itself: the
 
 abbreviation ‹test_input1 ≡ llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data ⊥ (0, 1), Data (MyPair 1 0) (3, 4), Data ⊥ (1, 2), Data (MyPair 2 0) (4, 5)]›
 
-value "list_connections (dataflow_tree_to_graph (G (initial_state_input test_input1) initial_state_label_prop (initial_state_increment (MyPair 0 1))))"
+value "list_connections (dataflow_tree_to_graph (G_dt (initial_state_input test_input1) initial_state_label_prop (initial_state_increment (MyPair 0 1))))"
 
 value [GHC] "unit_test (lset (lmap show_Outs (trace_exec (compiled test_input1))))
  (set [(Loc 1 (Src 0), Inr {{1, 2, 0, 1}}, MyPair 0 0),

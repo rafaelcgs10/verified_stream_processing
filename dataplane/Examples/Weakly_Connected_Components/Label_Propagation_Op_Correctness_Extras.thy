@@ -87,10 +87,10 @@ abbreviation \<open>initial_state_label_prop \<equiv> \<lparr>
    label = (\<lambda>_. id)
    \<rparr> :: (_, nat, nat, nat) label_propagation_state\<close>
 
-abbreviation \<open>increment_summary inc \<equiv> (\<lambda>p1 p2. if p1 = p2 then [inc] else [])\<close>
+abbreviation \<open>incr_intsum inc \<equiv> (\<lambda>p1 p2. if p1 = p2 then [inc] else [])\<close>
 
 abbreviation \<open>initial_state_increment inc \<equiv> \<lparr>
-   intsum = increment_summary inc,
+   intsum = incr_intsum inc,
    consu = [],
    inter = [],
    produ = [],
@@ -104,18 +104,22 @@ abbreviation \<open>initial_state_increment inc \<equiv> \<lparr>
 abbreviation \<open>logic_map n \<equiv> map_op (case_option (Inl n) (\<lambda>p. Inr (n, p))) (case_option (Inl n) (\<lambda>p. Inr (n, p)))\<close>
 abbreviation \<open>comp_map \<equiv> map_op (case_sum id id) (case_sum id id)\<close>
 
-abbreviation \<open>op0 state \<equiv> Logic (ooo_input_op {|0 :: 2|} state) default_internal_summary\<close>
-abbreviation \<open>op1 state \<equiv> Logic (label_propagation_op state) (\<lambda>p1 p2. if p1 = 0 then [0] else if p2 = 1 then [0] else [])\<close>
-abbreviation \<open>op2 state \<equiv> Logic (increment_op (1 :: 2) 1 (MyPair 0 1) state) (increment_summary (MyPair 0 1))\<close>
+abbreviation \<open>input_dt inp_os \<equiv> Logic (ooo_input_op {|0 :: 2|} inp_os) default_internal_summary\<close>
+abbreviation \<open>label_prop_dt lp_os \<equiv> Logic (label_propagation_op lp_os) (\<lambda>p1 p2. if p1 = 0 then [0] else if p2 = 1 then [0] else [])\<close>
+abbreviation \<open>incr_dt inc_os \<equiv> Logic (incr_op (1 :: 2) 1 (MyPair 0 1) inc_os) (incr_intsum (MyPair 0 1))\<close>
 
-abbreviation G :: "_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> (3, 2, (2, (nat, nat) myprod) shared_state + (2 \<Rightarrow> (nat, nat) myprod antichain), (nat \<times> nat + nat set set) \<times> (nat, nat) myprod, (nat, nat) myprod) dataflow_tree" where
-  "G inp_state label_state incr_state \<equiv>
-    op0 inp_state \<sqdot>\<^bsub>0\<^esub> (op1 label_state \<sqdot>\<^bsub>1\<^esub> op2 incr_state) \<hookleftarrow>\<^bsub>1\<^esub>"
+abbreviation G_dt :: "_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> (3, 2, (2, (nat, nat) myprod) shared_state + (2 \<Rightarrow> (nat, nat) myprod antichain), (nat \<times> nat + nat set set) \<times> (nat, nat) myprod, (nat, nat) myprod) dataflow_tree" where
+  "G_dt inp_os lp_os inc_os \<equiv>
+    input_dt inp_os \<sqdot>\<^bsub>0\<^esub> (label_prop_dt lp_os \<sqdot>\<^bsub>1\<^esub> incr_dt inc_os) \<hookleftarrow>\<^bsub>1\<^esub>"
 
-abbreviation "compiled inp \<equiv> compile_dataflow_opt (\<lambda> _. []) (G (initial_state_input inp) initial_state_label_prop (initial_state_increment (MyPair 0 1)))"
+abbreviation "compiled inp \<equiv> compile_dataflow_opt (\<lambda> _. []) (G_dt (initial_state_input inp) initial_state_label_prop (initial_state_increment (MyPair 0 1)))"
 
-abbreviation "G_op inp_state label_state incr_state chns \<equiv>
-   dataflow_tree_to_operator chns (G inp_state label_state incr_state)"
+abbreviation "G_op inp_os lp_os inc_os chns \<equiv>
+   dataflow_tree_to_operator chns (G_dt inp_os lp_os inc_os)"
+
+abbreviation "wcc_tree lxs \<equiv>
+   G_dt (initial_state_input lxs) initial_state_label_prop
+     (initial_state_increment (MyPair 0 1))"
 
 
 
@@ -128,7 +132,7 @@ definition \<open>raw_summary = (\<lambda>l1 l2. case (find (\<lambda> (l1', s, 
     Some (l1', s, l2') \<Rightarrow> s :: (nat, nat) myprod list | None \<Rightarrow> [])\<close>
 
 lemma dataflow_tree_to_graph_raw_summary[simp]:
-  "dataflow_tree_to_graph (G inp_state label_state incr_state) = raw_summary"
+  "dataflow_tree_to_graph (G_dt inp_state label_state incr_state) = raw_summary"
   unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def  comp_def                                               
   apply (simp only: split: if_splits prod.splits)
   apply (intro allI impI conjI)

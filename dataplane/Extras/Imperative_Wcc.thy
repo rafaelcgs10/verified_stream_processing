@@ -1,4 +1,4 @@
-theory Wcc
+theory Imperative_Wcc
   imports
     "Refine_Monadic.Refine_Monadic"
 begin
