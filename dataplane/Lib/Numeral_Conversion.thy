@@ -1,7 +1,5 @@
 theory Numeral_Conversion
 
-(* Made with GPT-5.3 codex *)
-
 imports
   "HOL-Library.Numeral_Type"
   Nondeterministic_Dataflow.Numeral_Auxiliary
