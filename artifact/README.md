@@ -102,3 +102,23 @@ the larger case studies.
 The main results are the weak bisimilarity correctness lemmas
 `correctness` in `Examples/Batch/Batch_Op_Correctness.thy` and in
 `Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy`.
+
+## Renamed symbols
+
+In the paper, some types and constants are renamed for brevity.  The
+table below shows the correspondence between the names used in the
+paper and in the formalization.
+
+| Paper | Formalization |
+|---|---|
+| ⊙ | results_in |
+| propagate | next_propagate' |
+| conf | configuration |
+| pts | c_pts |
+| imp | c_imp |
+| work | c_work |
+| td_monotone | timely_monotone |
+| td_progress | timely_progress |
+| td_input | timely_input_stream |
+| input_op_logic | ooo_input_op_logic |
+| input_op | ooo_input_op |
