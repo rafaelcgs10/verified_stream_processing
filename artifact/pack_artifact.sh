@@ -187,15 +187,6 @@ if [ -n "$oopses" ]; then
   done
 fi
 
-# External links are legitimate, they cite the reference implementation, but
-# list their hosts so they can be eyeballed before submission.
-links=$(grep -rhoE 'https?://[A-Za-z0-9./_#?=-]+' "$DEST" --include='*.thy' \
-  | sed 's|\(https*://[^/]*\)/.*|\1|' | sort -u || true)
-if [ -n "$links" ]; then
-  echo "note: the theories link to these hosts, check that none identify you:"
-  printf '  %s\n' $links
-fi
-
 # --- zip --------------------------------------------------------------------
 # A fixed timestamp keeps the zip reproducible and drops the working mtimes.
 rm -f "$OUT"
