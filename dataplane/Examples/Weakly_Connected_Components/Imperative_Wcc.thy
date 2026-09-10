@@ -483,7 +483,7 @@ lemma wcc_labels_correct:
     by (cases s) (simp add: outer_inv_def)
   done
 
-theorem weak_components_correct:
+lemma weak_components_correct:
   assumes fin: "finite E"
   shows "weak_components E \<le> SPEC (\<lambda>Cs. Cs = ccs E)"
   unfolding weak_components_def
