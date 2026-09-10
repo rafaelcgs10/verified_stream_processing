@@ -5,7 +5,7 @@ imports
   "../../Timely/Tree_Nop_Invariant"
 begin
 
-section ‹The Optimized and Plain Compiled Collatz Programs are Equivalent›
+section \<open>The Optimized and Plain Compiled Collatz Programs are Equivalent\<close>
 
 lemma builder_tree_dt:
   "builder_tree dt"
@@ -21,11 +21,11 @@ lemma distinct_tree_ids_dt:
   by simp
 
 theorem compiled_collatz_wbisim:
-  "compiled ≈ compile_dataflow (λ _. []) dt"
+  "compiled \<approx> compile_dataflow (\<lambda> _. []) dt"
   by (rule compile_dataflow_opt_wbisim_generic[OF builder_tree_dt distinct_tree_ids_dt])
 
 theorem compiled_collatz_wtraces:
-  "compiled ≡⇩t compile_dataflow (λ _. []) dt"
+  "compiled \<equiv>\<^sub>t compile_dataflow (\<lambda> _. []) dt"
   by (rule wbisim_wtraces[OF compiled_collatz_wbisim])
 
 end

@@ -4,48 +4,48 @@ imports
   Batch_Op_Nop_Invariant
 begin
 
-section ‹Executable Tests for the Batch Program›
+section \<open>Executable Tests for the Batch Program\<close>
 
-abbreviation "t0 ≡ MyPair (0 :: nat) (0 :: nat)"
-abbreviation "t_1_0 ≡ MyPair (Suc 0) (0 :: nat)"
-abbreviation "t_0_1 ≡ MyPair (0 :: nat) (Suc 0)"
-abbreviation "t_1_1 ≡ MyPair (Suc 0) (Suc 0)"
+abbreviation "t0 \<equiv> MyPair (0 :: nat) (0 :: nat)"
+abbreviation "t_1_0 \<equiv> MyPair (Suc 0) (0 :: nat)"
+abbreviation "t_0_1 \<equiv> MyPair (0 :: nat) (Suc 0)"
+abbreviation "t_1_1 \<equiv> MyPair (Suc 0) (Suc 0)"
 
-abbreviation "batch_outputs op ≡ lmap (λ io. case io of VOut p (x, t) ⇒ (projr x, t)) (trace_exec op)"
+abbreviation "batch_outputs op \<equiv> lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec op)"
 
-abbreviation "list_inps_test ≡ 
+abbreviation "list_inps_test \<equiv> 
  [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
-abbreviation "inps_test ≡ llist_of list_inps_test"
+abbreviation "inps_test \<equiv> llist_of list_inps_test"
 
-value [GHC] "unit_test (check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] (compile_dataflow_opt (λ _. []) (batch_tree (λ _. inps_test) batch_max))) True"
-value [GHC] "unit_test (batch_outputs (compile_dataflow_opt (λ _. []) (batch_tree (λ _. inps_test) batch_max))) (llist_of [(7, MyPair 0 1), (10, MyPair 1 1), (3, MyPair 1 0)])"
+value [GHC] "unit_test (check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] (compile_dataflow_opt (\<lambda> _. []) (batch_tree (\<lambda> _. inps_test) batch_max))) True"
+value [GHC] "unit_test (batch_outputs (compile_dataflow_opt (\<lambda> _. []) (batch_tree (\<lambda> _. inps_test) batch_max))) (llist_of [(7, MyPair 0 1), (10, MyPair 1 1), (3, MyPair 1 0)])"
 
-abbreviation "list_inps_test2 ≡ 
+abbreviation "list_inps_test2 \<equiv> 
  [ Mint t_1_0, Data t_1_0 10, Data t0 (7 :: nat), Drop t0, Drop t_1_0]"
-abbreviation "inps_test2 ≡ llist_of list_inps_test2"
+abbreviation "inps_test2 \<equiv> llist_of list_inps_test2"
 
-section ‹Trace-Nondeterminism Demonstrated on the Optimized Wrapper›
+section \<open>Trace-Nondeterminism Demonstrated on the Optimized Wrapper\<close>
 
-text ‹Pruning the nops keeps the choice tree finite, so the search below
+text \<open>Pruning the nops keeps the choice tree finite, so the search below
   terminates. It is evidence about @{const dataflow_op} by
   @{thm [source] dataflow_opt_op_wbisim_start}, whose @{term nop_invar}
-  hypothesis is discharged in theory Batch_op_Nop_Invariant.›
+  hypothesis is discharged in theory Batch_op_Nop_Invariant.\<close>
 
-value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 0))] (compile_dataflow_opt (λ _. []) (batch_tree (λ _. inps_test2) batch_max))) True"
-value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0))] (compile_dataflow_opt (λ _. []) (batch_tree (λ _. inps_test2) batch_max))) True"
+value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 0))] (compile_dataflow_opt (\<lambda> _. []) (batch_tree (\<lambda> _. inps_test2) batch_max))) True"
+value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0))] (compile_dataflow_opt (\<lambda> _. []) (batch_tree (\<lambda> _. inps_test2) batch_max))) True"
 
-value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 0)), ((1, 1), (Inr 10, MyPair 1 0))] (compile_dataflow_opt (λ _. []) (batch_tree (λ _. inps_test2) batch_max))) True"
-value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0)), ((1, 1), (Inr 7, MyPair 0 0))] (compile_dataflow_opt (λ _. []) (batch_tree (λ _. inps_test2) batch_max))) True"
+value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 0)), ((1, 1), (Inr 10, MyPair 1 0))] (compile_dataflow_opt (\<lambda> _. []) (batch_tree (\<lambda> _. inps_test2) batch_max))) True"
+value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0)), ((1, 1), (Inr 7, MyPair 0 0))] (compile_dataflow_opt (\<lambda> _. []) (batch_tree (\<lambda> _. inps_test2) batch_max))) True"
 
-value [GHC] "unit_test (check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] (compile_dataflow_opt (λ _. []) (batch_tree (λ _. inps_test) batch_max))) True"
+value [GHC] "unit_test (check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] (compile_dataflow_opt (\<lambda> _. []) (batch_tree (\<lambda> _. inps_test) batch_max))) True"
 
-section ‹Trace-Nondeterminism on Two Incomparable Timestamps›
+section \<open>Trace-Nondeterminism on Two Incomparable Timestamps\<close>
 
-text ‹The stream ‹inps› and the program ‹prog› below are defined at the
-  end of theory ‹Batch_Op›, and they are the ones drawn in the thesis
-  figure.›
+text \<open>The stream \<open>inps\<close> and the program \<open>prog\<close> below are defined at the
+  end of theory \<open>Batch_Op\<close>, and they are the ones drawn in the thesis
+  figure.\<close>
 
-text ‹Frontier-driven order.›
+text \<open>Frontier-driven order.\<close>
 value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 0))] prog) True"
 (* WARNING: the check above takes about twelve minutes. The schedule it looks
    for pauses the input operator between its two drops, and the depth-first
@@ -53,7 +53,7 @@ value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 
    keeps draining the input first. Every other check in this file answers in
    under a minute. *)
 
-text ‹Consumption-driven order.›
+text \<open>Consumption-driven order.\<close>
 
 value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0)), ((1, 1), (Inr 7, MyPair 0 1))] prog) True"
 
@@ -63,7 +63,7 @@ value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 10, MyPair 1 0)), ((1,
 value [GHC] "unit_test (check_prefix 55500 [((1, 1), (Inr 10, MyPair 0 1))] prog) False"
  *)
 
-text ‹The single schedule of @{const trace_exec}, without any search.›
+text \<open>The single schedule of @{const trace_exec}, without any search.\<close>
 
 value [GHC] "unit_test (batch_outputs prog) (llist_of [(10, MyPair 1 0), (7, MyPair 0 1)])"
 

@@ -138,6 +138,64 @@ if [ -n "$unreached" ]; then
   exit 1
 fi
 
+# --- normalise Isabelle symbols ---------------------------------------------
+# Some theories were saved with the Unicode rendering of Isabelle symbols, which
+# isabelle build cannot parse, it expects the ASCII escapes that jEdit renders.
+# Rewrite them in the staged copies so the artifact builds out of the box.
+cat > "$STAGE/symbols.sed" <<'SEDEOF'
+s/¬/\\<not>/g
+s/×/\\<times>/g
+s/‹/\\<open>/g
+s/›/\\<close>/g
+s/←/\\<leftarrow>/g
+s/⇒/\\<Rightarrow>/g
+s/⇩/\\<^sub>/g
+s/∀/\\<forall>/g
+s/∃/\\<exists>/g
+s/∈/\\<in>/g
+s/∑/\\<Sum>/g
+s/∘/\\<circ>/g
+s/∧/\\<and>/g
+s/∨/\\<or>/g
+s/∩/\\<inter>/g
+s/∪/\\<union>/g
+s/≈/\\<approx>/g
+s/≠/\\<noteq>/g
+s/≡/\\<equiv>/g
+s/≤/\\<le>/g
+s/≥/\\<ge>/g
+s/⊘/\\<oslash>/g
+s/⊥/\\<bottom>/g
+s/⋀/\\<And>/g
+s/⟦/\\<lbrakk>/g
+s/⟧/\\<rbrakk>/g
+s/⟶/\\<longrightarrow>/g
+s/⟷/\\<longleftrightarrow>/g
+s/⟹/\\<Longrightarrow>/g
+s/⦇/\\<lparr>/g
+s/⦈/\\<rparr>/g
+s/𝒲/\\<W>/g
+s/λ/\\<lambda>/g
+s/—/-/g
+SEDEOF
+
+for f in $THEORIES; do
+  LC_ALL=C sed -f "$STAGE/symbols.sed" "$DEST/$f" > "$DEST/$f.tmp"
+  mv "$DEST/$f.tmp" "$DEST/$f"
+done
+
+# Nothing outside ASCII may survive, an unmapped symbol would break the build.
+left=""
+for f in $THEORIES; do
+  n=$(LC_ALL=C tr -d '\000-\177' < "$DEST/$f" | wc -c | tr -d ' ')
+  [ "$n" = "0" ] || left="$left $f($n)"
+done
+if [ -n "$left" ]; then
+  echo "${RED}unmapped non ASCII characters remain, add them to symbols.sed:${RESET}" >&2
+  for f in $left; do echo "  $f" >&2; done
+  exit 1
+fi
+
 # --- session setup, README and license --------------------------------------
 cp "$HERE/ROOT" "$HERE/README.md" "$HERE/LICENSE" "$DEST/"
 

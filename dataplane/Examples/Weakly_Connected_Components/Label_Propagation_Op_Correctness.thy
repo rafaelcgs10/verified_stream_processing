@@ -7236,7 +7236,7 @@ next
                    Plan: hoist (a) the ccs payload equality (\<forall>t0 with mysnd t0 = 0) and
                    (b) labels_stable for timestamps closed at the SECOND-PROPA frontier;
                    then extensional via cset_eq_iff, case-splitting on the second-propa
-                   (c'') frontier — NOT the old front (os 1) — because
+                   (c'') frontier - NOT the old front (os 1) - because
                    label_produces_below_times/final_output filter on the c'' frontier:
                    - fle-new (live): x \<in> SPold \<longleftrightarrow> x \<in> SPnew (caps survive the produces
                      drop by ocaps0_after_final_output_set; FinalImg contradicts fle-new);

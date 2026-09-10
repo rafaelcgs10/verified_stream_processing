@@ -4,7 +4,7 @@ imports
   Collatz_Nop_Invariant
 begin
 
-section ‹Executable Tests for the Collatz Program›
+section \<open>Executable Tests for the Collatz Program\<close>
 
 value "list_connections (dataflow_tree_to_graph dt)"
 

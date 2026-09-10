@@ -5,46 +5,46 @@ imports
   Builder_Op
 begin
 
-section ‹A Generic Nop Invariant for Compiled Dataflow Trees›
+section \<open>A Generic Nop Invariant for Compiled Dataflow Trees\<close>
 
-text ‹This theory discharges the @{const nop_invar} hypothesis of
+text \<open>This theory discharges the @{const nop_invar} hypothesis of
 @{thm [source] compile_dataflow_opt_wbisim} once and for all for every
 dataflow tree whose leaves are well-behaved, in the sense of the
 type-erased leaf invariant @{term nop_leaf} from theory Builder_Op. All
-operators built with @{const builder_op} satisfy it.›
+operators built with @{const builder_op} satisfy it.\<close>
 
-subsection ‹The compiled-tree invariant›
+subsection \<open>The compiled-tree invariant\<close>
 
 abbreviation node_wrap where
-  "node_wrap n ≡ case_option (Inl n) (λ p. Inr (n, p))"
+  "node_wrap n \<equiv> case_option (Inl n) (\<lambda> p. Inr (n, p))"
 
-inductive good :: "('id ⇒ bool) ⇒ ('id ⇒ 'p ⇒ 't antichain) ⇒ 'id set ⇒
-  ('id + 'id × 'p, 'id + 'id × 'p, (('p, 't, 'm) shared_state_scheme + ('p ⇒ 't antichain)) + 'dd × 't) op ⇒ bool"
-  for ok :: "'id ⇒ bool" and F :: "'id ⇒ 'p ⇒ 't antichain" where
-  good_Leaf: "⟦ nop_leaf k q; ¬ ok n ⟶ k = Some (F n) ⟧ ⟹
+inductive good :: "('id \<Rightarrow> bool) \<Rightarrow> ('id \<Rightarrow> 'p \<Rightarrow> 't antichain) \<Rightarrow> 'id set \<Rightarrow>
+  ('id + 'id \<times> 'p, 'id + 'id \<times> 'p, (('p, 't, 'm) shared_state_scheme + ('p \<Rightarrow> 't antichain)) + 'dd \<times> 't) op \<Rightarrow> bool"
+  for ok :: "'id \<Rightarrow> bool" and F :: "'id \<Rightarrow> 'p \<Rightarrow> 't antichain" where
+  good_Leaf: "\<lbrakk> nop_leaf k q; \<not> ok n \<longrightarrow> k = Some (F n) \<rbrakk> \<Longrightarrow>
      good ok F {n} (map_op (node_wrap n) (node_wrap n) q)"
-| good_Comp: "⟦ good ok F N1 op1; good ok F N2 op2; N1 ∩ N2 = {};
-     ∀ nid. wire (Inl nid) = None;
-     ∀ p q'. wire p = Some q' ⟶ is_Inr q';
-     ∀ q' v. v ∈ set (buf q') ⟶ is_Inr v ⟧ ⟹
-     good ok F (N1 ∪ N2) (map_op (case_sum id id) (case_sum id id) (comp_op wire buf op1 op2))"
-| good_Loop: "⟦ good ok F N op;
-     ∀ nid. wire (Inl nid) = None;
-     ∀ p q'. wire p = Some q' ⟶ is_Inr q';
-     ∀ q' v. v ∈ set (buf q') ⟶ is_Inr v ⟧ ⟹
+| good_Comp: "\<lbrakk> good ok F N1 op1; good ok F N2 op2; N1 \<inter> N2 = {};
+     \<forall> nid. wire (Inl nid) = None;
+     \<forall> p q'. wire p = Some q' \<longrightarrow> is_Inr q';
+     \<forall> q' v. v \<in> set (buf q') \<longrightarrow> is_Inr v \<rbrakk> \<Longrightarrow>
+     good ok F (N1 \<union> N2) (map_op (case_sum id id) (case_sum id id) (comp_op wire buf op1 op2))"
+| good_Loop: "\<lbrakk> good ok F N op;
+     \<forall> nid. wire (Inl nid) = None;
+     \<forall> p q'. wire p = Some q' \<longrightarrow> is_Inr q';
+     \<forall> q' v. v \<in> set (buf q') \<longrightarrow> is_Inr v \<rbrakk> \<Longrightarrow>
      good ok F N (loop_op wire buf op)"
 
 lemma good_mono:
   assumes "good ok F N op"
-    and "⋀ m. m ∈ N ⟹ ¬ ok' m ⟹ ¬ ok m ∧ F' m = F m"
+    and "\<And> m. m \<in> N \<Longrightarrow> \<not> ok' m \<Longrightarrow> \<not> ok m \<and> F' m = F m"
   shows "good ok' F' N op"
   using assms
   by (induct rule: good.induct) (auto intro: good.intros)
 
-subsection ‹Self-loops of stale choices›
+subsection \<open>Self-loops of stale choices\<close>
 
 lemma good_progress_selfloop:
-  assumes g: "good ok F N op" and np: "¬ has_progress st"
+  assumes g: "good ok F N op" and np: "\<not> has_progress st"
     and s: "step (Out (Inl nid) (Inl (Inl st))) op op'"
   shows "op' = op"
   using g s
@@ -66,7 +66,7 @@ next
     "map_IO (case_sum id id) (case_sum id id) id io' = Out (Inl nid) (Inl (Inl st))"
     "map_op (case_sum id id) (case_sum id id) c'' = op'"
     using step_map_op_elim[OF good_Comp.prems] by metis
-  have cases: "io' = Out (Inl (Inl nid)) (Inl (Inl st)) ∨ io' = Out (Inr (Inl nid)) (Inl (Inl st))"
+  have cases: "io' = Out (Inl (Inl nid)) (Inl (Inl st)) \<or> io' = Out (Inr (Inl nid)) (Inl (Inl st))"
     using *(2) by (cases io') (auto split: sum.splits)
   show ?case
     using cases
@@ -95,7 +95,7 @@ next
 qed
 
 lemma good_frontier_selfloop:
-  assumes g: "good ok F N op" and no: "¬ ok nid"
+  assumes g: "good ok F N op" and no: "\<not> ok nid"
     and s: "step (Inp (Inl nid) (Inl (Inr (F nid)))) op op'"
   shows "op' = op"
   using g s
@@ -119,7 +119,7 @@ next
     "map_IO (case_sum id id) (case_sum id id) id io' = Inp (Inl nid) (Inl (Inr (F nid)))"
     "map_op (case_sum id id) (case_sum id id) c'' = op'"
     using step_map_op_elim[OF good_Comp.prems] by metis
-  have cases: "io' = Inp (Inl (Inl nid)) (Inl (Inr (F nid))) ∨ io' = Inp (Inr (Inl nid)) (Inl (Inr (F nid)))"
+  have cases: "io' = Inp (Inl (Inl nid)) (Inl (Inr (F nid))) \<or> io' = Inp (Inr (Inl nid)) (Inl (Inr (F nid)))"
     using *(2) by (cases io') (auto split: sum.splits)
   show ?case
     using cases
@@ -147,7 +147,7 @@ next
   then show ?case using o' by simp
 qed
 
-subsection ‹Closure under steps›
+subsection \<open>Closure under steps\<close>
 
 lemma good_step_data_in:
   assumes "good ok F N op" and "step (Inp (Inr (nid, p)) (Inr x)) op op'"
@@ -173,7 +173,7 @@ next
     "map_IO (case_sum id id) (case_sum id id) id io' = Inp (Inr (nid, p)) (Inr x)"
     "map_op (case_sum id id) (case_sum id id) c'' = op'"
     using step_map_op_elim[OF good_Comp.prems] by metis
-  have cases: "io' = Inp (Inl (Inr (nid, p))) (Inr x) ∨ io' = Inp (Inr (Inr (nid, p))) (Inr x)"
+  have cases: "io' = Inp (Inl (Inr (nid, p))) (Inr x) \<or> io' = Inp (Inr (Inr (nid, p))) (Inr x)"
     using *(2) by (cases io') (auto split: sum.splits)
   show ?case
     using cases
@@ -212,7 +212,7 @@ qed
 
 lemma good_step_data_out:
   assumes "good ok F N op" and "step (Out (Inr (nid, p)) v) op op'"
-  shows "is_Inr v ∧ good ok F N op'"
+  shows "is_Inr v \<and> good ok F N op'"
   using assms
 proof (induct arbitrary: op' rule: good.induct)
   case (good_Leaf k q n)
@@ -222,7 +222,7 @@ proof (induct arbitrary: op' rule: good.induct)
     using step_map_op_elim[OF good_Leaf(3)] by metis
   have io': "io' = Out (Some p) v"
     using *(2) by (cases io') (auto split: option.splits)
-  have leaf': "is_Inr v ∧ nop_leaf k q''"
+  have leaf': "is_Inr v \<and> nop_leaf k q''"
     by (rule nop_leafD_data_out[OF good_Leaf(1) *(1)[unfolded io']])
   have g': "good ok F {n} (map_op (node_wrap n) (node_wrap n) q'')"
     using good.intros(1)[where k = k and ok = ok and F = F, OF conjunct2[OF leaf']] good_Leaf(2) by blast
@@ -234,7 +234,7 @@ next
     "map_IO (case_sum id id) (case_sum id id) id io' = Out (Inr (nid, p)) v"
     "map_op (case_sum id id) (case_sum id id) c'' = op'"
     using step_map_op_elim[OF good_Comp.prems] by metis
-  have cases: "io' = Out (Inl (Inr (nid, p))) v ∨ io' = Out (Inr (Inr (nid, p))) v"
+  have cases: "io' = Out (Inl (Inr (nid, p))) v \<or> io' = Out (Inr (Inr (nid, p))) v"
     using *(2) by (cases io') (auto split: sum.splits)
   show ?case
     using cases
@@ -243,7 +243,7 @@ next
     from *(1)[unfolded A] obtain op1' where s1: "step (Out (Inr (nid, p)) v) op1 op1'"
       and c'': "c'' = comp_op wire buf op1' op2"
       by (cases rule: step_comp_op_elim) auto
-    have ih: "is_Inr v ∧ good ok F N1 op1'"
+    have ih: "is_Inr v \<and> good ok F N1 op1'"
       by (rule good_Comp.hyps(2)[OF s1])
     show ?case
       using conjunct1[OF ih]
@@ -254,7 +254,7 @@ next
     from *(1)[unfolded A] obtain op2' where s2: "step (Out (Inr (nid, p)) v) op2 op2'"
       and c'': "c'' = comp_op wire buf op1 op2'"
       by (cases rule: step_comp_op_elim) auto
-    have ih: "is_Inr v ∧ good ok F N2 op2'"
+    have ih: "is_Inr v \<and> good ok F N2 op2'"
       by (rule good_Comp.hyps(4)[OF s2])
     show ?case
       using conjunct1[OF ih]
@@ -266,7 +266,7 @@ next
   from good_Loop.prems obtain op0' where s0: "step (Out (Inr (nid, p)) v) op op0'"
     and o': "op' = loop_op wire buf op0'"
     by (cases rule: step_loop_op_elim) auto
-  have ih: "is_Inr v ∧ good ok F N op0'"
+  have ih: "is_Inr v \<and> good ok F N op0'"
     by (rule good_Loop.hyps(2)[OF s0])
   show ?case
     unfolding o'
@@ -279,9 +279,9 @@ lemma step_comp_op_Tau_elim:
   obtains
     (left_wired) p x op1' q where "wire p = Some q"
       "op' = comp_op wire (BENQ q x buf) op1' op2" "step (Out p x) op1 op1'"
-  | (right_buf) p x op2' where "p ∈ ran wire"
+  | (right_buf) p x op2' where "p \<in> ran wire"
       "op' = comp_op wire (BTL p buf) op1 op2'" "step (Inp p x) op2 op2'"
-      "buf p ≠ []" "BHD p buf = x"
+      "buf p \<noteq> []" "BHD p buf = x"
   | (left_Tau) op1' where "op' = comp_op wire buf op1' op2" "step Tau op1 op1'"
   | (right_Tau) op2' where "op' = comp_op wire buf op1 op2'" "step Tau op2 op2'"
   using assms by (cases rule: step_comp_op_elim) auto
@@ -312,14 +312,14 @@ next
     using step_map_op_elim[OF good_Comp.prems] by metis
   have io': "io' = Tau"
     using *(2) by (cases io') auto
-  from *(1)[unfolded io'] have g'': "good ok F (N1 ∪ N2) (map_op (case_sum id id) (case_sum id id) c'')"
+  from *(1)[unfolded io'] have g'': "good ok F (N1 \<union> N2) (map_op (case_sum id id) (case_sum id id) c'')"
   proof (cases rule: step_comp_op_Tau_elim)
     case (left_wired p x op1' q')
     obtain nidp pp where p: "p = Inr (nidp, pp)"
       using good_Comp.hyps(6) left_wired(1) by (metis obj_sumE option.distinct(1) surj_pair)
-    have dout: "is_Inr x ∧ good ok F N1 op1'"
+    have dout: "is_Inr x \<and> good ok F N1 op1'"
       by (rule good_step_data_out[OF good_Comp.hyps(1) left_wired(3)[unfolded p]])
-    have bufok: "∀ q'' v. v ∈ set (BENQ q' x buf q'') ⟶ is_Inr v"
+    have bufok: "\<forall> q'' v. v \<in> set (BENQ q' x buf q'') \<longrightarrow> is_Inr v"
       using good_Comp.hyps(8) conjunct1[OF dout] by (auto simp add: BENQ_def)
     show ?thesis
       unfolding left_wired(2)
@@ -335,7 +335,7 @@ next
       using pInr by (cases p) auto
     obtain nidp pp where p: "p = Inr (nidp, pp)"
       using pY by (cases y) auto
-    have xin: "x ∈ set (buf p)"
+    have xin: "x \<in> set (buf p)"
       using right_buf(4,5) by (auto simp add: BHD_def intro: hd_in_set)
     have xInr: "is_Inr x"
       using good_Comp.hyps(8) xin by blast
@@ -345,7 +345,7 @@ next
       using xZ by (cases z) auto
     have din: "good ok F N2 op2'"
       by (rule good_step_data_in[OF good_Comp.hyps(3) right_buf(3)[unfolded p x]])
-    have bufok: "∀ q'' v. v ∈ set (BTL p buf q'') ⟶ is_Inr v"
+    have bufok: "\<forall> q'' v. v \<in> set (BTL p buf q'') \<longrightarrow> is_Inr v"
       using good_Comp.hyps(8) by (auto simp add: BTL_def dest: in_set_tlD)
     show ?thesis
       unfolding right_buf(2)
@@ -393,7 +393,7 @@ next
       using pInr by (cases p) auto
     obtain nidp pp where p: "p = Inr (nidp, pp)"
       using pY by (cases y) auto
-    have xin: "x ∈ set (buf p)"
+    have xin: "x \<in> set (buf p)"
       using 4(5,6) by (auto simp add: BHD_def intro: hd_in_set)
     have xInr: "is_Inr x"
       using good_Loop.hyps(5) xin by blast
@@ -403,7 +403,7 @@ next
       using xZ by (cases z) auto
     have din: "good ok F N op''"
       by (rule good_step_data_in[OF good_Loop.hyps(1) 4(4)[unfolded p x]])
-    have bufok: "∀ q'' v. v ∈ set (BTL p buf q'') ⟶ is_Inr v"
+    have bufok: "\<forall> q'' v. v \<in> set (BTL p buf q'') \<longrightarrow> is_Inr v"
       using good_Loop.hyps(5) by (auto simp add: BTL_def dest: in_set_tlD)
     show ?thesis
       unfolding 4(3)
@@ -412,9 +412,9 @@ next
     case (5 op'' p q' x)
     obtain nidp pp where p: "p = Inr (nidp, pp)"
       using good_Loop.hyps(3) 5(2) by (metis obj_sumE option.distinct(1) surj_pair)
-    have dout: "is_Inr x ∧ good ok F N op''"
+    have dout: "is_Inr x \<and> good ok F N op''"
       by (rule good_step_data_out[OF good_Loop.hyps(1) 5(4)[unfolded p]])
-    have bufok: "∀ q'' v. v ∈ set (BENQ q' x buf q'') ⟶ is_Inr v"
+    have bufok: "\<forall> q'' v. v \<in> set (BENQ q' x buf q'') \<longrightarrow> is_Inr v"
       using good_Loop.hyps(5) conjunct1[OF dout] by (auto simp add: BENQ_def)
     show ?thesis
       unfolding 5(3)
@@ -424,7 +424,7 @@ qed
 
 lemma good_step_progress:
   assumes "good ok F N op" and "step (Out (Inl nid) (Inl (Inl st))) op op'"
-  shows "good (λ _. True) F' N op'"
+  shows "good (\<lambda> _. True) F' N op'"
   using assms
 proof (induct arbitrary: op' rule: good.induct)
   case (good_Leaf k q n)
@@ -436,8 +436,8 @@ proof (induct arbitrary: op' rule: good.induct)
     using *(2) by (cases io') (auto split: option.splits)
   have leaf': "nop_leaf k q''"
     by (rule nop_leafD_progress[OF good_Leaf(1) *(1)[unfolded io']])
-  have g': "good (λ _. True) F' {n} (map_op (node_wrap n) (node_wrap n) q'')"
-    using good.intros(1)[where k = k and ok = "λ _. True" and F = F', OF leaf'] by blast
+  have g': "good (\<lambda> _. True) F' {n} (map_op (node_wrap n) (node_wrap n) q'')"
+    using good.intros(1)[where k = k and ok = "\<lambda> _. True" and F = F', OF leaf'] by blast
   show ?case
     using g' *(3) by simp
 next
@@ -446,11 +446,11 @@ next
     "map_IO (case_sum id id) (case_sum id id) id io' = Out (Inl nid) (Inl (Inl st))"
     "map_op (case_sum id id) (case_sum id id) c'' = op'"
     using step_map_op_elim[OF good_Comp.prems] by metis
-  have cases: "io' = Out (Inl (Inl nid)) (Inl (Inl st)) ∨ io' = Out (Inr (Inl nid)) (Inl (Inl st))"
+  have cases: "io' = Out (Inl (Inl nid)) (Inl (Inl st)) \<or> io' = Out (Inr (Inl nid)) (Inl (Inl st))"
     using *(2) by (cases io') (auto split: sum.splits)
-  have gB2: "good (λ _. True) F' N2 op2"
+  have gB2: "good (\<lambda> _. True) F' N2 op2"
     by (rule good_mono[OF good_Comp.hyps(3)]) simp
-  have gB1: "good (λ _. True) F' N1 op1"
+  have gB1: "good (\<lambda> _. True) F' N1 op1"
     by (rule good_mono[OF good_Comp.hyps(1)]) simp
   show ?case
     using cases
@@ -459,7 +459,7 @@ next
     from *(1)[unfolded A] obtain op1' where s1: "step (Out (Inl nid) (Inl (Inl st))) op1 op1'"
       and c'': "c'' = comp_op wire buf op1' op2"
       by (cases rule: step_comp_op_elim) auto
-    have g1: "good (λ _. True) F' N1 op1'"
+    have g1: "good (\<lambda> _. True) F' N1 op1'"
       by (rule good_Comp.hyps(2)[OF s1])
     show ?case
       using good.intros(2)[OF g1 gB2 good_Comp.hyps(5) good_Comp.hyps(6) good_Comp.hyps(7) good_Comp.hyps(8)]
@@ -469,7 +469,7 @@ next
     from *(1)[unfolded A] obtain op2' where s2: "step (Out (Inl nid) (Inl (Inl st))) op2 op2'"
       and c'': "c'' = comp_op wire buf op1 op2'"
       by (cases rule: step_comp_op_elim) auto
-    have g2: "good (λ _. True) F' N2 op2'"
+    have g2: "good (\<lambda> _. True) F' N2 op2'"
       by (rule good_Comp.hyps(4)[OF s2])
     show ?case
       using good.intros(2)[OF gB1 g2 good_Comp.hyps(5) good_Comp.hyps(6) good_Comp.hyps(7) good_Comp.hyps(8)]
@@ -480,7 +480,7 @@ next
   from good_Loop.prems obtain op0' where s0: "step (Out (Inl nid) (Inl (Inl st))) op op0'"
     and o': "op' = loop_op wire buf op0'"
     by (cases rule: step_loop_op_elim) auto
-  have g0: "good (λ _. True) F' N op0'"
+  have g0: "good (\<lambda> _. True) F' N op0'"
     by (rule good_Loop.hyps(2)[OF s0])
   show ?case
     unfolding o'
@@ -490,7 +490,7 @@ qed
 lemma good_step_frontier:
   assumes "good ok F N op" and "step (Inp (Inl nid) (Inl (Inr G))) op op'"
     and ok': "ok' = ok(nid := False)" and F': "F' = F(nid := G)"
-  shows "nid ∈ N ∧ good ok' F' N op'"
+  shows "nid \<in> N \<and> good ok' F' N op'"
   using assms(1,2)
 proof (induct arbitrary: op' rule: good.induct)
   case (good_Leaf k q n)
@@ -513,7 +513,7 @@ next
     "map_IO (case_sum id id) (case_sum id id) id io' = Inp (Inl nid) (Inl (Inr G))"
     "map_op (case_sum id id) (case_sum id id) c'' = op'"
     using step_map_op_elim[OF good_Comp.prems] by metis
-  have cases: "io' = Inp (Inl (Inl nid)) (Inl (Inr G)) ∨ io' = Inp (Inr (Inl nid)) (Inl (Inr G))"
+  have cases: "io' = Inp (Inl (Inl nid)) (Inl (Inr G)) \<or> io' = Inp (Inr (Inl nid)) (Inl (Inr G))"
     using *(2) by (cases io') (auto split: sum.splits)
   show ?case
     using cases
@@ -522,7 +522,7 @@ next
     from *(1)[unfolded A] obtain op1' where s1: "step (Inp (Inl nid) (Inl (Inr G))) op1 op1'"
       and c'': "c'' = comp_op wire buf op1' op2"
       by (cases rule: step_comp_op_elim) auto
-    have ih: "nid ∈ N1 ∧ good ok' F' N1 op1'"
+    have ih: "nid \<in> N1 \<and> good ok' F' N1 op1'"
       by (rule good_Comp.hyps(2)[OF s1])
     have gB: "good ok' F' N2 op2"
       apply (rule good_mono[OF good_Comp.hyps(3)])
@@ -536,7 +536,7 @@ next
     from *(1)[unfolded A] obtain op2' where s2: "step (Inp (Inl nid) (Inl (Inr G))) op2 op2'"
       and c'': "c'' = comp_op wire buf op1 op2'"
       by (cases rule: step_comp_op_elim) auto
-    have ih: "nid ∈ N2 ∧ good ok' F' N2 op2'"
+    have ih: "nid \<in> N2 \<and> good ok' F' N2 op2'"
       by (rule good_Comp.hyps(4)[OF s2])
     have gB: "good ok' F' N1 op1"
       apply (rule good_mono[OF good_Comp.hyps(1)])
@@ -551,7 +551,7 @@ next
   from good_Loop.prems obtain op0' where s0: "step (Inp (Inl nid) (Inl (Inr G))) op op0'"
     and o': "op' = loop_op wire buf op0'"
     by (cases rule: step_loop_op_elim) auto
-  have ih: "nid ∈ N ∧ good ok' F' N op0'"
+  have ih: "nid \<in> N \<and> good ok' F' N op0'"
     by (rule good_Loop.hyps(2)[OF s0])
   show ?case
     unfolding o'
@@ -560,29 +560,29 @@ next
     by simp
 qed
 
-subsection ‹The nop invariant›
+subsection \<open>The nop invariant\<close>
 
 definition tree_nopP where
-  "tree_nopP N sg op ⟷
-     good (upfro sg) (λ nid. frontier ∘ (λ p. c_imp (pt_tr sg) (Loc nid (Trg p)))) N op ∧
-     ((∃ nid. ¬ upfro sg nid) ⟶ propagate_all (summ sg) (pt_tr sg) = Some (pt_tr sg))"
+  "tree_nopP N sg op \<longleftrightarrow>
+     good (upfro sg) (\<lambda> nid. frontier \<circ> (\<lambda> p. c_imp (pt_tr sg) (Loc nid (Trg p)))) N op \<and>
+     ((\<exists> nid. \<not> upfro sg nid) \<longrightarrow> propagate_all (summ sg) (pt_tr sg) = Some (pt_tr sg))"
 
 lemma tree_nopP_step_frontier:
   assumes P: "tree_nopP N sg op"
     and pall: "propagate_all (summ sg) (pt_tr sg) = Some conf'"
-    and s: "step (Inp (Inl nid) (Inl (Inr (frontier o (λ p. c_imp conf' (Loc nid (Trg p))))))) op op'"
-  shows "tree_nopP N (sg⦇ pt_tr := conf', upfro := (upfro sg)(nid := False) ⦈) op'"
+    and s: "step (Inp (Inl nid) (Inl (Inr (frontier o (\<lambda> p. c_imp conf' (Loc nid (Trg p))))))) op op'"
+  shows "tree_nopP N (sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>) op'"
 proof -
-  let ?sg' = "sg⦇ pt_tr := conf', upfro := (upfro sg)(nid := False) ⦈"
-  let ?F = "λ m. frontier ∘ (λ p. c_imp (pt_tr sg) (Loc m (Trg p)))"
-  let ?G = "frontier o (λ p. c_imp conf' (Loc nid (Trg p)))"
-  let ?FT = "λ m. frontier ∘ (λ p. c_imp conf' (Loc m (Trg p)))"
+  let ?sg' = "sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>"
+  let ?F = "\<lambda> m. frontier \<circ> (\<lambda> p. c_imp (pt_tr sg) (Loc m (Trg p)))"
+  let ?G = "frontier o (\<lambda> p. c_imp conf' (Loc nid (Trg p)))"
+  let ?FT = "\<lambda> m. frontier \<circ> (\<lambda> p. c_imp conf' (Loc m (Trg p)))"
   have g: "good (upfro sg) ?F N op"
-    and fixp: "(∃ m. ¬ upfro sg m) ⟶ propagate_all (summ sg) (pt_tr sg) = Some (pt_tr sg)"
+    and fixp: "(\<exists> m. \<not> upfro sg m) \<longrightarrow> propagate_all (summ sg) (pt_tr sg) = Some (pt_tr sg)"
     using P unfolding tree_nopP_def by blast+
-  have step': "nid ∈ N ∧ good ((upfro sg)(nid := False)) (?F(nid := ?G)) N op'"
+  have step': "nid \<in> N \<and> good ((upfro sg)(nid := False)) (?F(nid := ?G)) N op'"
     by (rule good_step_frontier[OF g s refl refl])
-  have conf'_cases: "(∀ m. upfro sg m) ∨ conf' = pt_tr sg"
+  have conf'_cases: "(\<forall> m. upfro sg m) \<or> conf' = pt_tr sg"
     using fixp pall by auto
   have g': "good ((upfro sg)(nid := False)) ?FT N op'"
     apply (rule good_mono[OF conjunct2[OF step']])
@@ -614,14 +614,14 @@ theorem nop_invar_tree_nopP:
     by (rule tree_nopP_step_frontier)
   done
 
-subsection ‹Compiled trees satisfy the invariant›
+subsection \<open>Compiled trees satisfy the invariant\<close>
 
 fun builder_tree where
-  "builder_tree (Logic logic su) = (∃ k. nop_leaf k logic)"
-| "builder_tree (Comp wire dt1 dt2) = (builder_tree dt1 ∧ builder_tree dt2)"
+  "builder_tree (Logic logic su) = (\<exists> k. nop_leaf k logic)"
+| "builder_tree (Comp wire dt1 dt2) = (builder_tree dt1 \<and> builder_tree dt2)"
 | "builder_tree (Loop wire dt) = builder_tree dt"
 
-fun tree_ids :: "('id :: {plus, one}) ⇒ ('id, 'p, 's, 'd, 't) dataflow_tree ⇒ 'id list × 'id" where
+fun tree_ids :: "('id :: {plus, one}) \<Rightarrow> ('id, 'p, 's, 'd, 't) dataflow_tree \<Rightarrow> 'id list \<times> 'id" where
   "tree_ids n (Logic q su) = ([n], n + 1)"
 | "tree_ids n (Comp wire dt1 dt2) =
     (let (l1, n') = tree_ids n dt1; (l2, n'') = tree_ids n' dt2 in (l1 @ l2, n''))"
@@ -631,7 +631,7 @@ lemma good_dataflow_tree_to_operator_aux:
   assumes "builder_tree dt"
     and "distinct (fst (tree_ids n dt))"
     and "dataflow_tree_to_operator_aux n chns dt = (n', op)"
-  shows "good (λ _. True) F (set (fst (tree_ids n dt))) op ∧ n' = snd (tree_ids n dt)"
+  shows "good (\<lambda> _. True) F (set (fst (tree_ids n dt))) op \<and> n' = snd (tree_ids n dt)"
   using assms
 proof (induct dt arbitrary: n n' op)
   case (Logic q su)
@@ -639,8 +639,8 @@ proof (induct dt arbitrary: n n' op)
     using Logic.prems(1) by auto
   have aux: "n' = n + 1" "op = map_op (node_wrap n) (node_wrap n) q"
     using Logic.prems(3) by auto
-  have g: "good (λ _. True) F {n} (map_op (node_wrap n) (node_wrap n) q)"
-    using good.intros(1)[where k = k and ok = "λ _. True" and F = F, OF k] by blast
+  have g: "good (\<lambda> _. True) F {n} (map_op (node_wrap n) (node_wrap n) q)"
+    using good.intros(1)[where k = k and ok = "\<lambda> _. True" and F = F, OF k] by blast
   show ?case
     using g aux by simp
 next
@@ -655,25 +655,25 @@ next
     and tC1: "snd (tree_ids n (Comp wire dt1 dt2)) = snd (tree_ids na' dt2)"
     using t1 by (auto split: prod.splits)
   have d1: "distinct l1" and d2: "distinct (fst (tree_ids na' dt2))"
-    and dis12: "set l1 ∩ set (fst (tree_ids na' dt2)) = {}"
+    and dis12: "set l1 \<inter> set (fst (tree_ids na' dt2)) = {}"
     using Comp.prems(2) unfolding tC0 by auto
-  have IH1: "good (λ _. True) F (set (fst (tree_ids n dt1))) op1 ∧ na = snd (tree_ids n dt1)"
+  have IH1: "good (\<lambda> _. True) F (set (fst (tree_ids n dt1))) op1 \<and> na = snd (tree_ids n dt1)"
     using Comp.hyps(1)[OF _ _ a1] Comp.prems(1) d1 t1 by auto
   have na': "na = na'"
     using IH1 t1 by simp
-  have IH2: "good (λ _. True) F (set (fst (tree_ids na' dt2))) op2 ∧ nb = snd (tree_ids na' dt2)"
+  have IH2: "good (\<lambda> _. True) F (set (fst (tree_ids na' dt2))) op2 \<and> nb = snd (tree_ids na' dt2)"
     using Comp.hyps(2)[OF _ _ a2[unfolded na']] Comp.prems(1) d2 by auto
   have opn': "op = map_op (case_sum id id) (case_sum id id)
-      (comp_op (case_sum (λ _. None) (λ (nid, p). case wire (nid - n, p) of None ⇒ None
-          | Some (offset, q) ⇒ Some (Inr (na + offset, q))))
-        (case_sum (λ x. []) (λ x. map Inr (chns x))) op1 op2)"
+      (comp_op (case_sum (\<lambda> _. None) (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None
+          | Some (offset, q) \<Rightarrow> Some (Inr (na + offset, q))))
+        (case_sum (\<lambda> x. []) (\<lambda> x. map Inr (chns x))) op1 op2)"
     and n'nb: "n' = nb"
     using Comp.prems(3) by (auto simp add: a1 a2 split: prod.splits)
-  have g1: "good (λ _. True) F (set l1) op1"
+  have g1: "good (\<lambda> _. True) F (set l1) op1"
     using IH1 t1 by simp
-  have g2: "good (λ _. True) F (set (fst (tree_ids na' dt2))) op2"
+  have g2: "good (\<lambda> _. True) F (set (fst (tree_ids na' dt2))) op2"
     using IH2 by blast
-  have gC: "good (λ _. True) F (set l1 ∪ set (fst (tree_ids na' dt2))) op"
+  have gC: "good (\<lambda> _. True) F (set l1 \<union> set (fst (tree_ids na' dt2))) op"
     unfolding opn'
     apply (rule good.intros(2)[OF g1 g2 dis12])
     subgoal by simp
@@ -686,15 +686,15 @@ next
   case (Loop wire dt)
   obtain na op0 where a0: "dataflow_tree_to_operator_aux n chns dt = (na, op0)"
     by (cases "dataflow_tree_to_operator_aux n chns dt") auto
-  have IH: "good (λ _. True) F (set (fst (tree_ids n dt))) op0 ∧ na = snd (tree_ids n dt)"
+  have IH: "good (\<lambda> _. True) F (set (fst (tree_ids n dt))) op0 \<and> na = snd (tree_ids n dt)"
     using Loop.hyps(1)[OF _ _ a0] Loop.prems(1,2) by auto
   have opn': "op = loop_op
-      (case_sum (λ _. None) (λ (nid, p). case wire (nid - n, p) of None ⇒ None
-          | Some (offset, q) ⇒ Some (Inr (n + offset, q))))
-      (case_sum (λ x. []) (λ x. map Inr (chns x))) op0"
+      (case_sum (\<lambda> _. None) (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None
+          | Some (offset, q) \<Rightarrow> Some (Inr (n + offset, q))))
+      (case_sum (\<lambda> x. []) (\<lambda> x. map Inr (chns x))) op0"
     and n'na: "n' = na"
     using Loop.prems(3) by (auto simp add: a0 split: prod.splits)
-  have gL: "good (λ _. True) F (set (fst (tree_ids n dt))) op"
+  have gL: "good (\<lambda> _. True) F (set (fst (tree_ids n dt))) op"
     unfolding opn'
     apply (rule good.intros(3)[OF conjunct1[OF IH]])
     subgoal by simp
@@ -720,18 +720,18 @@ proof -
     by (auto simp add: init_subgraph_opt_def)
 qed
 
-subsection ‹The generic equivalence theorems›
+subsection \<open>The generic equivalence theorems\<close>
 
 lemma compile_dataflow_opt_wbisim_generic:
   assumes "builder_tree dt"
     and "distinct (fst (tree_ids 0 dt))"
-  shows "compile_dataflow_opt chns dt ≈ compile_dataflow chns dt"
+  shows "compile_dataflow_opt chns dt \<approx> compile_dataflow chns dt"
   by (rule compile_dataflow_opt_wbisim[OF nop_invar_tree_nopP tree_nopP_compile[OF assms]])
 
 theorem compile_dataflow_opt_wtraces_generic:
   assumes "builder_tree dt"
     and "distinct (fst (tree_ids 0 dt))"
-  shows "compile_dataflow_opt chns dt ≡⇩t compile_dataflow chns dt"
+  shows "compile_dataflow_opt chns dt \<equiv>\<^sub>t compile_dataflow chns dt"
   by (rule wbisim_wtraces[OF compile_dataflow_opt_wbisim_generic[OF assms]])
 
 end

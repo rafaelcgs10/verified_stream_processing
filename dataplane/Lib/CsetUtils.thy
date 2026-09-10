@@ -8,26 +8,26 @@ imports
 
 begin
 
-section ‹Element Extraction and Cardinality›
+section \<open>Element Extraction and Cardinality\<close>
 
-text ‹Lifted operations for choosing elements and counting a cset.›
+text \<open>Lifted operations for choosing elements and counting a cset.\<close>
 
 context includes cset.lifting begin
-lift_definition cthe_elem :: "'m cset ⇒ 'm" is Set.the_elem .
-lift_definition csome_elem :: "'m cset ⇒ 'm" is some_elem .
-lift_definition ccard :: "'m cset ⇒ nat" is card .
-lift_definition cinfinite :: "'m cset ⇒ bool" is Finite_Set.infinite.
+lift_definition cthe_elem :: "'m cset \<Rightarrow> 'm" is Set.the_elem .
+lift_definition csome_elem :: "'m cset \<Rightarrow> 'm" is some_elem .
+lift_definition ccard :: "'m cset \<Rightarrow> nat" is card .
+lift_definition cinfinite :: "'m cset \<Rightarrow> bool" is Finite_Set.infinite.
 end
 
 lemma ccard_eq_0_iff[simp]:
-  "(ccard A = 0) = (A = {||} ∨ cinfinite A)"
+  "(ccard A = 0) = (A = {||} \<or> cinfinite A)"
   unfolding ccard_def cinfinite_def
   by fastforce
 
-section ‹From Lists and Lazy Lists›
+section \<open>From Lists and Lazy Lists\<close>
 
-text ‹Building csets from finite lists and lazy lists, with simp rules
-  for the constructors.›
+text \<open>Building csets from finite lists and lazy lists, with simp rules
+  for the constructors.\<close>
 
 lemma cset_of_llist_llist_of_append[simp]:
   "cset_of_llist (llist_of (xs @ ys)) = cUn (cset_of_llist (llist_of xs)) (cset_of_llist (llist_of ys))"
@@ -38,11 +38,11 @@ lemma cset_of_llist_llist_of_append[simp]:
   done
 
 lemma in_cset_of_llist_llist_of[simp]:
-  "x |∈| cset_of_llist (llist_of xs) ⟷ x ∈ set xs"
+  "x |\<in>| cset_of_llist (llist_of xs) \<longleftrightarrow> x \<in> set xs"
   using cin_code by force
 
 lemma csubset_eq_cset_of_llist:
-  "csubset_eq (cset_of_llist lxs) S ⟷ (∀ x ∈ lset lxs. x |∈| S)"
+  "csubset_eq (cset_of_llist lxs) S \<longleftrightarrow> (\<forall> x \<in> lset lxs. x |\<in>| S)"
   using cin_code by fastforce
 
 
@@ -98,13 +98,13 @@ lemma rcset_cset_from_list[simp]:
   done
 
 lemma in_cset_from_list[simp]:
-  "x |∈| (cset_from_list xs) ⟷ x ∈ set xs"
+  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
   unfolding cset_from_list_def
   apply (auto simp flip: cin.rep_eq)
   done
 
 lemma in_cimage_cset_from_list[simp]:
-  "x |∈| (f |`| (cset_from_list xs)) ⟷ x ∈ f ` set xs"
+  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
   unfolding cset_from_list_def
   apply (auto simp flip: cin.rep_eq)
   done
@@ -119,18 +119,18 @@ lemma cset_of_llist_lshift[simp]:
     done
   done
 
-section ‹Filtering and Unions›
+section \<open>Filtering and Unions\<close>
 
-text ‹cfilter and cUnion distribution facts.›
+text \<open>cfilter and cUnion distribution facts.\<close>
 
 lemma snd_cfilter[simp]:
-  "snd |`| cfilter (λ(d, t). P t) S = cfilter P (snd |`| S)"
+  "snd |`| cfilter (\<lambda>(d, t). P t) S = cfilter P (snd |`| S)"
   by (force simp add: image_iff split_beta simp flip: cin.rep_eq)
 
 lemma cimage_cfilter_clean:
-  "(∀ x. x |∈| S ⟶ Q x ⟷ P x) ⟹
-   (λt. F t (Q t)) |`| cfilter P S =
-   ((λt. F t True) |`| cfilter P S)"
+  "(\<forall> x. x |\<in>| S \<longrightarrow> Q x \<longleftrightarrow> P x) \<Longrightarrow>
+   (\<lambda>t. F t (Q t)) |`| cfilter P S =
+   ((\<lambda>t. F t True) |`| cfilter P S)"
   by force
 
 lemma cset_cfilter_split:
