@@ -194,6 +194,6 @@ cd "$STAGE"
 find "$NAME" -exec touch -t 202601010000 {} +
 zip -r -X -q "$OUT" "$NAME"
 count=$(printf '%s\n' $THEORIES | grep -c . || true)
-files=$(unzip -l "$OUT" | tail -1 | awk '{print $2}')
+files=$(unzip -Z1 "$OUT" | grep -vc '/$' || true)
 echo "wrote $OUT"
-echo "  $count theories, $files files, $(du -h "$OUT" | awk '{print $1}')"
+echo "  $files files, of which $count theories, $(du -h "$OUT" | awk '{print $1}')"
