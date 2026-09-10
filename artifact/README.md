@@ -8,13 +8,32 @@ discussed in the paper.
 ## Requirements
 
 The formalization is checked with **Isabelle2025-2** and the matching release of
-the **Archive of Formal Proofs** (AFP).
+the **Archive of Formal Proofs** (AFP). Building it needs about 24 GB of
+memory (the ML process alone peaks around 16 GB) and about 9 GB of disk for
+Isabelle, the AFP, and the Haskell toolchain.
+
+0. **OS packages.** On a minimal Linux system (for example a fresh Ubuntu
+   container), install the following before anything else:
+
+   ```
+   apt-get install curl unzip ca-certificates fontconfig xz-utils make \
+     build-essential libgmp-dev libnuma-dev libncurses-dev zlib1g-dev
+   ```
+
+   Without `fontconfig`, `isabelle build` aborts immediately with
+   `Fontconfig head is null`. Without `xz-utils`, `make`, and a C compiler,
+   the `isabelle ghc_setup` step below fails. Regular desktop installations
+   usually have all of these already.
 
 1. **Isabelle2025-2**, from <https://isabelle.in.tum.de/>.
    Installation instructions for every platform are part of the official
    tutorial: <https://isabelle.in.tum.de/installation.html>.
    After installing, make the `isabelle` executable available on your `PATH`,
    for example by adding the `bin` directory of the installation to it.
+   The download server is reachable over IPv6 only. From an IPv4-only network
+   (for example a default Docker bridge), download the same archive from an
+   official mirror such as
+   <https://proofcraft.systems/isabelle/dist/Isabelle2025-2_linux.tar.gz>.
 
 2. **The AFP release for Isabelle2025-2**, from
    <https://www.isa-afp.org/download/>. Register it as an Isabelle component by
@@ -49,9 +68,10 @@ isabelle build -d . -v Dataplane
 
 This builds the session `Nondeterministic_Dataflow` (the underlying
 nondeterministic dataflow theory) and then `Dataplane`, which checks every
-theory of the artifact, including all the case studies. Expect a few hours on a
-recent machine, most of it in the weakly connected components proofs. On a slow
-or containerized machine, pass `-o timeout_scale=2` if a session times out.
+theory of the artifact, including all the case studies. Expect about half an
+hour on a recent machine with enough memory, and a few hours on a slower one.
+On a slow or containerized machine, pass `-o timeout_scale=2` if a session
+times out.
 
 To browse the formalization interactively instead, open it in Isabelle/jEdit
 with the session preloaded:
@@ -70,6 +90,7 @@ the larger case studies.
 | Directory | Content |
 |---|---|
 | `nondeterministic_dataflow/` | the nondeterministic asynchronous dataflow operators the data plane builds on |
+| `dataplane/Timely_Stream.thy` | events, timestamped streams, and their monotonicity properties |
 | `dataplane/Lib/` | general purpose libraries, timestamps, antichains, locations, executability |
 | `dataplane/Timely/` | the Timely Dataflow data plane: operator states, the dataflow operator, the progress tracker, and the compilation of dataflow trees |
 | `dataplane/Correctness/` | the reusable correctness infrastructure: progress, capabilities, collections, and the simulation proof methods |
