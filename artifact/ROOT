@@ -1,0 +1,42 @@
+session Nondeterministic_Dataflow in nondeterministic_dataflow = Coinductive +
+  options [timeout = 1200]
+  theories
+    Defaults
+    Cset_Setup
+    Debug_Utils
+    Numeral_Auxiliary
+    Coinductive_List_Auxiliary
+    Operator
+    BNA_Operators
+    CSet_LList_Impl
+    Eval
+
+session Dataplane in dataplane = Nondeterministic_Dataflow +
+  options [timeout = 12000]
+  sessions
+    "HOL-Eisbach"
+    Automatic_Refinement
+    Refine_Monadic
+    Collections
+    Containers
+    DFS_Framework
+    Progress_Tracking
+  directories
+    "Lib"
+    "Timely"
+    "Correctness"
+    "Common_Operators"
+    "Examples/Batch"
+    "Examples/Collatz"
+    "Examples/Weakly_Connected_Components"
+  theories
+    "Common_Operators/Accumulator"
+    "Common_Operators/Increment_Op_Correctness"
+    "Examples/Batch/Batch_Op_Correctness"
+    "Examples/Batch/Batch_Op_Nop_Invariant"
+    "Examples/Batch/Batch_Op_Tests"
+    "Examples/Collatz/Collatz_Tests"
+    "Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness"
+    "Examples/Weakly_Connected_Components/Label_Propagation_Nop_Invariant"
+    "Examples/Weakly_Connected_Components/Label_Propagation_Op_Tests"
+    "Examples/Weakly_Connected_Components/Imperative_Wcc"
