@@ -1695,11 +1695,6 @@ qed
 
 
 
-lemma label_prop_upd_inv_output_preserved:
-  assumes inv: "label_prop_upd_inv os"
-  shows "label_prop_upd_inv (drop_caps (produces os batch) caps)"
-  oops
-
 lemma labels_inv_input0_preserved:
   fixes q t1 :: "'t::order"
   assumes labels: "\<And>q. labels_inv (all_edges os q) (min_label os q)"

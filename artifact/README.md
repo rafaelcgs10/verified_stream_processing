@@ -84,7 +84,5 @@ The main results are the weak bisimilarity correctness lemmas
 
 ## Notes
 
-The formalization contains no `sorry`: every stated lemma is proved. Four
-exploratory lemmas end in `oops` (in `Input1.thy`, `Loop.thy` and
-`Label_Propagation_Op.thy`); an aborted proof yields no theorem in Isabelle, so
-no result of the paper depends on them.
+The formalization is complete: it contains no `sorry` and no abandoned proof,
+so every lemma stated in the artifact is proved.

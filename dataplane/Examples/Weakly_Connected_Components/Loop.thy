@@ -1267,11 +1267,6 @@ proof (rule ext)
   qed
 qed
 
-lemma snd_snd_loop_updates_cbufs11:
-  \<open>snd (snd (loop_updates (cbufs(((1 :: 3), (1 :: 2)) := X)) os_label_prop os)) =
-    snd (snd (loop_updates cbufs os_label_prop os))\<close>
-  oops
-
 
 
 

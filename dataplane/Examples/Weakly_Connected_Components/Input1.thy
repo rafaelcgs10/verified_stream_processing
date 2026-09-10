@@ -1229,25 +1229,6 @@ next
     by simp
 qed
 
-(* preservation lemma for label_prop_upd_inv through batched *)
-
-lemma label_prop_upd_inv_fst_label_prop_input1_batched_preserved:
-  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-  assumes \<open>label_prop_upd_inv os\<close>
-  shows \<open>label_prop_upd_inv (fst (label_prop_input1_batched os msgs))\<close>
-  oops
-
-
-lemma min_label_fst_label_prop_input1_batched_strict_if_output_nonempty:
-  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
-  assumes \<open>outpu os 1 = []\<close>
-    and \<open>outpu (fst (label_prop_input1_batched os msgs)) 1 \<noteq> []\<close>
-  obtains q v where
-    \<open>v \<in> edge_vertices (all_edges os q)\<close>
-    \<open>min_label (fst (label_prop_input1_batched os msgs)) q v < min_label os q v\<close>
-  oops
-
-
 
 lemma min_label_fst_label_prop_input1_batched_strict_timestamped_if_output_nonempty:
   fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
