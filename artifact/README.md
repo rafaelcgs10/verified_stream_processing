@@ -81,8 +81,3 @@ the larger case studies.
 The main results are the weak bisimilarity correctness lemmas
 `correctness` in `Examples/Batch/Batch_Op_Correctness.thy` and in
 `Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy`.
-
-## Notes
-
-The formalization is complete: it contains no `sorry` and no abandoned proof,
-so every lemma stated in the artifact is proved.
