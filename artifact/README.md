@@ -112,7 +112,9 @@ paper and in the formalization.
 | Paper | Formalization |
 |---|---|
 | ⊙ | results_in |
+| Init | init_config |
 | propagate | next_propagate' |
+| change_multiplicity | next_change_multiplicity' |
 | conf | configuration |
 | pts | c_pts |
 | imp | c_imp |
@@ -122,3 +124,12 @@ paper and in the formalization.
 | td_input | timely_input_stream |
 | input_op_logic | ooo_input_op_logic |
 | input_op | ooo_input_op |
+| fuel | future_fuel |
+| active | measure_sum |
+| repro | total_work_repro |
+| pos_work | c_pos_work |
+| neg_work | c_neg_work |
+| \#c | neg_order c |
+| neg_intro c c' | ∃ t'. (t'∈active_work c' ∧ t' ∉ active_work c ∧ measure c' t' > 0) |
+| work_vacant | worklists_vacant_to |
+| frontier_z | frontier_zmset |
