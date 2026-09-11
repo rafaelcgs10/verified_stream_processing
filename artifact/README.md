@@ -1,6 +1,6 @@
-# Verifying Timely Dataflow Algorithms in Isabelle/HOL
+# Verifying Timely Dataflow Programs in Isabelle/HOL
 
-This artifact accompanies the paper *Verifying Timely Dataflow Algorithms in
+This artifact accompanies the paper *Verifying Timely Dataflow Programs in
 Isabelle/HOL*. It contains the formalization of the Timely Dataflow data plane,
 its progress-tracking protocol, and the verified operators and programs
 discussed in the paper.
