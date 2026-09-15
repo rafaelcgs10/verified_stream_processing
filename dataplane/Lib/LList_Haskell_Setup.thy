@@ -77,8 +77,6 @@ code_printing
     (Haskell) "Cset.chd"
   | constant cnub \<rightharpoonup>
     (Haskell) "Cset.cnub"
-  | constant ctake \<rightharpoonup>
-    (Haskell) "Cset.ctake"
   | type_constructor llist \<rightharpoonup>
     (Haskell) "![(_)]"
   | constant LNil \<rightharpoonup>
@@ -93,7 +91,7 @@ code_printing
     (Haskell) infixr 5 "++"
   | constant lmap \<rightharpoonup>
     (Haskell) "map"
-
+                 
   | constant lfilter \<rightharpoonup>
     (Haskell) "filter"
   | constant lconcat \<rightharpoonup>
@@ -129,6 +127,42 @@ code_printing
    | constant lmerge \<rightharpoonup>
     (Haskell) "Prelude.concat"  
  *)
+
+section \<open>Unsoundness of the csome_elem Adaptation\<close>
+
+text \<open>The adaptation of @{const csome_elem} to \<open>Cset.chd\<close> above is unsound, and
+  so is the one of @{const cthe_elem}, which uses the same Haskell function.
+  The type @{typ "'a cset"} is abstract and @{const cset_of_llist} is not
+  injective, so any operation that matches on it has to return the same result
+  for two lazy lists with the same @{const lset}. Every other code equation in
+  this development satisfies that condition because it is a proved theorem, but
+  \<open>code_printing\<close> is unchecked, and taking the head of the representation does
+  not satisfy it. In HOL @{const csome_elem} is a function of the cset, so
+  argument congruence forces the two applications below to be equal, while the
+  generated Haskell code returns \<open>0\<close> for one and \<open>1\<close> for the other.\<close>
+
+abbreviation cA :: "nat cset" where
+  "cA \<equiv> cset_of_llist (llist_of [0, 1])"
+abbreviation cB :: "nat cset" where
+  "cB \<equiv> cset_of_llist (llist_of [1, 0])"
+
+lemma cA_eq_cB: "cA = cB"
+  by (auto simp: cset_eq_iff cset_of_llist.rep_eq)
+
+lemma csome_eq: "csome_elem cA = csome_elem cB"
+  by (rule arg_cong[OF cA_eq_cB])
+
+value [GHC] "csome_elem cA"
+value [GHC] "csome_elem cB"
+value [GHC] "csome_elem cA = csome_elem cB" (* returns False *)
+
+text \<open>The last evaluation prints \<open>False\<close>, contradicting
+  @{thm csome_eq}. The command below makes that a hard failure instead of a
+  printed value, so it is left commented out to keep the session building.
+
+  \<open>test_code "csome_elem cA = csome_elem cB" in GHC\<close>\<close>
+
+
 fun wsteps_at where
   "wsteps_at (Write op p x) n = {|(VOut p x, op)|}"
 | "wsteps_at (Read p f) n = {|(VInp p (Code.abort (STR ''wsteps_at should not read'') (\<lambda> _. undefined)), f undefined)|}"
@@ -198,13 +232,55 @@ fun find_output_at where
 | "find_output_at (Silent op) x (Suc n) = find_output_at op x n"
 | "find_output_at (Choice ops) x (Suc n) =
    cUnion (cimage (\<lambda>op. find_output_at op x n) ops)"
-| "find_output_at op x _ = Code.abort (STR ''steps_of out of gas'') undefined"
+| "find_output_at op x 0 = {||}"
+
+definition "find_output_exec op x = cUnion (cimage (find_output_at op x) cUNIV)"
+
+lemma find_output_exec_Write[simp]:
+  "find_output_exec (Write op p x) (p', x') = (if p' = p \<and> x' = x then {|op|} else {||})"
+  unfolding find_output_exec_def by (auto simp: cset_eq_iff)
+
+lemma find_output_exec_Silent[simp]:
+  "find_output_exec (Silent op) x = find_output_exec op x"
+  unfolding find_output_exec_def
+  apply safe
+  subgoal premises prems for a n
+    using prems(2-) apply -
+    apply (induct "Silent op" x n arbitrary: op rule: find_output_at.induct)
+     apply auto
+    done
+  subgoal for a n
+    apply (simp add: find_output_exec_def)
+    apply (rule exI[of _ "Suc n"])
+    apply auto
+    done
+  done
+
+lemma find_output_exec_Choice[simp]:
+  "find_output_exec (Choice ops) x = cUnion (cimage (\<lambda>op. find_output_exec op x) ops)"
+  unfolding find_output_exec_def
+  apply safe
+  subgoal premises prems for a n
+    using prems(2-) apply -
+    apply (induct "Choice ops" x n arbitrary: ops rule: find_output_at.induct)
+     apply auto
+    done
+  subgoal for a b n
+    apply (simp add: find_output_exec_def)
+    apply (rule exI[of _ "Suc n"])
+    apply auto
+    done
+  done
+
+declare find_output_exec_def[code del]
+lemmas find_output_exec_code[code] =
+  find_output_exec_Write find_output_exec_Silent find_output_exec_Choice
 
 
 fun check_prefix where
-  "check_prefix n [] op = True"
-| "check_prefix n (io # ios) op =
-  (\<not> cis_empty (cfilter (\<lambda>op'. check_prefix n ios op') (find_output_at op io n)))"
+  "check_prefix [] op = True"
+| "check_prefix (io # ios) op =
+  (\<not> cis_empty (cfilter (\<lambda>op'. check_prefix ios op') (find_output_exec op io)))"
 
 subsection \<open>Executable Unit Tests\<close>
 
