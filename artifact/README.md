@@ -1,6 +1,6 @@
-# Verifying Timely Dataflow Algorithms in Isabelle/HOL
+# Verifying Timely Dataflow Programs in Isabelle/HOL
 
-This artifact accompanies the paper *Verifying Timely Dataflow Algorithms in
+This artifact accompanies the paper *Verifying Timely Dataflow Programs in
 Isabelle/HOL*. It contains the formalization of the Timely Dataflow data plane,
 its progress-tracking protocol, and the verified operators and programs
 discussed in the paper.
@@ -102,3 +102,34 @@ the larger case studies.
 The main results are the weak bisimilarity correctness lemmas
 `correctness` in `Examples/Batch/Batch_Op_Correctness.thy` and in
 `Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy`.
+
+## Renamed symbols
+
+In the paper, some types and constants are renamed for brevity.  The
+table below shows the correspondence between the names used in the
+paper and in the formalization.
+
+| Paper | Formalization |
+|---|---|
+| ⊙ | results_in |
+| Init | init_config |
+| propagate | next_propagate' |
+| change_multiplicity | next_change_multiplicity' |
+| conf | configuration |
+| pts | c_pts |
+| imp | c_imp |
+| work | c_work |
+| td_monotone | timely_monotone |
+| td_progress | timely_progress |
+| td_input | timely_input_stream |
+| input_op_logic | ooo_input_op_logic |
+| input_op | ooo_input_op |
+| fuel | future_fuel |
+| active | measure_sum |
+| repro | total_work_repro |
+| pos_work | c_pos_work |
+| neg_work | c_neg_work |
+| \#c | neg_order c |
+| neg_intro c c' | ∃ t'. (t'∈active_work c' ∧ t' ∉ active_work c ∧ measure c' t' > 0) |
+| work_vacant | worklists_vacant_to |
+| frontier_z | frontier_zmset |
