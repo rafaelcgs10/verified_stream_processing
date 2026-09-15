@@ -17,7 +17,8 @@ lemma produces_singleton:
   \<open>produces os [(x, cap)] = os\<lparr>outpu := (outpu os)(out cap := outpu os (out cap) @ [(x, capability.time cap)]),
     produ := produ os @ [(out cap, capability.time cap, 1)]\<rparr>\<close>
   by (auto simp: produces_def fun_eq_iff)
-lemma label_propagation_correctness:
+
+lemma correctness_gen:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
     and os_input :: \<open>(2, nat \<times> nat + nat set set, nat \<times> nat, (nat, nat) myprod) input_state\<close>
@@ -9032,7 +9033,7 @@ lemma correctness_aux:
           (cUn (cUn (ts lxs) (cset_from_list (map snd ((outputs_at_target (summ my_lp_sg) init_lp_states >> (\<lambda>_. []) >> inputs_at_target init_lp_states) (1, 0)))))
             ((\<lambda> t. MyPair t 0) |`| (cfilter (\<lambda> t. t \<in> myfst ` set (ocaps (init_lp_states 1) 0)) (cset_from_list (timestamps initial_state_label_prop)))))))
       {||}\<close>
-  apply (rule label_propagation_correctness[where S=\<open>{||}\<close> and SO=\<open>{||}\<close> and D=\<open>{||}\<close>
+  apply (rule correctness_gen[where S=\<open>{||}\<close> and SO=\<open>{||}\<close> and D=\<open>{||}\<close>
         and lxs=lxs and os=init_lp_states and os_input=\<open>initial_state_input lxs\<close>
         and os_label_prop=initial_state_label_prop and cbufs=\<open>\<lambda>_. []\<close>
         and chns=\<open>outputs_at_target (summ my_lp_sg) init_lp_states >> (\<lambda>_. []) >> inputs_at_target init_lp_states\<close>

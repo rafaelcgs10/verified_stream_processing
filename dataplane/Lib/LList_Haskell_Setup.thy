@@ -193,21 +193,18 @@ lemma acset_code[code]:
 definition "flat_choices ops = cUnion (cimage choices ops)"
 
 fun find_output_at where
-  "find_output_at (Write op p x) (p', x') n = (if p' = p \<and> x' = x then Some op else None)"
+  "find_output_at (Write op p x) (p', x') n = (if p' = p \<and> x' = x then {|op|} else {||})"
 | "find_output_at (Read p f) x n = Code.abort (STR ''steps_of should not read'') undefined"
 | "find_output_at (Silent op) x (Suc n) = find_output_at op x n"
-| "find_output_at (Choice ops) x (Suc n) = (
-   let ops' = cfilter (\<lambda>r. r \<noteq> None) (cimage (\<lambda> op. find_output_at op x n) (ops)) in
-   (if ops' = {||} then None else cthe_elem ops'))"
+| "find_output_at (Choice ops) x (Suc n) =
+   cUnion (cimage (\<lambda>op. find_output_at op x n) ops)"
 | "find_output_at op x _ = Code.abort (STR ''steps_of out of gas'') undefined"
 
 
 fun check_prefix where
   "check_prefix n [] op = True"
-| "check_prefix n (io # ios) op = 
-  (case find_output_at op io n of
-     None \<Rightarrow> False
-   | Some op \<Rightarrow> check_prefix n ios op)"
+| "check_prefix n (io # ios) op =
+  (\<not> cis_empty (cfilter (\<lambda>op'. check_prefix n ios op') (find_output_at op io n)))"
 
 subsection \<open>Executable Unit Tests\<close>
 
