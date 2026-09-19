@@ -1,23 +1,177 @@
+(* Session setup for the complete formalization.
+
+   Nondeterministic_Dataflow  the operator model of Chapters 4 and 5,
+                              including the algebra tables
+   Dataplane                  everything built on top of it, Chapters 6 to 11
+
+   Build both with:  isabelle build -d . -v Dataplane
+   Browse them with: isabelle jedit -d . -R Dataplane                       *)
+
 session Nondeterministic_Dataflow in nondeterministic_dataflow = Coinductive +
-  options [timeout = 600]
+  options [timeout = 12000]
+  directories
+    "table_1"
+    "table_2"
+    "table_3"
   theories
-    "Operator"
-    "BNA_Operators"
-    "Cset_Setup"
-    "Defaults"
-    "CSet_LList_Impl"
-    "Coinductive_List_Auxiliary"
-    "Eval"
-    Numeral_Auxiliary
+    BNA_Operators
+    CSet_LList_Impl
+    Coinductive_List_Auxiliary
+    Cset_Setup
     Debug_Utils
+    Defaults
+    Eval
+    Eval_Examples
+    Lifted
+    Lifted_Table_1
+    Lifted_Table_2
+    Lifted_Table_3
+    Numeral_Auxiliary
+    Operator
+    Wstep_Composition
+    Wstep_Composition_Left_Right
+    "table_1/B1"
+    "table_1/B10"
+    "table_1/B2"
+    "table_1/B3"
+    "table_1/B4"
+    "table_1/B5"
+    "table_1/B6"
+    "table_1/B7"
+    "table_1/B8"
+    "table_1/B9"
+    "table_1/F1"
+    "table_1/F2"
+    "table_1/R1"
+    "table_1/R2"
+    "table_1/R3"
+    "table_1/R4"
+    "table_1/R5"
+    "table_1/R6"
+    "table_2/T2A1"
+    "table_2/T2A10"
+    "table_2/T2A11"
+    "table_2/T2A12"
+    "table_2/T2A13"
+    "table_2/T2A14"
+    "table_2/T2A15"
+    "table_2/T2A16"
+    "table_2/T2A17"
+    "table_2/T2A18"
+    "table_2/T2A19"
+    "table_2/T2A2"
+    "table_2/T2A3"
+    "table_2/T2A4"
+    "table_2/T2A5"
+    "table_2/T2A6"
+    "table_2/T2A7"
+    "table_2/T2A8"
+    "table_2/T2A9"
+    "table_2/T2F3"
+    "table_2/T2F4"
+    "table_2/T2F5"
+    "table_3/T3A1"
+    "table_3/T3A12"
+    "table_3/T3A13"
+    "table_3/T3A14"
+    "table_3/T3A15"
+    "table_3/T3A16"
+    "table_3/T3A17"
+    "table_3/T3A18"
+    "table_3/T3A19"
+    "table_3/T3A2"
+    "table_3/T3A3"
+    "table_3/T3A4"
+    "table_3/T3A6"
+    "table_3/T3A8"
+    "table_3/T3A9"
+    "table_3/T3F3"
+    "table_3/T3F4"
 
 session Dataplane in dataplane = Nondeterministic_Dataflow +
-  options [timeout = 6000]
+  options [timeout = 12000]
   sessions
+    "HOL-Eisbach"
+    Automatic_Refinement
+    Refine_Monadic
+    Collections
+    Containers
     DFS_Framework
     Progress_Tracking
+  directories
+    "Common_Operators"
+    "Correctness"
+    "Examples/Batch"
+    "Examples/Collatz"
+    "Examples/Weakly_Connected_Components"
+    "Lib"
+    "Timely"
   theories
-    DFS_Framework.Cyc_Check
-    Progress_Tracking.Propagate
-    Progress_Tracking.Auxiliary
-(*     Zero_Cyc_Check  *)
+    "Common_Operators/Accumulator"
+    "Common_Operators/Branch_Op"
+    "Common_Operators/Concat_Op"
+    "Common_Operators/Increment_Op"
+    "Common_Operators/Increment_Op_Correctness"
+    "Common_Operators/Ooo_Input_Op"
+    "Common_Operators/Ooo_Input_Op_Correctness"
+    "Common_Operators/Set_Op"
+    "Common_Operators/Source_Op"
+    "Common_Operators/Tmap_Op"
+    "Correctness/Consumes"
+    "Correctness/General"
+    "Correctness/Ifrontier"
+    "Correctness/Init"
+    "Correctness/Mints"
+    "Correctness/OCapsReorder"
+    "Correctness/Outputs"
+    "Correctness/Produces"
+    "Correctness/Progress"
+    "Correctness/Progress_Extraction"
+    "Correctness/Propagates"
+    "Correctness/Propagation_Properties"
+    "Correctness/Timely_Collections"
+    "Examples/Batch/Batch_Op"
+    "Examples/Batch/Batch_Op_Correctness"
+    "Examples/Batch/Batch_Op_Nop_Invariant"
+    "Examples/Batch/Batch_Op_Tests"
+    "Examples/Collatz/Collatz_Nop_Invariant"
+    "Examples/Collatz/Collatz_Op"
+    "Examples/Collatz/Collatz_Tests"
+    "Examples/Weakly_Connected_Components/Dataplane_Inv"
+    "Examples/Weakly_Connected_Components/Imperative_Wcc"
+    "Examples/Weakly_Connected_Components/Input0"
+    "Examples/Weakly_Connected_Components/Input1"
+    "Examples/Weakly_Connected_Components/Label_Propagation_Nop_Invariant"
+    "Examples/Weakly_Connected_Components/Label_Propagation_Op"
+    "Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness"
+    "Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness_Extras"
+    "Examples/Weakly_Connected_Components/Label_Propagation_Op_Tests"
+    "Examples/Weakly_Connected_Components/Labels"
+    "Examples/Weakly_Connected_Components/Loop"
+    "Examples/Weakly_Connected_Components/Wcc"
+    "Lib/AntichainOrder"
+    "Lib/Bots"
+    "Lib/CsetUtils"
+    "Lib/DataplaneUtils"
+    "Lib/Executable"
+    "Lib/LList_Haskell_Setup"
+    "Lib/ListUtils"
+    "Lib/Locations"
+    "Lib/MyMisc"
+    "Lib/MyProduct_Instances"
+    "Lib/Numeral_Conversion"
+    "Lib/Operators_Utils"
+    "Lib/SimulationProofMethods"
+    "Lib/Termination"
+    "Lib/Zero_Cyc_Check"
+    "Lib/ZmsetUtils"
+    "Timely/Builder_Op"
+    "Timely/Dataflow_Op"
+    "Timely/Dataflow_Opt_Op"
+    "Timely/Nop_Step_Lemmas"
+    "Timely/Operator_State"
+    "Timely/Propagation_Exec"
+    "Timely/Propagation_Idempotence"
+    "Timely/Tree_Compile"
+    "Timely/Tree_Nop_Invariant"
+    Timely_Stream

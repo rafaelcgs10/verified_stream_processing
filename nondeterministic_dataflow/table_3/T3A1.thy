@@ -118,7 +118,7 @@ lemma step_merge_op'_Tau:
   using assms
   apply (subst (asm) merge_op'_code)
   apply auto
-  by blast+
+  done
 
 lemma step_merge_op'_elim:
   assumes \<open>step io (merge_op' buf buf') op\<close>

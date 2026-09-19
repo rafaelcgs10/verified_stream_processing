@@ -3791,8 +3791,41 @@ next
     show ?thesis
       using SIM2
       apply -
-      apply (elim exE conjE disjE step_map_op_elim step_comp_op_elim step_acopy_op_elim step_id_op_cases step_transp_op_cases step_aeq_op_elim ; simp only: IO.simps ; simp split: sum.splits if_splits ; hypsubst_thin ?)
-      by (rule A10_prems; assumption)+
+      apply (elim exE conjE disjE step_map_op_elim step_comp_op_elim step_acopy_op_elim step_id_op_cases step_transp_op_cases step_aeq_op_elim; simp only: IO.simps; hypsubst_thin?
+      ; (simp split: sum.splits if_splits; (elim exE conjE disjE)?; simp?; hypsubst_thin?
+      ; (simp split: sum.splits if_splits; (elim exE conjE disjE)?; hypsubst_thin?; (rule A10_prems; assumption)?))
+     )
+      subgoal 
+        using A10_prems(1)
+        by force
+      subgoal 
+        using A10_prems(2)
+        by force
+      subgoal 
+        using A10_prems(5) 
+        by fastforce
+      subgoal 
+        using A10_prems(6) 
+        by fastforce
+      subgoal 
+        using A10_prems(7) 
+        by fastforce
+      subgoal 
+        using A10_prems(8) 
+        by fastforce
+      subgoal 
+        using A10_prems(13) 
+        by fastforce
+      subgoal 
+        using A10_prems(14) 
+        by fastforce
+      subgoal 
+        using A10_prems(15) 
+        by fastforce
+      subgoal 
+        using A10_prems(16) 
+        by fastforce
+      done
   qed
 qed
 

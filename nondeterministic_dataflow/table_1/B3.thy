@@ -112,8 +112,6 @@ lemma step_scomp_op_1:
                  apply (subst comp_op_code)
                  apply simp
                  apply (rule disjI2)
-                 apply (rule bexI[rotated])
-                  apply simp
                   apply fastforce+
                 done
               subgoal by auto
@@ -178,7 +176,6 @@ lemma step_scomp_op_1:
                    apply (subst comp_op_code)
                    apply simp_all
                  apply (rule disjI2)
-                 apply (intro bexI)
                   apply (auto intro: ST)
                 done
               subgoal for op2'
@@ -194,7 +191,6 @@ lemma step_scomp_op_1:
                    apply (subst comp_op_code)
                    apply simp_all
                  apply (rule disjI2)
-                 apply (intro bexI)
                   apply (auto intro: ST)
                 done
               done

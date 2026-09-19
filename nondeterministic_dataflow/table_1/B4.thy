@@ -2,7 +2,7 @@ theory B4
 
 imports
   "../BNA_Operators"
-   B3
+  B3
 begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
@@ -51,11 +51,11 @@ lemma step_comp_op_Some_id_op_id_op:
            apply (metis (no_types, opaque_lifting) BENQ_def)
           apply (metis (no_types, opaque_lifting) BENQ_def)
          apply (metis (no_types, lifting) BTL_def)
-        apply (metis (no_types, lifting) BTL_def)
-       apply (metis (no_types, lifting) BTL_def)
-      apply (metis (no_types, lifting) BTL_def)
-     apply (metis (no_types, opaque_lifting) BENQ_def)
-    apply (metis (no_types, lifting) BTL_def)
+        apply (metis (lifting) BENQ_def)
+       apply (metis (lifting) BENQ_def)
+      apply (metis (lifting) BENQ_def)
+     apply (metis (lifting) BENQ_def)
+    apply (metis (lifting) BENQ_def)
     done
   done
 
@@ -144,12 +144,12 @@ lemma id_id_gen:
       subgoal for p x
         apply hypsubst_thin
         apply (drule step_id_op_Inp)
-         apply auto
+        apply auto
         apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op (BENQ p x buf1)) (id_op buf3))"])
         apply (intro conjI)
         subgoal
           apply (rule wstep_map_op[where io="Inp (Inl p) _"])
-           apply simp_all
+          apply simp_all
           apply (rule step_wstep)
           apply auto
           done
@@ -157,7 +157,7 @@ lemma id_id_gen:
           apply (rule wbc_sym)
           apply (rule wbc_base)
           apply (intro conjI exI)
-           apply (rule refl)
+          apply (rule refl)
           apply (rule arg_cong[where f=id_op])
           apply auto
           done
@@ -165,38 +165,38 @@ lemma id_id_gen:
       subgoal for p x
         apply hypsubst_thin
         apply (drule step_id_op_Out)
-         apply simp
+        apply simp
         apply (elim conjE)
         apply hypsubst_thin
         apply (drule BHD_BAPPEND_2_cases)
-         apply simp
+        apply simp
         apply (elim exE disjE conjE)
         subgoal
           apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op (BTL p buf3)))"])
           apply (intro conjI)
           subgoal
             apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) (BHD p buf3)", simplified])
-             apply (subst comp_op_code)
-             apply simp
-             apply (rule step_wstep)
-             apply (rule SC)
-              apply (simp add: )
-              apply (rule disjI2)
-              apply simp
-              apply (rule image_eqI)
-               apply (rule refl)
-              apply (simp add: c\<UU>.rep_eq)
-              apply (intro conjI)
-               apply (rule disjI2)
-               apply (intro conjI exI)
-                 apply (erule \<UU>_I)
-                apply (auto simp add: step.intros(2))
+            apply (subst comp_op_code)
+            apply simp
+            apply (rule step_wstep)
+            apply (rule SC)
+            apply (simp add: )
+            apply (rule disjI2)
+            apply simp
+            apply (rule image_eqI)
+            apply (rule refl)
+            apply (simp add: c\<UU>.rep_eq)
+            apply (intro conjI)
+            apply (rule disjI2)
+            apply (intro conjI exI)
+            apply (erule \<UU>_I)
+            apply (auto simp add: step.intros(2))
             done
           subgoal
             apply (rule wbc_sym)
             apply (rule wbc_base)
             apply (intro exI conjI) 
-             apply (rule refl)
+            apply (rule refl)
             apply (rule arg_cong[where f=id_op])
             apply simp
             done
@@ -206,39 +206,39 @@ lemma id_id_gen:
           apply (intro conjI)
           subgoal
             apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) (BHD p buf2)", simplified])
-             apply simp_all
+            apply simp_all
             apply (rule step_tau_step_io_wstep[of _ "comp_op Some (BTL p buf2) (id_op buf1) (id_op (BENQ p (BHD p buf2) buf3))"])
-             apply (subst comp_op_code)
-             apply simp
-             apply (rule SC[rotated])
-              apply (rule ST)
-             apply simp
-             apply (rule disjI2)
-             apply simp
-             apply (rule image_eqI[rotated])
-              apply (simp add: )
-              apply (intro conjI)
-               apply (rule disjI1)
-               apply blast+
-              apply simp_all
-             apply (simp add: BENQ_def)
+            apply (subst comp_op_code)
+            apply simp
+            apply (rule SC[rotated])
+            apply (rule ST)
+            apply simp
+            apply (rule disjI2)
+            apply simp
+            apply (rule image_eqI[rotated])
+            apply (simp add: )
+            apply (intro conjI)
+            apply (rule disjI1)
+            apply blast+
+            apply simp_all
+            apply (simp add: BENQ_def)
             apply (subst comp_op_code)
             apply (rule SC[rotated])
-             apply (rule SW)
+            apply (rule SW)
             apply simp
             apply (rule disjI2)
             apply (rule image_eqI[rotated])
-             apply (simp add: )
-             apply (intro conjI)
-              apply (rule disjI2)
-              apply (intro exI[of _ p] conjI)
-                apply (auto simp add: fun_upd_idem)
+            apply (simp add: )
+            apply (intro conjI)
+            apply (rule disjI2)
+            apply (intro exI[of _ p] conjI)
+            apply (auto simp add: fun_upd_idem)
             done
           subgoal
             apply (rule wbc_sym)
             apply (rule wbc_base)
             apply (intro conjI exI)
-             apply (rule refl)
+            apply (rule refl)
             apply (rule arg_cong[where f=id_op])
             apply auto
             done
@@ -248,26 +248,26 @@ lemma id_id_gen:
           apply (intro conjI)
           subgoal
             apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) (BHD p buf1)", simplified])
-             apply simp_all
+            apply simp_all
             apply (rule step_tau_step_tau_step_io_wstep[of _ "comp_op Some (BENQ p (BHD p buf1) buf2) (id_op (BTL p buf1)) (id_op buf3)" "comp_op Some (BTL p (BENQ p (BHD p buf1) buf2)) (id_op (BTL p buf1)) (id_op (BENQ p (BHD p buf1) buf3))"])
-              apply (subst comp_op_code)
-              apply simp
-              apply (rule SC[rotated])
-               apply (rule ST)
-              apply simp
-              apply (rule disjI1)
-              apply simp
-              apply (rule image_eqI[rotated])
-               apply (simp add: )
-               apply (rule disjI2)
-               apply (intro exI conjI)
-                 apply (auto simp add: )
+            apply (subst comp_op_code)
+            apply simp
+            apply (rule SC[rotated])
+            apply (rule ST)
+            apply simp
+            apply (rule disjI1)
+            apply simp
+            apply (rule image_eqI[rotated])
+            apply (simp add: )
+            apply (rule disjI2)
+            apply (intro exI conjI)
+            apply (auto simp add: )
             done
           subgoal
             apply (rule wbc_sym)
             apply (rule wbc_base)
             apply (intro conjI exI)
-             apply (rule refl)
+            apply (rule refl)
             apply (rule arg_cong[where f=id_op])
             apply auto
             done
