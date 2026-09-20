@@ -1,13 +1,13 @@
 theory Input1
 
 imports
-  "../../Correctness/Outputs"
-  "../../Correctness/Produces"
-  "../../Correctness/Progress"
-  "../../Correctness/OCapsReorder"
-  "../../Correctness/Consumes"
-  "../../Correctness/Init"
-  "../../Correctness/Timely_Collections"
+  Dataplane_Core.Outputs
+  Dataplane_Core.Produces
+  Dataplane_Core.Progress
+  Dataplane_Core.OCapsReorder
+  Dataplane_Core.Consumes
+  Dataplane_Core.Init
+  Dataplane_Core.Timely_Collections
   Label_Propagation_Op_Correctness_Extras
 begin
 

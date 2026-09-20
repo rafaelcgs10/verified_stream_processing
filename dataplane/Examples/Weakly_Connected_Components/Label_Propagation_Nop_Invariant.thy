@@ -2,7 +2,7 @@ theory Label_Propagation_Nop_Invariant
 
 imports
   Label_Propagation_Op_Correctness_Extras
-  "../../Timely/Tree_Nop_Invariant"
+  Dataplane_Core.Tree_Nop_Invariant
 begin
 
 section \<open>The Optimized and Plain Compiled Label Propagation Programs are Equivalent\<close>

@@ -9,6 +9,179 @@ for proving programs correct, and the verified case studies.
 The names of types, constants and lemmas are the same in the thesis and in the
 theories below.
 
+There are several ways to work with it, from reading the proofs in a browser
+with nothing installed, to editing the operator algebra itself. The next
+section lays them out.
+
+## Ways to use this formalization
+
+The theories are split into four sessions, each building on the previous
+one:
+
+    Nondeterministic_Dataflow   the operator algebra, tables 1 to 3
+      Dataplane_Base            the AFP entries used further up
+        Dataplane_Core          Lib, Timely, Correctness, Common_Operators
+          Dataplane             the case studies under Examples/
+
+This layering is what makes the options below differ. `isabelle jedit -R S`
+puts session `S`'s own theories on the editable source path and takes every
+ancestor from a prebuilt heap image, so the further down the chain you open,
+the less is re-checked when you open a file.
+
+| What you want to do | How |
+|---|---|
+| Read the proofs, nothing installed | the container, below |
+| Browse and inspect, least re-checking | `isabelle jedit -d . -R Dataplane` |
+| Work on the case studies | `isabelle jedit -d . -R Dataplane` |
+| Work on the data plane and its correctness infrastructure | `isabelle jedit -d . -R Dataplane_Core` |
+| Work on the operator algebra | `isabelle jedit -d . -R Nondeterministic_Dataflow` |
+
+Only the first needs no local installation. For every other option, do the
+one-time setup under [Running it locally](#running-it-locally) first.
+
+### Reading the proofs in a container
+
+A container image carries Isabelle2025-2, the AFP and this formalization,
+already checked, and runs Isabelle/jEdit on a virtual display that it serves
+to a web browser. Nothing is installed and nothing is re-checked on your
+machine, a browser is all you need.
+
+```
+docker run --rm -p 127.0.0.1:6080:6080 --shm-size=2g \
+  rafaelcgs10/verified-stream-processing:1.0-amd64
+```
+
+Then open <http://localhost:6080/vnc.html> and log in with the password
+`isabelle`. Isabelle/jEdit comes up on the `Dataplane` session, so the whole
+formalization is available from prebuilt heap images. Give it a minute to
+load, then see [Using the Isabelle/jEdit
+interface](#using-the-isabellejedit-interface) below for how to open a
+theory and inspect a proof.
+
+The download is about 2.6 GB. Give the container about 12 GB to 16 GB of
+memory. On Docker Desktop raise it under *Settings > Resources > Memory*,
+and lower Isabelle's own ceiling to match with `-e ML_MAXHEAP=8G` on a
+smaller machine, keeping it at or below 16G.
+
+**On architecture.** The published image is `linux/amd64` only for now. It
+runs on Apple Silicon through emulation, but replaying proofs is bound by
+the processor and Poly/ML is close to the worst case for an emulator, so
+expect it to be slow there. Building the image yourself on an ARM machine
+gives a native one.
+
+**Building it yourself.** From the root of this repository:
+
+```
+docker build -t verified-stream-processing .
+docker run --rm -p 127.0.0.1:6080:6080 --shm-size=2g verified-stream-processing
+```
+
+This reproduces the whole check from source. It takes roughly an hour and a
+half and needs about 24 GB of memory available to the Docker daemon. The
+Dockerfile selects the Isabelle build matching the architecture it is built
+on, so on Apple Silicon this produces a native image.
+
+**An archived copy** is deposited with the release as a tarball, for
+citation and for use without a registry:
+
+<!-- TODO: add the Zenodo DOI and link once the record is published. -->
+
+```
+zstd -d -c verified-stream-processing-1.0-image.tar.zst | docker load
+docker run --rm -p 127.0.0.1:6080:6080 --shm-size=2g \
+  verified-stream-processing:1.0
+```
+
+See [`docker/README.md`](docker/README.md) for the build arguments, the
+pinned AFP commit and the memory requirements.
+
+### Running it locally
+
+Every option below needs Isabelle2025-2, the matching AFP release and the
+GHC component. The short version:
+
+```
+# 1. OS packages, on a minimal Linux system such as a fresh container
+apt-get update && apt-get install -y curl unzip ca-certificates fontconfig \
+  xz-utils make build-essential libgmp-dev libnuma-dev libncurses-dev zlib1g-dev
+
+# 2. Isabelle2025-2 from https://isabelle.in.tum.de/, with its bin/ on your PATH
+
+# 3. the AFP release for Isabelle2025-2, registered as an Isabelle component
+isabelle components -u /path/to/afp/thys
+
+# 4. the GHC component
+isabelle ghc_setup
+
+# 5. one full check, which produces the heap images every option below loads
+isabelle build -d . -v Dataplane
+```
+
+Step 4 is required, not optional: several theories evaluate generated code
+with `value [GHC]` and the build fails without it. It downloads a Haskell
+toolchain on first use.
+
+Step 5 takes a while, about half an hour on a fast machine with enough
+memory and a few hours on a slower one. It is what makes the options below
+load from prebuilt heaps instead of re-checking. Pass `-o timeout_scale=2`
+if a session times out on a slow or containerized machine.
+
+See [Requirements](#requirements) for the details behind each step,
+including why `fontconfig` matters, the IPv6-only Isabelle download server
+and an IPv4 mirror, and which AFP entries are used.
+
+### Browsing and inspecting, with the least re-checking
+
+```
+isabelle build -d . -v Dataplane
+isabelle jedit -d . -R Dataplane
+```
+
+Everything up to and including `Dataplane_Core` comes from heap images, so
+opening a case study re-checks only the case study itself. Use *File > Open*
+on any theory, for instance
+`dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy`.
+
+Opening a theory always re-checks the theories it imports from the *same*
+session, so there is still some replay within `Examples/`. Nothing outside it
+is replayed.
+
+### Developing the case studies
+
+The same invocation as above. The theories under `dataplane/Examples/` are
+the editable ones, and the whole infrastructure they build on stays in the
+`Dataplane_Core` heap.
+
+Imports reaching out of `Examples/` must be written session-qualified, as
+`Dataplane_Core.Consumes` rather than `"../../Correctness/Consumes"`.
+Isabelle rejects a cross-session import written as a file path.
+
+### Developing the data plane and correctness infrastructure
+
+```
+isabelle jedit -d . -R Dataplane_Core
+```
+
+Now `dataplane/Lib/`, `dataplane/Timely/`, `dataplane/Correctness/` and
+`dataplane/Common_Operators/` are editable, with the AFP entries and the
+operator algebra coming from the `Dataplane_Base` heap. The case studies are
+not part of this session, so rebuild `Dataplane` afterwards to check that
+they still go through.
+
+### Developing the operator algebra
+
+```
+isabelle jedit -d . -R Nondeterministic_Dataflow
+```
+
+Everything under `nondeterministic_dataflow/`, including the algebra tables,
+is editable, and only the AFP sits underneath. The first start may build a
+small auxiliary image for the few library theories that are not part of the
+`Coinductive` session.
+
+This is the bottom of the chain, so after changing anything here the sessions
+above have to be rebuilt before they can be loaded again.
+
 ## Requirements
 
 The formalization is checked with **Isabelle2025-2** and the matching release of
@@ -64,30 +237,65 @@ Isabelle, the AFP, and the Haskell toolchain.
 
 ## Building
 
-From the root of this repository, check the whole formalization with
+To check the whole formalization in one go, without the editor:
 
 ```
 isabelle build -d . -v Dataplane
 ```
 
-This builds the session `Nondeterministic_Dataflow`, which contains the
-operator model and the algebra tables, and then `Dataplane`, which checks
-every remaining theory, including all the case studies. Expect about half an
-hour on a recent machine with enough memory, and a few hours on a slower one.
-On a slow or containerized machine, pass `-o timeout_scale=2` if a session
-times out.
+`Dataplane` is the leaf session, so this builds its ancestors too and ends up
+checking every theory in the repository: `Nondeterministic_Dataflow` with the
+operator model and the algebra tables, `Dataplane_Base` with the AFP entries
+used further up, `Dataplane_Core` with the libraries, the data plane and the
+correctness infrastructure, and `Dataplane` itself with the case studies.
 
-To browse the formalization interactively instead, open it in Isabelle/jEdit
-with the session preloaded:
+Expect about half an hour on a recent machine with enough memory, and a few
+hours on a slower one. On a slow or containerized machine, pass
+`-o timeout_scale=2` if a session times out.
 
-```
-isabelle jedit -d . -R Dataplane
-```
+To work in Isabelle/jEdit rather than batch mode, see
+[Ways to use this formalization](#ways-to-use-this-formalization) above,
+which explains which session to open for which kind of work.
 
-Then use *File > Open* to look at any theory, for instance
-`dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy`.
-Loading a theory for the first time replays its proofs, which takes a while for
-the larger case studies.
+## Using the Isabelle/jEdit interface
+
+Isabelle/jEdit is the interface for reading and writing proofs. The parts
+that matter for inspecting this formalization are marked below.
+
+![The Isabelle/jEdit window while inspecting a proof](inspect_proofs.jpeg)
+
+**Opening a theory.** The *File Browser* dock on the left lists the
+repository tree, so a theory is one double click away. *File > Open* works
+too. The title bar names the session image in use and the open theory, for
+example `Isabelle2025-2/Dataplane_Core - B1.thy`, which is a quick way to
+confirm you started the session you meant to.
+
+**Seeing the proof state.** Put the text cursor on any command inside a
+proof. The *Output* panel at the bottom then shows the state at that point,
+the remaining subgoals and the assumptions in scope. Tick **Proof state**
+in that panel, as marked in the picture, or the panel only reports
+messages and not the goal. Stepping the cursor from one `apply` to the next
+walks the proof one command at a time.
+
+**Auto update** keeps the panel in sync with the cursor. With it off, the
+panel is refreshed only when you press **Update**, which is useful when you
+want to keep one state on screen while looking somewhere else.
+
+**Checking progress.** A theory is checked as it is loaded, and the parts
+still being processed are shaded in the text and in the narrow strip beside
+the scroll bar. The *Theories* dock on the right lists every theory being
+processed and its status. Opening a theory whose session was built
+beforehand only re-checks that theory, not what it imports.
+
+**Looking things up.** Hovering over a name shows its type and its
+definition. Control-click, or Command-click on macOS, jumps to where it is
+defined, including into the Isabelle and AFP sources. The *Query* dock
+searches for theorems by name or by pattern, and the *Symbols* dock inserts
+mathematical notation without needing to remember the ASCII spelling.
+
+**Memory.** The right of the status bar reports JVM and ML heap use. If the
+ML figure approaches its limit, give the container more memory and raise
+`ML_MAXHEAP`, keeping it at or below 16G.
 
 ## Structure
 
@@ -104,8 +312,9 @@ the larger case studies.
 | `dataplane/Examples/Weakly_Connected_Components/` | the weakly connected components case study: the label propagation operator, its correctness proof, and an imperative version of the same algorithm verified with the Isabelle Refinement Framework |
 
 The main results are the weak bisimilarity correctness lemmas
-`correctness` in `Examples/Batch/Batch_Op_Correctness.thy` and in
-`Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy`.
+`correctness` in `dataplane/Examples/Batch/Batch_Op_Correctness.thy`
+and in
+`dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy`.
 
 ## License
 

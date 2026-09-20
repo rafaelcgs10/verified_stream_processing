@@ -2,7 +2,7 @@ theory Batch_Op_Nop_Invariant
 
 imports
   Batch_Op
-  "../../Timely/Tree_Nop_Invariant"
+  Dataplane_Core.Tree_Nop_Invariant
 begin
 
 section \<open>The Optimized and Plain Compiled Batch Programs are Equivalent\<close>

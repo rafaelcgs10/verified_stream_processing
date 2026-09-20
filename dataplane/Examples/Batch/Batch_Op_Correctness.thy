@@ -2,14 +2,14 @@ theory Batch_Op_Correctness
 
 imports
   Batch_Op
-  "../../Correctness/Consumes"
-  "../../Correctness/Progress"
-  "../../Correctness/Produces"
-  "../../Correctness/Outputs"
-  "../../Correctness/Timely_Collections"
-  "../../Correctness/OCapsReorder"
-  "../../Correctness/Init"
-  "../../Common_Operators/Set_Op"
+  Dataplane_Core.Consumes
+  Dataplane_Core.Progress
+  Dataplane_Core.Produces
+  Dataplane_Core.Outputs
+  Dataplane_Core.Timely_Collections
+  Dataplane_Core.OCapsReorder
+  Dataplane_Core.Init
+  Dataplane_Core.Set_Op
 begin
 no_notation shiftr  (infixl \<open>>>\<close> 55)
 

@@ -1,10 +1,10 @@
 theory Batch_Op
 
 imports
-  "../../Common_Operators/Ooo_Input_Op"
-  "../../Timely/Dataflow_Op"
-  "../../Timely/Dataflow_Opt_Op"
-  "../../Lib/LList_Haskell_Setup"
+  Dataplane_Core.Ooo_Input_Op
+  Dataplane_Core.Dataflow_Op
+  Dataplane_Core.Dataflow_Opt_Op
+  Dataplane_Core.LList_Haskell_Setup
 begin
 
 definition batch_op_logic where

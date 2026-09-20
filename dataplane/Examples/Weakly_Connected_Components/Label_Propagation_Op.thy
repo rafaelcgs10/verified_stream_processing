@@ -1,7 +1,7 @@
 theory Label_Propagation_Op
 
 imports
-  "../../Timely/Builder_Op"
+  Dataplane_Core.Builder_Op
   Wcc
 begin
 

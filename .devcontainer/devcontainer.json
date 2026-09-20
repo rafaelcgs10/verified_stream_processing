@@ -1,0 +1,118 @@
+// Open this formalization in GitHub Codespaces: Isabelle/jEdit, already
+// checked, running on a virtual display that the browser reaches over noVNC.
+//
+// READ THIS BEFORE RELYING ON IT.  Codespaces can run this, but only on a
+// machine that most accounts do not get by default.  The numbers:
+//
+//   machine   cores   RAM     disk     free disk after the ~11 GB that
+//                                      bootstrapping a codespace occupies
+//   -------   -----   -----   ------   ---------------------------------
+//   2-core      2      8 GB    32 GB   ~19-20 GB
+//   4-core      4     16 GB    32 GB   ~19-20 GB
+//   8-core      8     32 GB    64 GB   ~50 GB
+//
+// This image is 7.5 GB unpacked (2.6 GB compressed), so it does fit a 32 GB machine:
+// the pull fails partway through with "no space left on device".  The
+// 8-core machine is the smallest one that fits, and it is also the smallest
+// one with comfortable headroom for ML_MAXHEAP=15G.  Access to 8-core and
+// larger machines is not granted to every personal account by default; if
+// yours does not have it, creating a codespace here fails immediately with
+// "there are no valid machine types available that meet the requirements of
+// the repository's GitHub Codespaces configuration".  In that case, run the
+// image locally with `docker run` instead (see README.md).
+//
+// Cost to the reader: a codespace is billed to whoever creates it, not to
+// the repository owner.  An 8-core machine consumes 8 of the 120 core-hours
+// that a GitHub Free account gets each month, per hour of use, so the free
+// quota is worth about 15 hours here.  Storage is billed separately and a
+// custom image counts in full, so DELETE the codespace when finished;
+// stopping it is not enough, storage accrues from creation to deletion.
+{
+  "name": "Isabelle/jEdit in a browser",
+
+  // ---------------------------------------------------------------------
+  // The image.
+  //
+  // Published on Docker Hub.  Note this tag is amd64 only.  It
+  // must be a *public* package, or readers get an unauthenticated pull
+  // failure.  Pin a digest or an immutable tag rather than :latest, so that
+  // a reader and the thesis are looking at the same artifact.
+  // ---------------------------------------------------------------------
+  "image": "rafaelcgs10/verified-stream-processing:1.0-amd64",
+
+  // Deliberately no "features".  Every feature adds a layer on top of an
+  // already very large image, costing disk twice: once for the extra layer
+  // and once for the rebuild.
+
+  // ---------------------------------------------------------------------
+  // Machine size.  "storage" is the binding constraint, see above; "cpus"
+  // and "memory" are listed so the reason is visible in the error message.
+  // Codespaces picks the smallest machine that satisfies all three, so this
+  // also makes the 8-core machine the default rather than something the
+  // reader has to select.
+  // ---------------------------------------------------------------------
+  "hostRequirements": {
+    "cpus": 8,
+    "memory": "32gb",
+    "storage": "64gb"
+  },
+
+  // The image's last USER is "isabelle" (uid 1000) and the prebuilt heaps
+  // live under its home directory.  Stated explicitly so a change to the
+  // Dockerfile cannot silently move the editor to root.
+  "containerUser": "isabelle",
+  "remoteUser": "isabelle",
+
+  // ---------------------------------------------------------------------
+  // Ports.
+  //
+  // 6080 is websockify serving noVNC.  Codespaces forwards it to
+  // https://<codespace-name>-6080.app.github.dev, and noVNC derives its
+  // wss:// URL from window.location, so it lands on 443 of that host with
+  // no client configuration.  WebSocket upgrade does work over that proxy.
+  //
+  // The port starts out *private*: reachable only by the signed-in owner of
+  // the codespace, which is exactly right here.  If the VNC canvas stays
+  // blank, set the port to Public in the Ports tab.  Do NOT switch the port
+  // to "HTTPS" in that tab: GitHub reverts a public port to private when
+  // you do, which breaks the handshake again.
+  //
+  // x11vnc's own 5900 must stay unforwarded, hence otherPortsAttributes.
+  // ---------------------------------------------------------------------
+  "forwardPorts": [6080],
+  "portsAttributes": {
+    "6080": {
+      "label": "Isabelle/jEdit (noVNC)",
+      "protocol": "http",
+      "onAutoForward": "notify"
+    }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  },
+
+  // ---------------------------------------------------------------------
+  // Starting the stack.
+  //
+  // overrideCommand is left at its default (true), so the container runs a
+  // sleep loop and the image's ENTRYPOINT does not run.  That is on
+  // purpose: with overrideCommand false, jEdit would be the container's
+  // main process and the whole codespace would die with it.  Instead the
+  // entrypoint is launched detached, on every start, by the script below.
+  // ---------------------------------------------------------------------
+  "postStartCommand": "bash ${containerWorkspaceFolder}/.devcontainer/start-isabelle.sh",
+
+  "postAttachCommand": "echo; echo 'Isabelle/jEdit is starting on port 6080.'; echo 'Open the Ports tab and click the globe next to \"Isabelle/jEdit (noVNC)\", then append /vnc.html to the URL.'; echo 'The VNC password is: isabelle'; echo 'Give it a minute or two: jEdit has to load the Dataplane heap image.'; echo 'Progress: tail -f /tmp/isabelle-novnc.log'; echo",
+
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["README.md"]
+    }
+  }
+
+  // Note for readers who look at the file tree in the editor: Codespaces
+  // clones the repository a second time into /workspaces, next to the copy
+  // at /home/isabelle/verified_stream_processing that the image already
+  // checked.  jEdit uses the latter.  The /workspaces clone has no heap
+  // images and is not what you want to open theories from.
+}

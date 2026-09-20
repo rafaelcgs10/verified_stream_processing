@@ -2,12 +2,12 @@ theory Label_Propagation_Op_Correctness_Extras
 
 imports
   Label_Propagation_Op
-  "../../Common_Operators/Ooo_Input_Op"
-  "../../Common_Operators/Increment_Op"
-  "../../Common_Operators/Set_Op"
-  "../../Timely/Dataflow_Op"
-  "../../Timely/Dataflow_Opt_Op"
-  "../../Correctness/General"
+  Dataplane_Core.Ooo_Input_Op
+  Dataplane_Core.Increment_Op
+  Dataplane_Core.Set_Op
+  Dataplane_Core.Dataflow_Op
+  Dataplane_Core.Dataflow_Opt_Op
+  Dataplane_Core.General
 begin
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del] 

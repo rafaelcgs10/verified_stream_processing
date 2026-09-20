@@ -2,7 +2,7 @@ theory Collatz_Nop_Invariant
 
 imports
   Collatz_Op
-  "../../Timely/Tree_Nop_Invariant"
+  Dataplane_Core.Tree_Nop_Invariant
 begin
 
 section \<open>The Optimized and Plain Compiled Collatz Programs are Equivalent\<close>

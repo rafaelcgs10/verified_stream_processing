@@ -88,7 +88,28 @@ session Nondeterministic_Dataflow in nondeterministic_dataflow = Coinductive +
     "table_3/T3F3"
     "table_3/T3F4"
 
-session Dataplane in dataplane = Nondeterministic_Dataflow +
+(* Everything the data plane imports from outside its own directory, gathered
+   into one heap image.  Without this, "isabelle jedit -R" cannot reuse the
+   parent heap: it would synthesise and build a "Dataplane_requirements(...)"
+   session first.  Keep in sync with dataplane/Base/Dataplane_Base.thy. *)
+session Dataplane_Base in "dataplane/Base" = Nondeterministic_Dataflow +
+  options [timeout = 12000]
+  sessions
+    "HOL-Eisbach"
+    Automatic_Refinement
+    Refine_Monadic
+    Collections
+    Containers
+    DFS_Framework
+    Progress_Tracking
+  theories
+    Dataplane_Base
+
+(* The infrastructure: libraries, the data plane, the progress tracker and the
+   reusable correctness theories.  Everything the case studies build on lives
+   here, so that opening a case study in the editor takes all of it from this
+   session's heap instead of replaying it. *)
+session Dataplane_Core in dataplane = Dataplane_Base +
   options [timeout = 12000]
   sessions
     "HOL-Eisbach"
@@ -101,9 +122,6 @@ session Dataplane in dataplane = Nondeterministic_Dataflow +
   directories
     "Common_Operators"
     "Correctness"
-    "Examples/Batch"
-    "Examples/Collatz"
-    "Examples/Weakly_Connected_Components"
     "Lib"
     "Timely"
   theories
@@ -130,25 +148,6 @@ session Dataplane in dataplane = Nondeterministic_Dataflow +
     "Correctness/Propagates"
     "Correctness/Propagation_Properties"
     "Correctness/Timely_Collections"
-    "Examples/Batch/Batch_Op"
-    "Examples/Batch/Batch_Op_Correctness"
-    "Examples/Batch/Batch_Op_Nop_Invariant"
-    "Examples/Batch/Batch_Op_Tests"
-    "Examples/Collatz/Collatz_Nop_Invariant"
-    "Examples/Collatz/Collatz_Op"
-    "Examples/Collatz/Collatz_Tests"
-    "Examples/Weakly_Connected_Components/Dataplane_Inv"
-    "Examples/Weakly_Connected_Components/Imperative_Wcc"
-    "Examples/Weakly_Connected_Components/Input0"
-    "Examples/Weakly_Connected_Components/Input1"
-    "Examples/Weakly_Connected_Components/Label_Propagation_Nop_Invariant"
-    "Examples/Weakly_Connected_Components/Label_Propagation_Op"
-    "Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness"
-    "Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness_Extras"
-    "Examples/Weakly_Connected_Components/Label_Propagation_Op_Tests"
-    "Examples/Weakly_Connected_Components/Labels"
-    "Examples/Weakly_Connected_Components/Loop"
-    "Examples/Weakly_Connected_Components/Wcc"
     "Lib/AntichainOrder"
     "Lib/Bots"
     "Lib/CsetUtils"
@@ -175,3 +174,42 @@ session Dataplane in dataplane = Nondeterministic_Dataflow +
     "Timely/Tree_Compile"
     "Timely/Tree_Nop_Invariant"
     Timely_Stream
+
+(* The case studies, kept as the leaf session so that
+   "isabelle jedit -d . -R Dataplane" puts only these on the editable source
+   path.  Building Dataplane still checks the whole formalization, through its
+   parents. *)
+session Dataplane in "dataplane/Examples" = Dataplane_Core +
+  options [timeout = 12000]
+  sessions
+    "HOL-Eisbach"
+    Automatic_Refinement
+    Refine_Monadic
+    Collections
+    Containers
+    DFS_Framework
+    Progress_Tracking
+  directories
+    "Batch"
+    "Collatz"
+    "Weakly_Connected_Components"
+  theories
+    "Batch/Batch_Op"
+    "Batch/Batch_Op_Correctness"
+    "Batch/Batch_Op_Nop_Invariant"
+    "Batch/Batch_Op_Tests"
+    "Collatz/Collatz_Nop_Invariant"
+    "Collatz/Collatz_Op"
+    "Collatz/Collatz_Tests"
+    "Weakly_Connected_Components/Dataplane_Inv"
+    "Weakly_Connected_Components/Imperative_Wcc"
+    "Weakly_Connected_Components/Input0"
+    "Weakly_Connected_Components/Input1"
+    "Weakly_Connected_Components/Label_Propagation_Nop_Invariant"
+    "Weakly_Connected_Components/Label_Propagation_Op"
+    "Weakly_Connected_Components/Label_Propagation_Op_Correctness"
+    "Weakly_Connected_Components/Label_Propagation_Op_Correctness_Extras"
+    "Weakly_Connected_Components/Label_Propagation_Op_Tests"
+    "Weakly_Connected_Components/Labels"
+    "Weakly_Connected_Components/Loop"
+    "Weakly_Connected_Components/Wcc"

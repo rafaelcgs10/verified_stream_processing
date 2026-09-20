@@ -1,15 +1,15 @@
 theory Collatz_Op
 
 imports
-  "../../Common_Operators/Ooo_Input_Op"
-  "../../Lib/LList_Haskell_Setup"
-  "../../Common_Operators/Source_Op"
-  "../../Common_Operators/Tmap_Op"
-  "../../Common_Operators/Concat_Op"
-  "../../Common_Operators/Branch_Op"
-  "../../Common_Operators/Increment_Op"
-  "../../Timely/Dataflow_Op"
-  "../../Timely/Dataflow_Opt_Op"
+  Dataplane_Core.Ooo_Input_Op
+  Dataplane_Core.LList_Haskell_Setup
+  Dataplane_Core.Source_Op
+  Dataplane_Core.Tmap_Op
+  Dataplane_Core.Concat_Op
+  Dataplane_Core.Branch_Op
+  Dataplane_Core.Increment_Op
+  Dataplane_Core.Dataflow_Op
+  Dataplane_Core.Dataflow_Opt_Op
 begin
 
 abbreviation init_input_state where
