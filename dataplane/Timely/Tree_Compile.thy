@@ -55,6 +55,60 @@ fun dataflow_tree_to_operator_aux where
 
 definition "dataflow_tree_to_operator chns df = snd (dataflow_tree_to_operator_aux 0 chns df)"
 
+context begin
+
+text \<open>Abbreviations for the three functions that the compilation repeats. They are
+  abbreviations rather than definitions, so the statement below is literally the
+  term the compiler produces, only displayed more compactly. They are private:
+  an abbreviation folds on printing everywhere downstream, which would silently
+  change how unrelated goals are displayed in the rest of the session.\<close>
+
+private abbreviation relabel where
+  "relabel n \<equiv> case_option (Inl n) (\<lambda>p. Inr (n, p))"
+
+private abbreviation merge_ports where
+  "merge_ports \<equiv> case_sum id id"
+
+private abbreviation chan_bufs where
+  "chan_bufs chns \<equiv> case_sum (\<lambda>x. []) (\<lambda>x. map Inr (chns x))"
+
+text \<open>Routing a wiring with a single entry through a composition is itself a
+  single-entry partial map, on the composed port type. Rewriting with this is
+  what keeps the wirings in the statement below as plain partial maps, instead
+  of the case distinction that the compiler actually unfolds to.\<close>
+
+private lemma route_singleton [simp]:
+  "case_sum (\<lambda>_. None)
+     (\<lambda>(nid, p). case (if nid = a \<and> p = b then Some (c, d) else None) of
+        None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (n + offset, q)))
+   = [Inr (a, b) \<mapsto> Inr (n + c, d)]"
+  by (auto simp: fun_eq_iff split: sum.splits)
+
+text \<open>Compiling a tree is the same as assembling the corresponding operator by hand.
+  The example below covers all three constructors: two arbitrary leaf operators
+  @{term op\<^sub>0} and @{term op\<^sub>1}, composed with @{const Comp} and closed with a
+  @{const Loop}. The two wirings are concrete finite maps: the @{const Comp} one
+  connects source port 0 of the first leaf to target port 0 of the second, and
+  the @{const Loop} one feeds source port 1 of the second leaf back to target
+  port 1 of the first, which is the cycle. In both, the operator in the domain is
+  identified relative to the sub-term, and the one in the range by an offset from
+  the counter the sub-term ends at. The class constraints only make the operator
+  identifier counter arithmetic reduce.\<close>
+
+lemma dataflow_tree_to_operator_Loop_Comp:
+  "dataflow_tree_to_operator chns
+      (Loop [(1 :: 'id :: {cancel_comm_monoid_add, one}, 1 :: 'p :: {zero, one})
+               \<mapsto> (0, 1)]
+        (Comp [(0, 0) \<mapsto> (0, 0)] (Logic op\<^sub>0 su\<^sub>0) (Logic op\<^sub>1 su\<^sub>1))) =
+    loop_op [Inr (1, 1) \<mapsto> Inr (0, 1)] (chan_bufs chns)
+      (map_op merge_ports merge_ports
+        (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (chan_bufs chns)
+          (map_op (relabel 0) (relabel 0) op\<^sub>0)
+          (map_op (relabel 1) (relabel 1) op\<^sub>1)))"
+  by (simp add: dataflow_tree_to_operator_def)
+
+end
+
 subsection \<open>Compiling Trees to Summary Graphs\<close>
 
 fun dataflow_tree_to_graph_aux where
