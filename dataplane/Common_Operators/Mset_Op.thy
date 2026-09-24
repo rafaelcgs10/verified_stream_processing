@@ -686,4 +686,170 @@ next
   qed
 qed
 
+section \<open>The Specification Operator\<close>
+
+text \<open>An abstract set operator used as the simulation target.\<close>
+
+corec mset_spec_op where
+  \<open>mset_spec_op S S' = Choice
+  (cimage (\<lambda>(p, x). Write (mset_spec_op S (cminsert (p, x) S')) p x) (cset_of_cmset (S - S')))\<close>
+
+lemma mset_spec_op_simps[simp]:
+  \<open>\<not>is_Read (mset_spec_op S S')\<close>
+  \<open>\<not>is_Write (mset_spec_op S S')\<close>
+  \<open>\<not>is_Silent (mset_spec_op S S')\<close>
+  \<open>is_Choice (mset_spec_op S S')\<close>
+  \<open>un_Choice (mset_spec_op S S') =
+  cimage (\<lambda>(p, x). Write (mset_spec_op S (cminsert (p, x) S')) p x) (cset_of_cmset (S - S'))\<close>
+  by (subst mset_spec_op.code; simp)+
+
+text \<open>Only the difference of the two sets matters for the behavior of
+  @{const mset_spec_op}. The two arguments are kept because they align its
+  states with those of @{const mset_op} in the correctness proofs.\<close>
+
+lemma mset_spec_op_cong:
+  \<open>S - S' = T - T' \<Longrightarrow> (mset_spec_op S S' :: ('i, 'o, 'd) op) = mset_spec_op T T'\<close>
+proof (coinduction arbitrary: S S' T T' rule: op.coinduct_upto)
+  case Eq_op
+  define R where \<open>R \<equiv> (\<lambda>(op  :: ('i, 'o, 'd) op) (op' :: ('i, 'o, 'd) op). \<exists>S S' T T'.
+  op = mset_spec_op S S' \<and> op' = mset_spec_op T T' \<and> S - S' = T - T')\<close>
+  then have \<open>op.congclp R (Write (mset_spec_op S (cminsert (p, x) S')) p x)
+  (Write (mset_spec_op T (cminsert (p, x) T')) p x)\<close> for p x using op.cong_Write op.cong_base
+    add.commute cminsert_is_plus cmset_minus_plus Eq_op by (metis (no_types, lifting))
+  then show ?case by (force simp add: Eq_op R_def rel_set_def)
+qed
+
+lemma step_mset_spec_op_elim:
+  assumes \<open>step io (mset_spec_op S S') op'\<close>
+  obtains p x where \<open>io = Out p x\<close> \<open>in_cmset (p, x) (S - S')\<close>
+    \<open>op' = mset_spec_op S (cminsert (p, x) S')\<close>
+  using assms cin.rep_eq by (atomize_elim, subst (asm) mset_spec_op.code) fastforce
+
+lemma step_mset_spec_op_intro_Out[intro!]:
+  \<open>io = Out p x \<Longrightarrow> in_cmset (p, x) (S - S') \<Longrightarrow> op' = mset_spec_op S (cminsert (p, x) S') \<Longrightarrow>
+  step io (mset_spec_op S S') op'\<close>
+  using cin.rep_eq by (subst mset_spec_op.code) fastforce
+
+lemma mset_spec_op_no_Tau_step[simp]:
+  \<open>\<not>step Tau (mset_spec_op S S') op'\<close>
+  by (subst mset_spec_op.code) fastforce
+
+lemma mset_spec_op_no_Inp_step[simp]:
+  \<open>\<not>step (Inp p x) (mset_spec_op S S') op'\<close>
+  by (subst mset_spec_op.code) fastforce
+
+lemma wstep_mset_spec_op_eq_step[simp]:
+  assumes \<open>io \<noteq> Tau\<close>
+  shows \<open>wstep io (mset_spec_op S S') op' = step io (mset_spec_op S S') op'\<close>
+proof (cases io)
+  case (Inp p x)
+  then show ?thesis using converse_rtranclpE estep.simps(2) mset_spec_op_no_Inp_step
+      mset_spec_op_no_Tau_step relcomppE wstep_def by metis
+next
+  case (Out p x)
+  then show ?thesis unfolding wstep_def using estep.simps(3) mset_spec_op_no_Tau_step relcomppE
+    by (smt (verit, ccfv_SIG) converse_rtranclpE step_mset_spec_op_elim step_wstep wstep_def)
+qed (simp add: assms)
+
+coinductive mset_spec_op_trace where
+  \<open>S - S' = cmempty \<Longrightarrow> mset_spec_op_trace S S' LNil\<close>
+| \<open>in_cmset (p, x) (S - S') \<Longrightarrow> mset_spec_op_trace S (cminsert (p, x) S') vios \<Longrightarrow>
+   mset_spec_op_trace S S' (LCons (VOut p x) vios)\<close>
+
+lemma mset_spec_op_trace_no_VInp:
+ \<open>vio \<in> lset vios \<Longrightarrow> mset_spec_op_trace S S' vios \<Longrightarrow> \<not>is_VInp vio\<close>
+  by (induction arbitrary: S' rule: lset_induct)
+    (use mset_spec_op_trace.cases in \<open>fastforce, blast\<close>)
+
+lemma mset_spec_op_trace_in_cmset_minus:
+  \<open>vio \<in> lset vios \<Longrightarrow> mset_spec_op_trace S S' vios \<Longrightarrow>
+  in_cmset vio (cmimage (case_prod VOut) (S - S'))\<close>
+proof (induct vios arbitrary: S' rule: lset_induct)
+  case (find vios S')
+  then obtain p x where p_x: \<open>vio = VOut p x\<close> \<open>in_cmset (p, x) (S - S')\<close>
+    using mset_spec_op_trace.cases by blast
+  then show ?case using cmset.set_map by fast
+next
+  case (step vio' vios S')
+  then obtain p x where p_x: \<open>vio' = VOut p x\<close> \<open>in_cmset (p, x) (S - S')\<close>
+    \<open>mset_spec_op_trace S (cminsert (p, x) S') vios\<close> using mset_spec_op_trace.cases by blast
+  then have \<open>in_cmset vio (cmimage (case_prod VOut) (S - (cminsert (p, x) S')))\<close>
+    using step(3) by fast
+  then have \<open>in_cmset vio (cmimage (case_prod VOut) (S - S' - cmsingle (p, x)))\<close>
+    using add.commute cminsert_is_plus cmset_minus_plus by metis
+  then show ?case
+    using in_cmset_minus_left cmset.set_map imageE image_eqI by (metis (mono_tags, opaque_lifting))
+qed
+
+lemma in_cmset_wtraced_mset_spec_op:
+  assumes \<open>in_cmset (p, x) (S - S')\<close>
+  obtains vios where \<open>wtraced (mset_spec_op S S') vios\<close> \<open>VOut p x \<in> lset vios\<close>
+  using assms wtraced.intros(2) step_wstep step_mset_spec_op_intro_Out wtraced_trace_exec
+    io_of_vio.simps(2) lset_intros(1) by metis
+
+lemma wfinished_mset_spec_op_cmempty:
+  assumes \<open>wfinished (mset_spec_op S S')\<close>
+  shows \<open>S - S' = cmempty\<close>
+proof (rule ccontr)
+  assume \<open>S - S' \<noteq> cmempty\<close>
+  then obtain p x where p_x: \<open>in_cmset (p, x) (S - S')\<close>
+    unfolding cmset_alt cmset_eq_iff by fastforce
+  then show False using assms step_not_wfinished[of \<open>VOut p x\<close>] step_mset_op_intro_Out by auto
+qed
+
+lemma wtraced_mset_spec_op:
+  \<open>wtraced (mset_spec_op S S') vios \<longleftrightarrow> mset_spec_op_trace S S' vios\<close>
+proof (rule iffI; coinduction arbitrary: S S' vios)
+  case wtraced
+  then show ?case
+  proof cases
+    case 1
+    then show ?thesis using io_of_vio_not_Tau(1) cmset_cmempty empty_iff step_mset_spec_op_elim
+        wfinished_no_wstep wstep_mset_spec_op_eq_step by metis
+  next
+    case (2 p x vios')
+    then show ?thesis by auto
+  qed
+next
+  case mset_spec_op_trace
+  then show ?case
+  proof cases
+    case Nil
+    then show ?thesis using wfinished_mset_spec_op_cmempty by fast
+  next
+    case (Step vio op' lxs)
+    then show ?thesis using  io_of_vio_inverse io_of_vio_not_Tau(1) step_mset_spec_op_elim
+        vio_of_io.simps(2) wstep_mset_spec_op_eq_step by metis
+  qed
+qed
+
+lemma mset_op_soundness:
+  assumes wbisim: \<open>mset_op cmempty cmempty op \<approx> mset_spec_op S cmempty\<close>
+    and wtraced: \<open>VOut p x \<in> lset (vios :: ('i, 'o, 'd) VIO llist)\<close> \<open>wtraced op vios\<close>
+    \<open>\<forall>vio \<in> lset vios. \<not>is_VInp vio\<close>
+  shows \<open>in_cmset (p, x) S\<close>
+proof -
+  obtain vios' :: \<open>('i, 'o, 'd) VIO llist\<close> where vios': \<open>mset_op_trace cmempty cmempty op vios'\<close>
+    \<open>VOut p x \<in> lset vios'\<close>
+    using mset_op_trace_completeness[OF wtraced] cmset_cmempty empty_iff by metis
+  then have \<open>mset_spec_op_trace S cmempty vios'\<close> using wbisim_wtraces[OF wbisim]
+    unfolding wtraces_def wtraced_mset_op wtraced_mset_spec_op by blast
+  then have \<open>in_cmset (VOut p x) (cmimage (case_prod (VOut:: 'o \<Rightarrow> 'd \<Rightarrow> ('i, 'o, 'd) VIO)) S)\<close>
+    using mset_spec_op_trace_in_cmset_minus[OF vios'(2)] by fastforce
+  then show ?thesis using cmset.set_map imageE VIO.simps(2) internal_case_prod_conv
+      internal_case_prod_def surj_pair by (smt (verit, ccfv_SIG))
+qed
+
+lemma mset_op_completeness:
+  assumes wbisim: \<open>mset_op cmempty cmempty op \<approx> mset_spec_op S cmempty\<close> and p_x: \<open>in_cmset (p, x) S\<close>
+  obtains vios where \<open>VOut p x \<in> lset (vios :: ('i, 'o, 'd) VIO llist)\<close> \<open>wtraced op vios\<close>
+proof -
+  obtain vios' :: \<open>('i, 'o, 'd) VIO llist\<close> where \<open>mset_op_trace cmempty cmempty op vios'\<close>
+    \<open>VOut p x \<in> lset vios'\<close>
+    using wbisim_wtraces[OF wbisim] in_cmset_wtraced_mset_spec_op p_x mem_Collect_eq
+      cmempty_minus(2) unfolding wtraces_def wtraced_mset_op wtraced_mset_spec_op by metis
+  then show ?thesis
+    using that mset_op_trace_soundness cmempty_minus(2) cmset_cmempty empty_iff by metis
+qed
+
 end
