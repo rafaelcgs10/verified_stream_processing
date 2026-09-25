@@ -314,6 +314,14 @@ lemma cset_of_cmset_of_cset[simp]:
   \<open>cset_of_cmset (cmset_of_cset X) = X\<close>
   by transfer (simp add: non_zero_elements_def enat_of_membership_def)
 
+lemma cmset_cmset_of_cset_minus:
+  \<open>cmset (cmset_of_cset X - cmset_of_cset Y) = rcset X - rcset Y\<close>
+  by transfer (force simp add: enat_of_membership_def)
+
+lemma cminsert_cmset_of_cset:
+  \<open>x \<notin> rcset X \<Longrightarrow> cminsert x (cmset_of_cset X) = cmset_of_cset (cinsert x X)\<close>
+  by transfer (simp add: fun_upd_eSuc_def enat_of_membership_def fun_eq_iff one_eSuc)
+
 end
 
 end
