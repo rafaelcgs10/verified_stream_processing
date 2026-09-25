@@ -57,27 +57,29 @@ definition "dataflow_tree_to_operator chns df = snd (dataflow_tree_to_operator_a
 
 context begin
 
-text \<open>Abbreviations for the three functions that the compilation repeats. They are
-  abbreviations rather than definitions, so the statement below is literally the
-  term the compiler produces, only displayed more compactly. They are private:
-  an abbreviation folds on printing everywhere downstream, which would silently
-  change how unrelated goals are displayed in the rest of the session.\<close>
+text \<open>Names for the three functions that the compilation repeats. These are
+  definitions rather than abbreviations on purpose. An abbreviation folds on
+  printing everywhere downstream, and marking it private hides only the name,
+  not the folding, so unrelated goals in the rest of the session would start
+  displaying these shapes under an inaccessible name.\<close>
 
-private abbreviation relabel where
-  "relabel n \<equiv> case_option (Inl n) (\<lambda>p. Inr (n, p))"
+private definition relabel where
+  "relabel n = case_option (Inl n) (\<lambda>p. Inr (n, p))"
 
-private abbreviation merge_ports where
-  "merge_ports \<equiv> case_sum id id"
+private definition merge_ports where
+  "merge_ports = case_sum id id"
 
-private abbreviation chan_bufs where
-  "chan_bufs chns \<equiv> case_sum (\<lambda>x. []) (\<lambda>x. map Inr (chns x))"
+private definition chan_bufs where
+  "chan_bufs chns = case_sum (\<lambda>x. []) (\<lambda>x. map Inr (chns x))"
 
 text \<open>Routing a wiring with a single entry through a composition is itself a
   single-entry partial map, on the composed port type. Rewriting with this is
   what keeps the wirings in the statement below as plain partial maps, instead
-  of the case distinction that the compiler actually unfolds to.\<close>
+  of the case distinction that the compiler actually unfolds to. It is not a
+  simp rule: as one it fires on every wiring in the session and reshapes goals
+  that existing proofs in the case studies depend on.\<close>
 
-private lemma route_singleton [simp]:
+private lemma route_singleton:
   "case_sum (\<lambda>_. None)
      (\<lambda>(nid, p). case (if nid = a \<and> p = b then Some (c, d) else None) of
         None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (n + offset, q)))
@@ -105,7 +107,8 @@ lemma dataflow_tree_to_operator_Loop_Comp:
         (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (chan_bufs chns)
           (map_op (relabel 0) (relabel 0) op\<^sub>0)
           (map_op (relabel 1) (relabel 1) op\<^sub>1)))"
-  by (simp add: dataflow_tree_to_operator_def)
+  by (simp add: dataflow_tree_to_operator_def route_singleton
+      relabel_def merge_ports_def chan_bufs_def)
 
 end
 
