@@ -1318,7 +1318,7 @@ lemma dataplane_tracker_inv_produces_drops:
 
 section \<open>Cleaning, Singletons, and Reordered Drops\<close>
 
-text \<open>Variants of the main lemma: cleaned inputs, singleton productions,
+text \<open>Variants of the main lemma: cleaned inputs, batch productions,
   individual capability drops, and reordering of the change list.\<close>
 lemma dataplane_tracker_inv_clean_input:
   "(\<forall>nid. intsum (os nid) = intsum (os' nid) \<and>
@@ -1335,18 +1335,22 @@ lemma dataplane_tracker_inv_clean_input:
     produ_consu_inter_supported_def
   by (auto split: prod.splits cong: if_cong)
 
-lemma dataplane_tracker_inv_produce_singleton:
-  fixes p :: \<open>'p :: {enum, linorder}\<close>
+lemma dataplane_tracker_inv_produces:
+  fixes batch :: \<open>('d \<times> ('p :: {enum, linorder}, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) capability) list\<close>
   assumes \<open>dataflow_topology (summ sg) (-+-)\<close> \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close>
     \<open>subgraph.nxt sg = graph_to_nxt (summ sg)\<close> \<open>dataplane_tracker_inv os cbufs sg\<close>
-    \<open>t \<in> set (ocaps (os nid) p)\<close> \<open>os' = os(nid := produces (os nid) [(x, Cap t p)])\<close>
+    \<open>\<forall>(x, cap) \<in> set batch. time cap \<in> set (ocaps (os nid) (out cap))\<close>
+    \<open>os' = os(nid := produces (os nid) batch)\<close>
   shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
 proof -
-  let ?produs = \<open>[(p, t, 1)]\<close>
-  let ?oputs = \<open>(\<lambda>_. [])(p := [(x, t)])\<close>
+  let ?produs = \<open>map (\<lambda>(x, cap). (out cap, time cap, 1 :: int)) batch\<close>
+  let ?oputs = \<open>\<lambda>p. map (\<lambda>(x, cap). (x, time cap)) (filter (\<lambda>(x, cap). out cap = p) batch)\<close>
   have \<open>\<forall>p. snd ` set (?oputs p) \<subseteq> set (ocaps (os nid) p)\<close> using assms(5) by fastforce
   moreover have \<open>\<forall>p. to_zmset (map snd (?oputs p))
-  = zmset (map snd (filter (\<lambda>x. p = fst x) ?produs))\<close> by (simp add: update_zmultiset_singleton(2))
+  = zmset (map snd (filter (\<lambda>x. p = fst x) ?produs))\<close>
+    by (simp add: filter_map comp_def case_prod_unfold eq_commute[of _ \<open>out _\<close>])
+  moreover have \<open>\<forall>(p, t, m) \<in> set ?produs. m > 0 \<and> t \<in> set (ocaps (os nid) p)\<close>
+    using assms(5) by auto
   ultimately have \<open>dataplane_tracker_inv (os(nid := (os nid)\<lparr>
   outpu := \<lambda>p. outpu (os nid) p @ ?oputs p,
   produ := produ (os nid) @ ?produs,
@@ -1354,8 +1358,8 @@ proof -
   cbufs sg\<close> (is \<open>dataplane_tracker_inv ?os' _ _\<close>)
     using dataplane_tracker_inv_produces_drops[OF assms(1) refl refl refl refl refl _ _ _ _ assms(2-4),
         where nid=nid and drops=\<open>\<lambda>_. []\<close> and produs=\<open>?produs\<close> and oputs=\<open>?oputs\<close>]
-    by (simp add: assms(5))
-  moreover have \<open>?os' = os'\<close> by (simp add: assms(6) produces_def fun_eq_iff split: if_splits)
+    by simp
+  moreover have \<open>?os' = os'\<close> by (simp add: assms(6) produces_def fun_eq_iff)
   ultimately show ?thesis by blast
 qed
 
@@ -1383,32 +1387,6 @@ proof -
     using dataplane_tracker_inv_clean_input[where os=\<open>?os'\<close> and os'=os'] assms(5) by fastforce
 qed
 
-lemma dataplane_tracker_inv_drop_cap:
-  fixes p :: \<open>'p :: {enum, linorder}\<close>
-  assumes \<open>dataflow_topology (summ sg) (-+-)\<close> \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close>
-    \<open>subgraph.nxt sg = graph_to_nxt (summ sg)\<close> \<open>dataplane_tracker_inv os cbufs sg\<close>
-    \<open>t \<in> set (ocaps (os nid) p)\<close> \<open>os' = os(nid := drop_caps (os nid) [Cap t p])\<close>
-  shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
-proof -
-  let ?drops = \<open>(\<lambda>_. [])(p := [t])\<close>
-  let ?f = \<open>\<lambda>p'. map (\<lambda>os. (p', os, - 1)) (?drops p')\<close>
-  have \<open>dataplane_tracker_inv (os(nid := (os nid)\<lparr>
-  ocaps := \<lambda>p'. list_diff (ocaps (os nid) p') (?drops p'),
-  input := \<lambda>p'. filter (\<lambda>(_, t). t \<notin> set (?drops p')) (input (os nid) p'),
-  inter := inter (os nid) @ concat (map ?f Enum.enum)\<rparr>))
-  cbufs sg\<close> (is \<open>dataplane_tracker_inv ?os' _ _\<close>)
-    using dataplane_tracker_inv_produces_drops[OF assms(1) refl refl refl refl refl _ _ _ _ assms(2-4),
-        where nid=nid and drops=\<open>?drops\<close> and produs=Nil and oputs=\<open>\<lambda>_. []\<close>]
-    by (simp add: assms(5))
-  moreover have \<open>ocaps (?os' nid) = ocaps (os' nid)\<close>
-    by (simp add: assms(6) fun_eq_iff drop_caps_singleton)
-  moreover have \<open>inter (?os' nid) = inter (os' nid)\<close>
-    using concat_map_empty_except_1[OF Enum.enum_distinct, where f=\<open>?f\<close> and x=p]
-    by (simp add: assms(6) drop_caps_singleton)
-  ultimately show ?thesis
-    using dataplane_tracker_inv_clean_input[where os=\<open>?os'\<close> and os'=os' and sg=sg]
-    by (simp add: assms(6) drop_caps_singleton)
-qed
 
 lemma change_multiplicities_cons_to_middle:
   "change_multiplicities su (x # ys1 @ ys2) c = change_multiplicities su (ys1 @ x # ys2) c"
@@ -1534,6 +1512,52 @@ proof -
       done
     done
   show ?thesis using step1 step2 by simp
+qed
+
+lemma dataplane_tracker_inv_drop_caps:
+  fixes caps :: \<open>('p :: {enum, linorder}, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) capability list\<close>
+  assumes \<open>dataflow_topology (summ sg) (-+-)\<close> \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close>
+    \<open>subgraph.nxt sg = graph_to_nxt (summ sg)\<close> \<open>dataplane_tracker_inv os cbufs sg\<close>
+    \<open>\<forall>p. mset (map time (filter (\<lambda>cap. out cap = p) caps)) \<subseteq># mset (ocaps (os nid) p)\<close>
+    \<open>os' = os(nid := drop_caps (os nid) caps)\<close>
+  shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
+proof -
+  let ?drops = \<open>\<lambda>p. map time (filter (\<lambda>cap. out cap = p) caps)\<close>
+  let ?f = \<open>\<lambda>p. map (\<lambda>t. (p, t, - 1 :: int)) (?drops p)\<close>
+  have inv: \<open>dataplane_tracker_inv (os(nid := (os nid)\<lparr>
+  outpu := \<lambda>p. outpu (os nid) p @ [],
+  ocaps := \<lambda>p. list_diff (ocaps (os nid) p) (?drops p),
+  input := \<lambda>p. filter (\<lambda>(_, t). t \<notin> set (?drops p)) (input (os nid) p),
+  produ := produ (os nid) @ [],
+  inter := inter (os nid) @ concat (map ?f Enum.enum)\<rparr>))
+  cbufs sg\<close> (is \<open>dataplane_tracker_inv ?os' _ _\<close>)
+    by (rule dataplane_tracker_inv_produces_drops[OF assms(1) refl refl refl refl refl _ _ _ _ assms(2-4)])
+      (use assms(5) in auto)
+  have mset_concat: \<open>mset (concat (map g xs)) = (\<Sum>p\<in>set xs. mset (g p))\<close>
+    if \<open>distinct xs\<close> for g :: \<open>'p \<Rightarrow> ('p \<times> 't \<times> int) list\<close> and xs
+    using that by (induct xs) auto
+  have mset_map: \<open>mset (map (\<lambda>cap. (out cap, time cap, - 1 :: int)) cs) =
+    (\<Sum>p\<in>UNIV. mset (map (\<lambda>t. (p, t, - 1 :: int)) (map time (filter (\<lambda>cap. out cap = p) cs))))\<close>
+    for cs :: \<open>('p, 't) capability list\<close>
+  proof (induct cs)
+    case (Cons a cs)
+    have \<open>mset (map (\<lambda>t. (p, t, - 1 :: int)) (map time (filter (\<lambda>cap. out cap = p) (a # cs)))) =
+      (if out a = p then {#(p, time a, - 1)#} else {#}) +
+      mset (map (\<lambda>t. (p, t, - 1 :: int)) (map time (filter (\<lambda>cap. out cap = p) cs)))\<close> for p
+      by simp
+    then show ?case
+      using Cons by (simp add: sum.distrib sum.delta sum.delta')
+  qed simp
+  have \<open>mset (concat (map ?f Enum.enum)) = (\<Sum>p\<in>set Enum.enum. mset (?f p))\<close>
+    by (rule mset_concat[OF Enum.enum_distinct])
+  also have \<open>\<dots> = (\<Sum>p\<in>UNIV. mset (?f p))\<close>
+    by (simp only: UNIV_enum)
+  also have \<open>\<dots> = mset (map (\<lambda>cap. (out cap, time cap, - 1)) caps)\<close>
+    by (rule mset_map[symmetric])
+  finally have inter: \<open>mset (concat (map ?f Enum.enum)) = mset (map (\<lambda>cap. (out cap, time cap, - 1)) caps)\<close> .
+  show ?thesis
+    using inv inter dataplane_tracker_inv_clean_reorder_inter[where os=\<open>?os'\<close> and os'=os' and sg=sg and cbufs=cbufs]
+    by (simp add: assms(6) drop_caps_def)
 qed
 
 lemma dataplane_tracker_inv_produces_drops_alt:

@@ -23,15 +23,23 @@ one:
         Dataplane_Core          Lib, Timely, Correctness, Common_Operators
           Dataplane             the case studies under Examples/
 
-This layering is what makes the options below differ. `isabelle jedit -R S`
-puts session `S`'s own theories on the editable source path and takes every
-ancestor from a prebuilt heap image, so the further down the chain you open,
-the less is re-checked when you open a file.
+This layering is what makes the options below differ, together with the two
+ways of naming a session to `isabelle jedit`:
+
+- `-l S` loads `S` itself as the logic image. Every theory of `S`, its own
+  included, is already in the heap, so opening one re-checks nothing. The
+  price is that this is **read only**: the text comes from the session
+  database rather than from the prover, and editing a theory invalidates its
+  markup.
+- `-R S` puts `S`'s own theories on the **editable** source path and takes
+  every ancestor from a prebuilt heap image. Opening a theory of `S` re-checks
+  it and whatever it imports from within `S`. This is the mode for working on
+  proofs, and the further down the chain you open, the less is re-checked.
 
 | What you want to do | How |
 |---|---|
 | Read the proofs, nothing installed | the container, below |
-| Browse and inspect, least re-checking | `isabelle jedit -d . -R Dataplane` |
+| Browse and inspect, nothing re-checked, read only | `isabelle jedit -d . -l Dataplane` |
 | Work on the case studies | `isabelle jedit -d . -R Dataplane` |
 | Work on the data plane and its correctness infrastructure | `isabelle jedit -d . -R Dataplane_Core` |
 | Work on the operator algebra | `isabelle jedit -d . -R Nondeterministic_Dataflow` |
@@ -52,11 +60,17 @@ docker run --rm -p 127.0.0.1:6080:6080 --shm-size=2g \
 ```
 
 Then open <http://localhost:6080/vnc.html> and log in with the password
-`isabelle`. Isabelle/jEdit comes up on the `Dataplane` session, so the whole
-formalization is available from prebuilt heap images. Give it a minute to
-load, then see [Using the Isabelle/jEdit
+`isabelle`. Isabelle/jEdit comes up with the `Dataplane` session loaded as
+its logic image (`-l Dataplane`), so the whole formalization, the case
+studies included, is heap resident and opening a theory re-checks nothing.
+Give it a minute to load, then see [Using the Isabelle/jEdit
 interface](#using-the-isabellejedit-interface) below for how to open a
 theory and inspect a proof.
+
+This is a reading view: the proofs are served from the session databases, and
+editing a theory invalidates its markup rather than re-checking it. To edit
+the case studies inside the container, start it with
+`-e SESSION_ARGS="-R Dataplane"`.
 
 The download is about 2.6 GB. Give the container about 12 GB to 16 GB of
 memory. On Docker Desktop raise it under *Settings > Resources > Memory*,
@@ -114,7 +128,7 @@ isabelle components -u /path/to/afp/thys
 isabelle ghc_setup
 
 # 5. one full check, which produces the heap images every option below loads
-isabelle build -d . -v Dataplane
+isabelle build -d . -b -v Dataplane
 ```
 
 Step 4 is required, not optional: several theories evaluate generated code
@@ -123,34 +137,57 @@ toolchain on first use.
 
 Step 5 takes a while, about half an hour on a fast machine with enough
 memory and a few hours on a slower one. It is what makes the options below
-load from prebuilt heaps instead of re-checking. Pass `-o timeout_scale=2`
-if a session times out on a slow or containerized machine.
+load from prebuilt heaps instead of re-checking. `-b` keeps the heap of
+`Dataplane` itself, which the browse mode needs and a plain `isabelle build`
+does not produce. Pass `-o timeout_scale=2` if a session times out on a slow
+or containerized machine.
 
 See [Requirements](#requirements) for the details behind each step,
 including why `fontconfig` matters, the IPv6-only Isabelle download server
 and an IPv4 mirror, and which AFP entries are used.
 
-### Browsing and inspecting, with the least re-checking
+### Browsing and inspecting, with nothing re-checked
 
 ```
-isabelle build -d . -v Dataplane
-isabelle jedit -d . -R Dataplane
+isabelle build -d . -b -o show_states -v Dataplane
+isabelle jedit -d . -l Dataplane -o editor_output_state=true
 ```
 
-Everything up to and including `Dataplane_Core` comes from heap images, so
-opening a case study re-checks only the case study itself. Use *File > Open*
-on any theory, for instance
-`dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy`.
+`-l` loads `Dataplane` itself as the logic image, so every theory in the
+repository is already in the heap, the case studies included. Use *File >
+Open* on any theory, for instance
+`dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy`,
+and it comes up fully marked up at once. Nothing is replayed, and nothing is
+sent to the prover.
 
-Opening a theory always re-checks the theories it imports from the *same*
-session, so there is still some replay within `Examples/`. Nothing outside it
-is replayed.
+The `-b` on the build line is what makes this work: without it the heap of
+`Dataplane` itself is not kept, and jEdit rebuilds the whole session on the
+first start.
+
+This mode is **read only**. The buffer is reconstructed from the session
+database rather than checked by the prover, so as soon as you edit a theory
+its markup is dropped and the editor reports changed sources for a loaded
+theory. To change a proof, use the developing mode below.
+
+The two options are what make proof states visible, and they are needed at
+different times. `-o show_states` on the *build* records a state after every
+command in the session database; `-o editor_output_state=true` makes the
+*Output* panel display them. Neither is on by default, and the first is the
+one that cannot be added afterwards without rebuilding. The separate *State*
+panel stays empty either way, since no prover is running behind the buffer.
+`show_states` also inflates the databases noticeably, so leave it off if you
+only want to read the sources and the markup.
 
 ### Developing the case studies
 
-The same invocation as above. The theories under `dataplane/Examples/` are
-the editable ones, and the whole infrastructure they build on stays in the
-`Dataplane_Core` heap.
+```
+isabelle jedit -d . -R Dataplane
+```
+
+`-R` puts the theories under `dataplane/Examples/` on the editable source
+path, and the whole infrastructure they build on stays in the
+`Dataplane_Core` heap. Opening a case study re-checks it and whatever it
+imports from within `Examples/`. Nothing outside `Examples/` is replayed.
 
 Imports reaching out of `Examples/` must be written session-qualified, as
 `Dataplane_Core.Consumes` rather than `"../../Correctness/Consumes"`.
@@ -240,8 +277,12 @@ Isabelle, the AFP, and the Haskell toolchain.
 To check the whole formalization in one go, without the editor:
 
 ```
-isabelle build -d . -v Dataplane
+isabelle build -d . -b -v Dataplane
 ```
+
+`-b` keeps the heap image of `Dataplane` itself, which the browse mode above
+loads. Without it only the ancestors' heaps are kept, and `isabelle jedit -l
+Dataplane` rebuilds the session on its first start.
 
 `Dataplane` is the leaf session, so this builds its ancestors too and ends up
 checking every theory in the repository: `Nondeterministic_Dataflow` with the
@@ -274,8 +315,14 @@ confirm you started the session you meant to.
 proof. The *Output* panel at the bottom then shows the state at that point,
 the remaining subgoals and the assumptions in scope. Tick **Proof state**
 in that panel, as marked in the picture, or the panel only reports
-messages and not the goal. Stepping the cursor from one `apply` to the next
-walks the proof one command at a time.
+messages and not the goal. The container ticks it for you, with
+`-o editor_output_state=true`. Stepping the cursor from one `apply` to the
+next walks the proof one command at a time.
+
+In the browse mode (`-l Dataplane`, what the container starts) the states are
+the ones recorded when the session was built, and the separate *State* panel
+stays empty, since there is no running prover behind the buffer. The *Output*
+panel is the one to use.
 
 **Auto update** keeps the panel in sync with the cursor. With it off, the
 panel is refreshed only when you press **Update**, which is useful when you
@@ -284,8 +331,9 @@ want to keep one state on screen while looking somewhere else.
 **Checking progress.** A theory is checked as it is loaded, and the parts
 still being processed are shaded in the text and in the narrow strip beside
 the scroll bar. The *Theories* dock on the right lists every theory being
-processed and its status. Opening a theory whose session was built
-beforehand only re-checks that theory, not what it imports.
+processed and its status. Under `-R S`, opening a theory re-checks it and
+what it imports from within `S`, never an ancestor session. Under
+`-l S` nothing is processed at all, so these indicators stay quiet.
 
 **Looking things up.** Hovering over a name shows its type and its
 definition. Control-click, or Command-click on macOS, jumps to where it is

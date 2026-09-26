@@ -121,8 +121,20 @@ WORKDIR /home/isabelle/verified_stream_processing
 RUN isabelle build -d . -b -v ${BUILD_OPTIONS} ${SESSION}
 
 ENV REPO_DIR=/home/isabelle/verified_stream_processing
-ENV SESSION_ARGS="-R Dataplane"
-ENV ISABELLE_OPTIONS="-o show_states"
+
+# `-l Dataplane` loads the session as the logic image, so every theory of the
+# formalization, the case studies included, is already in the heap and nothing
+# is re-checked when a file is opened.  This is a read-only view: jEdit serves
+# the buffer from the session database instead of the prover, so editing a
+# theory invalidates its markup.  Switch to `-R Dataplane` to work on the case
+# studies, see docker/README.md.
+ENV SESSION_ARGS="-l Dataplane"
+
+# show_states is what put the proof states into the database at build time.
+# editor_output_state is what makes the editor display those stored states:
+# the State panel is inert in this mode, so without it the Output panel shows
+# messages only and never a goal.  It defaults to false.
+ENV ISABELLE_OPTIONS="-o show_states -o editor_output_state=true"
 ENV GEOMETRY=1920x1080
 ENV NOVNC_PORT=6080
 

@@ -7,8 +7,8 @@ set -euo pipefail
 : "${VNC_PASSWORD:=isabelle}"
 : "${GEOMETRY:=1920x1080}"
 : "${NOVNC_PORT:=6080}"
-: "${SESSION_ARGS:=-R Dataplane}"
-: "${ISABELLE_OPTIONS:=-o show_states}"
+: "${SESSION_ARGS:=-l Dataplane}"
+: "${ISABELLE_OPTIONS:=-o show_states -o editor_output_state=true}"
 : "${REPO_DIR:=/home/isabelle/verified_stream_processing}"
 
 export DISPLAY=:1

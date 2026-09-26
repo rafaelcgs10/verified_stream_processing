@@ -94,7 +94,10 @@ Override with `--build-arg AFP_COMMIT=...` to move it.
 Both the batch check and the editor run with `-o show_states`.  In batch
 mode this makes the Isar toplevel emit the proof state after every command
 even though it is not interactive, so the states are written into the
-session databases, as `PIDE/messages` exports.  A normal build already
+session databases, as `PIDE/messages` exports.  This is what the editor then
+displays: under `-l Dataplane` nothing is re-checked, so every state on
+screen is one of these, and `editor_output_state=true` is what makes the
+*Output* panel print them.  It defaults to false.  A normal build already
 writes those, no extra option is needed, and it does not depend on `-b`:
 the heap image and the database are separate artifacts, so a session that
 is checked without keeping its heap still gets a full database.
@@ -135,8 +138,40 @@ Run-time environment:
 | `GEOMETRY` | `1920x1080` | |
 | `NOVNC_PORT` | `6080` | |
 | `ML_MAXHEAP` | `15G` | lower it on a smaller machine, never above 16G |
-| `SESSION_ARGS` | `-R Dataplane` | what jEdit opens |
-| `ISABELLE_OPTIONS` | `-o show_states` | |
+| `SESSION_ARGS` | `-l Dataplane` | what jEdit opens; `-R Dataplane` to edit |
+| `ISABELLE_OPTIONS` | `-o show_states -o editor_output_state=true` | |
+
+## Browsing with `-l`, editing with `-R`
+
+`SESSION_ARGS` picks between the two ways `isabelle jedit` can be pointed at
+a session.  They differ in which base `Sessions.Background.load` loads (see
+`src/Pure/Build/sessions.scala`): under `-R S` it loads the base of `S`'s
+*ancestor*, under `-l S` the base of `S` *itself*.
+
+**`-l Dataplane`, the default here.**  The session is the logic image, so all
+of it is heap resident, the 19 theories under `Examples/` included.  Isabelle
+sees those as already loaded and sends nothing about them to the prover; the
+buffer is reconstructed from the session database as one read-only snippet.
+Opening a case study therefore costs nothing and re-checks nothing.
+
+The catch is in the same sentence: nothing reaches the prover, so this is a
+reading view.  Editing such a theory does not re-check it, it invalidates its
+markup ("Changed sources for loaded theory").  The *State* panel is inert for
+the same reason, which is why `editor_output_state=true` is set: it makes the
+*Output* panel show the states recorded at build time, and without it no goal
+is displayed anywhere.
+
+**`-R Dataplane`, to work on the case studies.**  Now the theories of
+`Dataplane` itself are on the editable source path and everything below comes
+from the `Dataplane_Core` heap.  Editing a case study re-checks it, and only
+it and its neighbours under `Examples/`.  Start the container with
+`-e SESSION_ARGS="-R Dataplane"` for this.
+
+`-l` needs the heap of `Dataplane` itself, which a plain `isabelle build`
+does not keep, only those of the ancestors.  Hence the `-b` on the build
+line: without it the editor would rebuild the whole session on every
+container start.  `-R` needs only the `Dataplane_Core` heap and would be
+fine either way.
 
 ## Why `-R Dataplane` starts instantly
 

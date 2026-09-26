@@ -431,19 +431,42 @@ proof -
     by simp
 qed
 
-lemma dataplane_tracker_inv_add_cap:
+lemma add_caps_Cons: \<open>add_caps os (cap # caps) = add_caps (add_caps os [cap]) caps\<close>
+  by (simp add: add_caps_def fun_eq_iff)
+
+lemma dataplane_tracker_inv_add_caps:
   assumes \<open>dataflow_topology (summ sg) (-+-)\<close> \<open>dataplane_tracker_inv os cbufs sg\<close>
-    \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close> \<open>\<exists>t' \<in>  set (ocaps (os nid) p). t' \<le> t\<close>
-    \<open>os' = os(nid := add_caps (os nid) [Cap t p])\<close>
+    \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close>
+    \<open>\<forall>cap \<in> set caps. \<exists>t' \<in> set (ocaps (os nid) (out cap)). t' \<le> time cap\<close>
+    \<open>os' = os(nid := add_caps (os nid) caps)\<close>
   shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
-proof -
-  have \<open>dataplane_tracker_inv (os(nid := (os nid)\<lparr>
-  ocaps := (ocaps (os nid))(p := ocaps (os nid) p @ [t]),
-  inter := operator_state.inter (os nid) @ [(p, t, 1)]\<rparr>))
-  cbufs sg\<close> (is \<open>dataplane_tracker_inv ?os' _ _\<close>)
-    using dataplane_tracker_inv_mints[OF assms(1-3) _ assms(4), where m=1] by simp
-  moreover have \<open>?os' = os'\<close> by (simp add: assms(5) add_caps_singleton fun_eq_iff)
-  ultimately show ?thesis by simp
+  using assms(2-4) unfolding assms(5)
+proof (induct caps arbitrary: os)
+  case Nil
+  then show ?case by (simp add: add_caps_def)
+next
+  case (Cons cap caps)
+  obtain t p where cap: \<open>cap = Cap t p\<close> by (cases cap)
+  let ?os1 = \<open>os(nid := add_caps (os nid) [cap])\<close>
+  have \<open>\<exists>t' \<in> set (ocaps (os nid) p). t' \<le> t\<close>
+    using Cons.prems(3) cap by auto
+  then have \<open>dataplane_tracker_inv (os(nid := (os nid)\<lparr>
+    ocaps := (ocaps (os nid))(p := ocaps (os nid) p @ [t]),
+    inter := operator_state.inter (os nid) @ [(p, t, 1)]\<rparr>)) cbufs sg\<close>
+    using dataplane_tracker_inv_mints[OF assms(1) Cons.prems(1,2) _, where m=1] by simp
+  moreover have \<open>os(nid := (os nid)\<lparr>
+    ocaps := (ocaps (os nid))(p := ocaps (os nid) p @ [t]),
+    inter := operator_state.inter (os nid) @ [(p, t, 1)]\<rparr>) = ?os1\<close>
+    by (simp add: cap add_caps_singleton fun_eq_iff)
+  ultimately have inv1: \<open>dataplane_tracker_inv ?os1 cbufs sg\<close> by simp
+  have G1: \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) ?os1\<close>
+    using Cons.prems(2) by (subst graph_summar_nt_intsum_cong) auto
+  have \<open>\<forall>cap \<in> set caps. \<exists>t' \<in> set (ocaps (?os1 nid) (out cap)). t' \<le> time cap\<close>
+    using Cons.prems(3) by (auto simp: add_caps_def)
+  then have \<open>dataplane_tracker_inv (?os1(nid := add_caps (?os1 nid) caps)) cbufs sg\<close>
+    using Cons.hyps inv1 G1 by blast
+  then show ?case
+    by (simp only: fun_upd_same fun_upd_upd add_caps_Cons[of \<open>os nid\<close> cap caps])
 qed
 
 end

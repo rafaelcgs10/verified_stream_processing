@@ -402,9 +402,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using os_inv(9) apply simp
           using os_inv(4,10) apply (simp add: operator_state.defs(3))                    apply (simp add: buffers_inv BENQ_def BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def fun_eq_iff produces_singleton)
           using buffers_inv(2) apply simp
-          apply (rule dataplane_tracker_inv_produce_singleton[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
+          apply (rule dataplane_tracker_inv_produces[OF D G subgraph_inv(2) dataplane_inv, where nid=0])
+           prefer 2
+           apply (rule refl)
           using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
-          apply (rule refl)
           apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3))
           apply (simp add: csets_inv(2))
           using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) produces_singleton)
@@ -451,9 +452,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using os_inv(9) apply simp
           using os_inv(4,10) apply simp                    apply (simp add: buffers_inv)
           using buffers_inv(2) apply simp
-          apply (rule dataplane_tracker_inv_drop_cap[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
+          apply (rule dataplane_tracker_inv_drop_caps[OF D G subgraph_inv(2) dataplane_inv, where nid=0])
+           prefer 2
+           apply (rule refl)
           using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
-          apply (rule refl)
           apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
           apply (subst (1 2) icoll_lshift)
           using timely_input_stream_expires_le input_stream_inv apply blast
@@ -504,9 +506,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           using os_inv(9) apply simp
           using os_inv(4,10) apply simp                    apply (simp add: buffers_inv)
           using buffers_inv(2) apply simp
-          apply (rule dataplane_tracker_inv_add_cap[OF D dataplane_inv G, where t=t and nid=0 and p=0])
+          apply (rule dataplane_tracker_inv_add_caps[OF D dataplane_inv G, where nid=0])
+           prefer 2
+           apply (rule refl)
           using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) timely_input_stream_def)
-          apply (rule refl)
           apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
           apply (subst (1 2) icoll_lshift)
           using timely_input_stream_expires_le input_stream_inv apply blast
