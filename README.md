@@ -56,7 +56,7 @@ machine, a browser is all you need.
 
 ```
 docker run --rm -p 127.0.0.1:6080:6080 --shm-size=2g \
-  rafaelcgs10/verified-stream-processing:1.0-amd64
+  rafaelcgs10/verified-stream-processing:1.1-amd64
 ```
 
 Then open <http://localhost:6080/vnc.html> and log in with the password
@@ -101,9 +101,9 @@ citation and for use without a registry:
 <!-- TODO: add the Zenodo DOI and link once the record is published. -->
 
 ```
-zstd -d -c verified-stream-processing-1.0-image.tar.zst | docker load
+zstd -d -c verified-stream-processing-1.1-image.tar.zst | docker load
 docker run --rm -p 127.0.0.1:6080:6080 --shm-size=2g \
-  verified-stream-processing:1.0
+  verified-stream-processing:1.1
 ```
 
 See [`docker/README.md`](docker/README.md) for the build arguments, the
