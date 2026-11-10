@@ -326,6 +326,11 @@ lemma cmset_of_cset_cempty[simp]:
   \<open>cmset_of_cset cempty = cmempty\<close>
   by transfer (simp add: enat_of_membership_def fun_eq_iff)
 
+lemma cmset_of_cset_plus_disjoint:
+  \<open>cInt X Y = cempty \<Longrightarrow> cmset_of_cset X + cmset_of_cset Y = cmset_of_cset (cUn X Y)\<close>
+  unfolding plus_cmset_def
+  by transfer (auto simp add: enat_of_membership_def fun_eq_iff)
+
 end
 
 end
