@@ -206,7 +206,7 @@ lemma correctness_gen:
       (\<lambda> t. cset_from_list (map (\<lambda> x. ((1, 1), (Inr x, t))) (f (coll ((map (\<lambda> (x, t). Data t (projl x)) (chns (1, 1))) @@- (inps 1)) t))))
       (cUn (ts (inps 1)) (cset_from_list (map snd (chns (1, 1))))))\<close>
     \<open>SO = cset_from_list (map (\<lambda> x. ((1, 1), x)) (outpu (os 1) 1))\<close>
-    \<open>cis_empty (cInt S SO)\<close>
+    \<open>cis_empty (cInt S (cUn SO SP)) \<and> cis_empty (cInt SO SP) \<and> distinct (outpu (os 1) 1)\<close>
     and
     INP_STREAM_INV:
     \<open>timely_input_stream (inps 1) (mset (ocaps (os 0) 1))\<close>
@@ -315,8 +315,19 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               done
             done
           subgoal
-            
-            sorry
+            apply (subgoal_tac \<open>((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> BTL (1, 1) cbufs) >> BENQ (1, 1) (BHD (1, 1) cbufs) (inputs_at_target os)
+  = ((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >> inputs_at_target os\<close>)
+            using SIM1(1,2,9,11-13)
+             apply (simp add: cInt_cUn_distrib)
+            apply (simp add: BULK_BENQ_def BENQ_def BTL_def BHD_def fun_eq_iff)
+            done
+          subgoal
+            apply (subgoal_tac \<open>((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> BTL (1, 1) cbufs) >> BENQ (1, 1) (BHD (1, 1) cbufs) (inputs_at_target os)
+  = ((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >> inputs_at_target os\<close>)
+            using SIM1(1,2,9,11-13)
+             apply simp
+            apply (simp add: BULK_BENQ_def BENQ_def BTL_def BHD_def fun_eq_iff)
+            done
           subgoal
             using SIM1(17) apply -
             unfolding consumes_def add_caps_def BENQ_def input_ocaps_inv_def BHD_def
@@ -635,6 +646,1019 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               apply (metis dataflow_tree_to_graph_to_my_summ)
               done
             done
+          subgoal
+            using SIM1(1,2,9,11-13)
+            apply (subgoal_tac \<open>cUn SO SP = cUn (Pair (1, 1) |`|
+             cUn (cset_from_list (outpu (os 1) 1))
+              ((\<lambda>os. (Inr (fst os), capability.time (snd os))) |`|
+               cUnion
+                (cset_from_list |`|
+                 ((\<lambda>t. map (\<lambda>os. (os, Cap t (1 :: 1)))
+                         (f (map (\<lambda>os. projl (fst os))
+                              (filter
+                                (\<lambda>(d, t').
+                                    t' = t \<and>
+                                    t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+                                (input (os 1) 1))))) |`|
+                  cfilter (\<lambda>t. t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+                   (snd |`| cset_from_list (input (os 1) 1))))))
+         (cUn (cUnion
+                ((\<lambda>t. (\<lambda>x. ((1, 1), Inr x, t)) |`|
+                       cset_from_list
+                        (f (coll
+                             (map (\<lambda>(x, t). Data t (projl x))
+                               ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >>
+                                 inputs_at_target
+                                  (os(1 := os 1
+                                        \<lparr>outpu :=
+                                           \<lambda>p. outpu (os 1) 1 @
+                                                map (\<lambda>os :: 'd2 \<times> (1, 't) capability. (Inr (fst os), capability.time (snd os)))
+                                                 (concat
+                                                   (map (\<lambda>t.
+      map (\<lambda>os. (os, Cap t (1 :: 1)))
+       (f (map (\<lambda>os. projl (fst os))
+            (filter
+              (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+              (input (os 1) 1)))))
+                                                     (remdups
+ (map snd
+   (filter (\<lambda>(d, t). t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+     (input (os 1) 1)))))),
+                                           ocaps :=
+                                             \<lambda>p. list_diff (ocaps (os 1) 1)
+                                                   (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+                                                     (ocaps (os 1) 1)),
+                                           input :=
+                                             \<lambda>p. filter
+                                                   (\<lambda>(d, t).
+ t \<in> set (ocaps (os 1) 1) \<longrightarrow> frontier_less_equal (front (os 1) 1) t)
+                                                   (input (os 1) 1),
+                                           produ :=
+                                             produ (os 1) @
+                                             map (\<lambda>os. (1, capability.time (snd os), 1))
+                                              (concat
+                                                (map (\<lambda>t.
+   map (\<lambda>os. (os, Cap t (1 :: 1)))
+    (f (map (\<lambda>os. projl (fst os))
+         (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+           (input (os 1) 1)))))
+                                                  (remdups
+                                                    (map snd
+(filter (\<lambda>(d, t). t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+  (input (os 1) 1)))))),
+                                           inter :=
+                                             operator_state.inter (os 1) @
+                                             map (\<lambda>os. (1, os, - 1))
+                                              (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+                                                (ocaps (os 1) 1))\<rparr>)))
+                                 (1, 1)) @@-
+                              inps 1)
+                             t))) |`|
+                 ts (inps 1)))
+           (cUnion
+             ((\<lambda>t. (\<lambda>x. ((1, 1), Inr x, t)) |`|
+                    cset_from_list
+                     (f (coll
+                          (map (\<lambda>(x, t). Data t (projl x))
+                            ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >>
+                              inputs_at_target
+                               (os(1 := os 1
+                                     \<lparr>outpu :=
+                                        \<lambda>p. outpu (os 1) 1 @
+                                             map (\<lambda>os. (Inr (fst os), capability.time (snd os)))
+                                              (concat
+                                                (map (\<lambda>t.
+   map (\<lambda>os. (os, Cap t (1 :: 1)))
+    (f (map (\<lambda>os. projl (fst os))
+         (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+           (input (os 1) 1)))))
+                                                  (remdups
+                                                    (map snd
+(filter (\<lambda>(d, t). t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+  (input (os 1) 1)))))),
+                                        ocaps :=
+                                          \<lambda>p. list_diff (ocaps (os 1) 1)
+                                                (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+                                                  (ocaps (os 1) 1)),
+                                        input :=
+                                          \<lambda>p. filter
+                                                (\<lambda>(d, t).
+                                                    t \<in> set (ocaps (os 1) 1) \<longrightarrow>
+                                                    frontier_less_equal (front (os 1) 1) t)
+                                                (input (os 1) 1),
+                                        produ :=
+                                          produ (os 1) @
+                                          map (\<lambda>os. (1, capability.time (snd os), 1))
+                                           (concat
+                                             (map (\<lambda>t.
+map (\<lambda>os. (os, Cap t (1 :: 1)))
+ (f (map (\<lambda>os. projl (fst os))
+      (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+        (input (os 1) 1)))))
+                                               (remdups
+                                                 (map snd
+                                                   (filter
+                                                     (\<lambda>(d, t).
+   t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+                                                     (input (os 1) 1)))))),
+                                        inter :=
+                                          operator_state.inter (os 1) @
+                                          map (\<lambda>os. (1, os, - 1))
+                                           (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+                                             (ocaps (os 1) 1))\<rparr>)))
+                              (1, 1)) @@-
+                           inps 1)
+                          t))) |`|
+              (snd |`|
+               cset_from_list
+                ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >>
+                  inputs_at_target
+                   (os(1 := os 1
+                         \<lparr>outpu :=
+                            \<lambda>p. outpu (os 1) 1 @
+                                 map (\<lambda>os :: 'd2 \<times> (1, 't) capability. (Inr (fst os), capability.time (snd os)))
+                                  (concat
+                                    (map (\<lambda>t. map (\<lambda>os. (os, Cap t 1))
+                                                (f (map (\<lambda>os. projl (fst os))
+                                                     (filter
+ (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+ (input (os 1) 1)))))
+                                      (remdups
+                                        (map snd
+                                          (filter
+                                            (\<lambda>(d, t).
+                                                t \<in> set (ocaps (os 1) 1) \<and>
+                                                \<not> frontier_less_equal (front (os 1) 1) t)
+                                            (input (os 1) 1)))))),
+                            ocaps :=
+                              \<lambda>p. list_diff (ocaps (os 1) 1)
+                                    (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+                                      (ocaps (os 1) 1)),
+                            input :=
+                              \<lambda>p. filter
+                                    (\<lambda>(d, t).
+                                        t \<in> set (ocaps (os 1) 1) \<longrightarrow>
+                                        frontier_less_equal (front (os 1) 1) t)
+                                    (input (os 1) 1),
+                            produ :=
+                              produ (os 1) @
+                              map (\<lambda>os :: 'd2 \<times> (1, 't) capability. (1, capability.time (snd os), 1))
+                               (concat
+                                 (map (\<lambda>t. map (\<lambda>os. (os, Cap t 1))
+                                             (f (map (\<lambda>os. projl (fst os))
+                                                  (filter
+                                                    (\<lambda>(d, t').
+  t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+                                                    (input (os 1) 1)))))
+                                   (remdups
+                                     (map snd
+                                       (filter
+                                         (\<lambda>(d, t).
+                                             t \<in> set (ocaps (os 1) 1) \<and>
+                                             \<not> frontier_less_equal (front (os 1) 1) t)
+                                         (input (os 1) 1)))))),
+                            inter :=
+                              operator_state.inter (os 1) @
+                              map (\<lambda>os. (1, os, - 1))
+                               (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t) (ocaps (os 1) 1))\<rparr>)))
+                  (1, 1))))))\<close>)
+            apply simp
+            subgoal premises temp
+              apply (subgoal_tac "\<forall>x. x \<in> lset (inps 1) \<longrightarrow> is_Data x \<longrightarrow> frontier_less_equal (front (os 1) 1) (event.time x)")
+             defer
+            subgoal
+              apply safe       
+              subgoal for x
+                using timely_input_stream_frontier_less_equal[OF SIM1(14), rule_format, of x] apply simp
+                apply (cases x; clarsimp; hypsubst_thin?)
+                subgoal for t d
+                  using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+                  apply safe
+                  unfolding front_inv_def imp_front_inv_def
+                  apply (drule spec[of _ 1])
+                  apply (drule spec[of _ 1])
+                  apply (drule spec[of _ "Loc 1 (Trg 1)"])
+                  apply (rule frontier_less_equal_le_trans[rotated])
+                   apply (rule order.trans)
+                    apply assumption
+                   apply assumption
+                  subgoal for caps
+                    unfolding Src_caps_inv_def
+                    apply (drule spec[of _ 0])
+                    apply (drule spec[of _ 1])
+                    unfolding c_pts_inv_def
+                    apply (drule spec[of _ "Loc 0 (Src 1)"])
+                    apply simp
+                    apply (rule frontier_less_equal_ifrontier_from_Src[where s=0 and nid=0 and os=os and nt="subgraph.nxt sg", simplified])
+                    subgoal
+                      using dataflow_topology_from_tree.dataflow_topology_axioms
+                      unfolding SIM1(1,2)
+                      by fast
+                      apply (drule sym[of _ "to_zmset (ocaps (os 0) 1)"])
+                      back
+                      apply (simp add: c_pts_change_multiplicities SIM1(1,2) comp_def  zmset_filter_extract_progress_Src_consumes_diff)
+                    subgoal 
+                      using graph_summar_nt[unfolded graph_summar_nt_def , OF _  SIM1(2)[unfolded SIM1(1)] , simplified, OF dataflow_tree_to_graph_to_my_summ[symmetric], where os=os] apply -
+                      apply (drule meta_mp)
+                      using SIM1(1,2,8) dataflow_tree_to_graph_to_my_summ apply fastforce 
+                      apply (drule meta_mp)
+                       apply (clarsimp simp add: SIM1(1,2,3) comp_def)
+                      apply (elim conjE)
+                      apply (clarsimp simp add: SIM1(1,2,3) comp_def)
+                      apply (drule spec2[of _ 1 0], drule mp)
+                       back
+                       apply (simp_all add: bi_unique_def)
+                      subgoal premises
+                        unfolding graph_to_nxt_def
+                        apply auto
+                        subgoal
+                          unfolding my_summ_def inj_on_def
+                          apply (auto simp add: antichain_from_list_singleton is_empty_antichain_iff split: prod.splits if_splits intro!: find_Some_singleton)
+                          done
+                        done
+                      subgoal
+                        apply (rule path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF]])
+                         defer
+                         apply assumption
+                        apply (subgoal_tac " dataflow_topology (summ sg) (-+-)")
+                        using SIM1(1,2) [unfolded comp_def]
+                        using  dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def]
+                         apply simp
+                        subgoal
+                          using SIM1(1,2) 
+                          using  dataflow_topology_from_tree.dataflow_topology_axioms
+                          by metis
+                        done
+                      done
+                    apply assumption
+                    done
+                  done
+                done
+              done
+            apply (subgoal_tac "\<forall> t \<in> snd ` set ((outputs_at_target (summ sg) os >> cbufs) (1, 1)). frontier_less_equal (front (os 1) 1) t")
+             defer
+            subgoal
+              apply safe
+              subgoal for _ a t
+                apply simp
+                using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+                apply safe
+                unfolding front_inv_def imp_front_inv_def
+                apply (drule spec[of _ 1])
+                apply (drule spec[of _ 1])
+                apply (drule spec[of _ "Loc 1 (Trg 1)"])
+                unfolding chnls_imp_front_inv_def
+                apply (drule spec[of _ 1])
+                apply (drule spec[of _ 1])
+                apply (drule bspec[of _ _ t])
+                subgoal 
+                  by blast
+                apply (drule frontier_less_equal_le_trans)
+                 apply (rule order.trans[rotated])
+                  apply assumption+
+                done
+              done
+            apply (simp add: cimage_cUn if_distrib[where f=input] SIM1(1,2) outputs_at_target_my_summ inputs_at_target_def)
+            apply (subst (1) cUn_assoc)
+            apply (rule arg_cong2[where f=cUn])
+             apply (simp add: SIM1(12))
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(14)] by auto
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(14)] by auto
+            apply (simp add: SIM1(1,2,9,11))
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(14)] by auto
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(14)] by auto
+            unfolding BULK_BENQ_def
+            apply simp
+            apply (simp add: split_beta cimage_cUn)
+            apply (subst (1) cimage_cfilter_clean; simp)
+            apply (subst (4) cUn_left_commute)
+            apply (subst (1) cUn_left_commute)
+            apply (simp flip: cUn_assoc)
+            apply (simp add:  cimage_cUnion comp_def Countable_Set_Type.cset.map_comp inputs_at_target_def)
+            apply (rule arg_cong2[where f=cUn])
+            subgoal
+              apply (rule arg_cong2[where f=cUn])
+              subgoal
+                apply (rule arg_cong2[where f=cUn])
+                subgoal
+                  apply (subst (1) cset_cfilter_split[where P="\<lambda>(_, t). \<not> (t \<in> set (ocaps (os 1) 1) \<longrightarrow> frontier_less_equal (front (os 1) 1) t)"])
+                  apply (simp add: comp_def split_beta)
+                  apply (rule arg_cong2[where f=cUn])
+                  subgoal
+                    apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                    subgoal for dd t d
+                      apply (rule cBexI[of _ t])
+                       apply auto
+                      apply (subst (asm) (2 3) filter_False)
+                      subgoal
+                        by force
+                      subgoal
+                        by force
+                      apply simp
+                      unfolding coll_def
+                      apply (subst (asm) lfilter_False)
+                      subgoal
+                        by (auto split: event.splits)
+                      apply auto
+                      done
+                    subgoal for dd d t'
+                      apply (rule cBexI[of _ "(d, t')"])
+                       apply simp_all
+                      apply (subst (2 3) filter_False)
+                      subgoal
+                        by force
+                      subgoal
+                        by force
+                      unfolding coll_def
+                      apply (subst lfilter_False)
+                      subgoal
+                        by (auto split: event.splits)
+                      apply auto
+                      done
+                    done
+                  subgoal
+                    apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                    subgoal for dd t d
+                      apply (rule cBexI[of _ t])
+                       apply auto
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    subgoal for dd t d
+                      apply (rule cBexI[of _ t])
+                       apply auto
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    subgoal for dd d t
+                      apply (rule cBexI[of _ "(d, t)"])
+                       apply auto
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    subgoal for dd d t
+                      apply (rule cBexI[of _ "(d, t)"])
+                       apply auto                   
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    done
+                  done
+                subgoal
+                  apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                  subgoal for  t d
+                    apply (rule cBexI[of _ t])
+                     apply auto         
+                    apply (smt (verit, best) filter_cong split_def)
+                    done
+                  subgoal for  t d
+                    apply (rule cBexI[of _ t])
+                     apply auto         
+                    apply (smt (verit, best) filter_cong split_def)
+                    done
+                  done
+                done
+              subgoal
+                apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                subgoal for x  t d
+                  apply (rule cBexI[of _ "(x, t)"])
+                   apply auto         
+                  using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                  done
+                subgoal for x  t d
+                  apply (rule cBexI[of _ "(x, t)"])
+                   apply auto         
+                  using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                  done
+                done
+              done
+            subgoal
+              apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+              subgoal for x  t d
+                apply (rule cBexI[of _ "(x, t)"])
+                 apply auto         
+                using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                done
+              subgoal for x  t d
+                apply (rule cBexI[of _ "(x, t)"])
+                 apply auto         
+                using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                done
+              done
+            done
+          done
+        subgoal
+          using SIM1(1,2,9,11-13)
+            apply (subgoal_tac \<open>SP = cUn (Pair (1, 1) |`|
+              ((\<lambda>os. (Inr (fst os), capability.time (snd os))) |`|
+               cUnion
+                (cset_from_list |`|
+                 ((\<lambda>t. map (\<lambda>os. (os, Cap t (1 :: 1)))
+                         (f (map (\<lambda>os. projl (fst os))
+                              (filter
+                                (\<lambda>(d, t').
+                                    t' = t \<and>
+                                    t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+                                (input (os 1) 1))))) |`|
+                  cfilter (\<lambda>t. t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+                   (snd |`| cset_from_list (input (os 1) 1))))))
+         (cUn (cUnion
+                ((\<lambda>t. (\<lambda>x. ((1, 1), Inr x, t)) |`|
+                       cset_from_list
+                        (f (coll
+                             (map (\<lambda>(x, t). Data t (projl x))
+                               ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >>
+                                 inputs_at_target
+                                  (os(1 := os 1
+                                        \<lparr>outpu :=
+                                           \<lambda>p. outpu (os 1) 1 @
+                                                map (\<lambda>os :: 'd2 \<times> (1, 't) capability. (Inr (fst os), capability.time (snd os)))
+                                                 (concat
+                                                   (map (\<lambda>t.
+      map (\<lambda>os. (os, Cap t (1 :: 1)))
+       (f (map (\<lambda>os. projl (fst os))
+            (filter
+              (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+              (input (os 1) 1)))))
+                                                     (remdups
+ (map snd
+   (filter (\<lambda>(d, t). t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+     (input (os 1) 1)))))),
+                                           ocaps :=
+                                             \<lambda>p. list_diff (ocaps (os 1) 1)
+                                                   (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+                                                     (ocaps (os 1) 1)),
+                                           input :=
+                                             \<lambda>p. filter
+                                                   (\<lambda>(d, t).
+ t \<in> set (ocaps (os 1) 1) \<longrightarrow> frontier_less_equal (front (os 1) 1) t)
+                                                   (input (os 1) 1),
+                                           produ :=
+                                             produ (os 1) @
+                                             map (\<lambda>os. (1, capability.time (snd os), 1))
+                                              (concat
+                                                (map (\<lambda>t.
+   map (\<lambda>os. (os, Cap t (1 :: 1)))
+    (f (map (\<lambda>os. projl (fst os))
+         (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+           (input (os 1) 1)))))
+                                                  (remdups
+                                                    (map snd
+(filter (\<lambda>(d, t). t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+  (input (os 1) 1)))))),
+                                           inter :=
+                                             operator_state.inter (os 1) @
+                                             map (\<lambda>os. (1, os, - 1))
+                                              (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+                                                (ocaps (os 1) 1))\<rparr>)))
+                                 (1, 1)) @@-
+                              inps 1)
+                             t))) |`|
+                 ts (inps 1)))
+           (cUnion
+             ((\<lambda>t. (\<lambda>x. ((1, 1), Inr x, t)) |`|
+                    cset_from_list
+                     (f (coll
+                          (map (\<lambda>(x, t). Data t (projl x))
+                            ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >>
+                              inputs_at_target
+                               (os(1 := os 1
+                                     \<lparr>outpu :=
+                                        \<lambda>p. outpu (os 1) 1 @
+                                             map (\<lambda>os. (Inr (fst os), capability.time (snd os)))
+                                              (concat
+                                                (map (\<lambda>t.
+   map (\<lambda>os. (os, Cap t (1 :: 1)))
+    (f (map (\<lambda>os. projl (fst os))
+         (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+           (input (os 1) 1)))))
+                                                  (remdups
+                                                    (map snd
+(filter (\<lambda>(d, t). t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+  (input (os 1) 1)))))),
+                                        ocaps :=
+                                          \<lambda>p. list_diff (ocaps (os 1) 1)
+                                                (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+                                                  (ocaps (os 1) 1)),
+                                        input :=
+                                          \<lambda>p. filter
+                                                (\<lambda>(d, t).
+                                                    t \<in> set (ocaps (os 1) 1) \<longrightarrow>
+                                                    frontier_less_equal (front (os 1) 1) t)
+                                                (input (os 1) 1),
+                                        produ :=
+                                          produ (os 1) @
+                                          map (\<lambda>os. (1, capability.time (snd os), 1))
+                                           (concat
+                                             (map (\<lambda>t.
+map (\<lambda>os. (os, Cap t (1 :: 1)))
+ (f (map (\<lambda>os. projl (fst os))
+      (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+        (input (os 1) 1)))))
+                                               (remdups
+                                                 (map snd
+                                                   (filter
+                                                     (\<lambda>(d, t).
+   t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+                                                     (input (os 1) 1)))))),
+                                        inter :=
+                                          operator_state.inter (os 1) @
+                                          map (\<lambda>os. (1, os, - 1))
+                                           (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+                                             (ocaps (os 1) 1))\<rparr>)))
+                              (1, 1)) @@-
+                           inps 1)
+                          t))) |`|
+              (snd |`|
+               cset_from_list
+                ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >>
+                  inputs_at_target
+                   (os(1 := os 1
+                         \<lparr>outpu :=
+                            \<lambda>p. outpu (os 1) 1 @
+                                 map (\<lambda>os :: 'd2 \<times> (1, 't) capability. (Inr (fst os), capability.time (snd os)))
+                                  (concat
+                                    (map (\<lambda>t. map (\<lambda>os. (os, Cap t 1))
+                                                (f (map (\<lambda>os. projl (fst os))
+                                                     (filter
+ (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+ (input (os 1) 1)))))
+                                      (remdups
+                                        (map snd
+                                          (filter
+                                            (\<lambda>(d, t).
+                                                t \<in> set (ocaps (os 1) 1) \<and>
+                                                \<not> frontier_less_equal (front (os 1) 1) t)
+                                            (input (os 1) 1)))))),
+                            ocaps :=
+                              \<lambda>p. list_diff (ocaps (os 1) 1)
+                                    (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+                                      (ocaps (os 1) 1)),
+                            input :=
+                              \<lambda>p. filter
+                                    (\<lambda>(d, t).
+                                        t \<in> set (ocaps (os 1) 1) \<longrightarrow>
+                                        frontier_less_equal (front (os 1) 1) t)
+                                    (input (os 1) 1),
+                            produ :=
+                              produ (os 1) @
+                              map (\<lambda>os :: 'd2 \<times> (1, 't) capability. (1, capability.time (snd os), 1))
+                               (concat
+                                 (map (\<lambda>t. map (\<lambda>os. (os, Cap t 1))
+                                             (f (map (\<lambda>os. projl (fst os))
+                                                  (filter
+                                                    (\<lambda>(d, t').
+  t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+                                                    (input (os 1) 1)))))
+                                   (remdups
+                                     (map snd
+                                       (filter
+                                         (\<lambda>(d, t).
+                                             t \<in> set (ocaps (os 1) 1) \<and>
+                                             \<not> frontier_less_equal (front (os 1) 1) t)
+                                         (input (os 1) 1)))))),
+                            inter :=
+                              operator_state.inter (os 1) @
+                              map (\<lambda>os. (1, os, - 1))
+                               (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t) (ocaps (os 1) 1))\<rparr>)))
+                  (1, 1))))))\<close>)
+           apply (simp add: cInt_cUn_distrib2 cimage_cUn cis_empty_def inputs_at_target_def)
+           apply (rule conjI)
+          apply (subgoal_tac \<open>cUn (cUnion
+            ((\<lambda>t. (\<lambda>x. ((1, 1), Inr x, t)) |`|
+                   cset_from_list
+                    (f (coll
+                         (map (\<lambda>(x, t). Data t (projl x))
+                           ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1
+                                    else []) >>
+                              cbufs) >>
+                             inputs_at_target
+                              (os(1 := os 1
+                                    \<lparr>outpu :=
+  \<lambda>p. outpu (os 1) 1 @
+       map (\<lambda>os. (Inr (fst os), capability.time (snd os)))
+        (concat
+          (map (\<lambda>t. map (\<lambda>os. (os, Cap t (1 :: 1)))
+                      (f (map (\<lambda>os. projl (fst os))
+                           (filter
+                             (\<lambda>(d, t').
+                                 t' = t \<and>
+                                 t \<in> set (ocaps (os 1) 1) \<and>
+                                 \<not> frontier_less_equal (front (os 1) 1)
+                                     t)
+                             (input (os 1) 1)))))
+            (remdups
+              (map snd
+                (filter
+                  (\<lambda>(d, t).
+                      t \<in> set (ocaps (os 1) 1) \<and>
+                      \<not> frontier_less_equal (front (os 1) 1) t)
+                  (input (os 1) 1)))))),
+  ocaps :=
+    \<lambda>p. list_diff (ocaps (os 1) 1)
+          (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+            (ocaps (os 1) 1)),
+  input :=
+    \<lambda>p. filter
+          (\<lambda>(d, t).
+              t \<in> set (ocaps (os 1) 1) \<longrightarrow>
+              frontier_less_equal (front (os 1) 1) t)
+          (input (os 1) 1),
+  produ :=
+    produ (os 1) @
+    map (\<lambda>os :: 'd2 \<times> (1, 't) capability. (1, capability.time (snd os), 1))
+     (concat
+       (map (\<lambda>t. map (\<lambda>os. (os, Cap t 1))
+                   (f (map (\<lambda>os. projl (fst os))
+                        (filter
+                          (\<lambda>(d, t').
+                              t' = t \<and>
+                              t \<in> set (ocaps (os 1) 1) \<and>
+                              \<not> frontier_less_equal (front (os 1) 1) t)
+                          (input (os 1) 1)))))
+         (remdups
+           (map snd
+             (filter
+               (\<lambda>(d, t).
+                   t \<in> set (ocaps (os 1) 1) \<and>
+                   \<not> frontier_less_equal (front (os 1) 1) t)
+               (input (os 1) 1)))))),
+  inter :=
+    operator_state.inter (os 1) @
+    map (\<lambda>os. (1, os, - 1))
+     (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+       (ocaps (os 1) 1))\<rparr>)))
+                             (1, 1)) @@-
+                          inps 1)
+                         t))) |`|
+             ts (inps 1)))
+       (cUnion
+         ((\<lambda>t. (\<lambda>x. ((1, 1), Inr x, t)) |`|
+                cset_from_list
+                 (f (coll
+                      (map (\<lambda>(x, t). Data t (projl x))
+                        ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1
+                                 else []) >>
+                           cbufs) >>
+                          inputs_at_target
+                           (os(1 := os 1
+                                 \<lparr>outpu :=
+                                    \<lambda>p.
+  outpu (os 1) 1 @
+  map (\<lambda>os :: 'd2 \<times> (1, 't) capability . (Inr (fst os), capability.time (snd os)))
+   (concat
+     (map (\<lambda>t. map (\<lambda>os. (os, Cap t 1))
+                 (f (map (\<lambda>os. projl (fst os))
+                      (filter
+                        (\<lambda>(d, t').
+                            t' = t \<and>
+                            t \<in> set (ocaps (os 1) 1) \<and>
+                            \<not> frontier_less_equal (front (os 1) 1) t)
+                        (input (os 1) 1)))))
+       (remdups
+         (map snd
+           (filter
+             (\<lambda>(d, t).
+                 t \<in> set (ocaps (os 1) 1) \<and>
+                 \<not> frontier_less_equal (front (os 1) 1) t)
+             (input (os 1) 1)))))),
+                                    ocaps :=
+ \<lambda>p. list_diff (ocaps (os 1) 1)
+       (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+         (ocaps (os 1) 1)),
+                                    input :=
+ \<lambda>p. filter
+       (\<lambda>(d, t).
+           t \<in> set (ocaps (os 1) 1) \<longrightarrow>
+           frontier_less_equal (front (os 1) 1) t)
+       (input (os 1) 1),
+                                    produ :=
+ produ (os 1) @
+ map (\<lambda>os :: 'd2 \<times> (1, 't) capability. (1, capability.time (snd os), 1))
+  (concat
+    (map (\<lambda>t. map (\<lambda>os. (os, Cap t 1))
+                (f (map (\<lambda>os. projl (fst os))
+                     (filter
+                       (\<lambda>(d, t').
+                           t' = t \<and>
+                           t \<in> set (ocaps (os 1) 1) \<and>
+                           \<not> frontier_less_equal (front (os 1) 1) t)
+                       (input (os 1) 1)))))
+      (remdups
+        (map snd
+          (filter
+            (\<lambda>(d, t).
+                t \<in> set (ocaps (os 1) 1) \<and>
+                \<not> frontier_less_equal (front (os 1) 1) t)
+            (input (os 1) 1)))))),
+                                    inter :=
+ operator_state.inter (os 1) @
+ map (\<lambda>os. (1, os, - 1))
+  (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t)
+    (ocaps (os 1) 1))\<rparr>)))
+                          (1, 1)) @@-
+                       inps 1)
+                      t))) |`|
+          (snd |`|
+           cset_from_list
+            ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >>
+               cbufs) >>
+              inputs_at_target
+               (os(1 := os 1
+                     \<lparr>outpu :=
+                        \<lambda>p. outpu (os 1) 1 @
+                             map (\<lambda>os :: 'd2 \<times> (1, 't) capability.
+(Inr (fst os), capability.time (snd os)))
+                              (concat
+                                (map (\<lambda>t.
+    map (\<lambda>os. (os, Cap t 1))
+     (f (map (\<lambda>os. projl (fst os))
+          (filter
+            (\<lambda>(d, t').
+                t' = t \<and>
+                t \<in> set (ocaps (os 1) 1) \<and>
+                \<not> frontier_less_equal (front (os 1) 1) t)
+            (input (os 1) 1)))))
+                                  (remdups
+                                    (map snd
+ (filter
+   (\<lambda>(d, t).
+       t \<in> set (ocaps (os 1) 1) \<and>
+       \<not> frontier_less_equal (front (os 1) 1) t)
+   (input (os 1) 1)))))),
+                        ocaps :=
+                          \<lambda>p. list_diff (ocaps (os 1) 1)
+                                (filter
+                                  (\<lambda>t.
+ \<not> frontier_less_equal (front (os 1) 1) t)
+                                  (ocaps (os 1) 1)),
+                        input :=
+                          \<lambda>p. filter
+                                (\<lambda>(d, t).
+                                    t \<in> set (ocaps (os 1) 1) \<longrightarrow>
+                                    frontier_less_equal (front (os 1) 1)
+t)
+                                (input (os 1) 1),
+                        produ :=
+                          produ (os 1) @
+                          map (\<lambda>os. (1, capability.time (snd os), 1))
+                           (concat
+                             (map (\<lambda>t.
+ map (\<lambda>os. (os, Cap t 1))
+  (f (map (\<lambda>os. projl (fst os))
+       (filter
+         (\<lambda>(d, t').
+             t' = t \<and>
+             t \<in> set (ocaps (os 1) 1) \<and>
+             \<not> frontier_less_equal (front (os 1) 1) t)
+         (input (os 1) 1)))))
+                               (remdups
+                                 (map snd
+                                   (filter
+(\<lambda>(d, t).
+    t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t)
+(input (os 1) 1)))))),
+                        inter :=
+                          operator_state.inter (os 1) @
+                          map (\<lambda>os. (1, os, - 1))
+                           (filter
+                             (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1)
+t)
+                             (ocaps (os 1) 1))\<rparr>)))
+              (1, 1))))) \<le> SP\<close>)
+             apply (smt (verit) boolean_algebra_cancel.sup0 cInt_cUn_distrib cUn_upper2 csubset_cUn_eq)
+          subgoal
+            apply simp
+            sorry
+          
+end                        
+                        
+                        
+                        sorry
+            subgoal premises temp
+              apply (subgoal_tac "\<forall>x. x \<in> lset (inps 1) \<longrightarrow> is_Data x \<longrightarrow> frontier_less_equal (front (os 1) 1) (event.time x)")
+             defer
+            subgoal
+              apply safe       
+              subgoal for x
+                using timely_input_stream_frontier_less_equal[OF SIM1(14), rule_format, of x] apply simp
+                apply (cases x; clarsimp; hypsubst_thin?)
+                subgoal for t d
+                  using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+                  apply safe
+                  unfolding front_inv_def imp_front_inv_def
+                  apply (drule spec[of _ 1])
+                  apply (drule spec[of _ 1])
+                  apply (drule spec[of _ "Loc 1 (Trg 1)"])
+                  apply (rule frontier_less_equal_le_trans[rotated])
+                   apply (rule order.trans)
+                    apply assumption
+                   apply assumption
+                  subgoal for caps
+                    unfolding Src_caps_inv_def
+                    apply (drule spec[of _ 0])
+                    apply (drule spec[of _ 1])
+                    unfolding c_pts_inv_def
+                    apply (drule spec[of _ "Loc 0 (Src 1)"])
+                    apply simp
+                    apply (rule frontier_less_equal_ifrontier_from_Src[where s=0 and nid=0 and os=os and nt="subgraph.nxt sg", simplified])
+                    subgoal
+                      using dataflow_topology_from_tree.dataflow_topology_axioms
+                      unfolding SIM1(1,2)
+                      by fast
+                      apply (drule sym[of _ "to_zmset (ocaps (os 0) 1)"])
+                      back
+                      apply (simp add: c_pts_change_multiplicities SIM1(1,2) comp_def  zmset_filter_extract_progress_Src_consumes_diff)
+                    subgoal 
+                      using graph_summar_nt[unfolded graph_summar_nt_def , OF _  SIM1(2)[unfolded SIM1(1)] , simplified, OF dataflow_tree_to_graph_to_my_summ[symmetric], where os=os] apply -
+                      apply (drule meta_mp)
+                      using SIM1(1,2,8) dataflow_tree_to_graph_to_my_summ apply fastforce 
+                      apply (drule meta_mp)
+                       apply (clarsimp simp add: SIM1(1,2,3) comp_def)
+                      apply (elim conjE)
+                      apply (clarsimp simp add: SIM1(1,2,3) comp_def)
+                      apply (drule spec2[of _ 1 0], drule mp)
+                       back
+                       apply (simp_all add: bi_unique_def)
+                      subgoal premises
+                        unfolding graph_to_nxt_def
+                        apply auto
+                        subgoal
+                          unfolding my_summ_def inj_on_def
+                          apply (auto simp add: antichain_from_list_singleton is_empty_antichain_iff split: prod.splits if_splits intro!: find_Some_singleton)
+                          done
+                        done
+                      subgoal
+                        apply (rule path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF]])
+                         defer
+                         apply assumption
+                        apply (subgoal_tac " dataflow_topology (summ sg) (-+-)")
+                        using SIM1(1,2) [unfolded comp_def]
+                        using  dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def]
+                         apply simp
+                        subgoal
+                          using SIM1(1,2) 
+                          using  dataflow_topology_from_tree.dataflow_topology_axioms
+                          by metis
+                        done
+                      done
+                    apply assumption
+                    done
+                  done
+                done
+              done
+            apply (subgoal_tac "\<forall> t \<in> snd ` set ((outputs_at_target (summ sg) os >> cbufs) (1, 1)). frontier_less_equal (front (os 1) 1) t")
+             defer
+            subgoal
+              apply safe
+              subgoal for _ a t
+                apply simp
+                using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+                apply safe
+                unfolding front_inv_def imp_front_inv_def
+                apply (drule spec[of _ 1])
+                apply (drule spec[of _ 1])
+                apply (drule spec[of _ "Loc 1 (Trg 1)"])
+                unfolding chnls_imp_front_inv_def
+                apply (drule spec[of _ 1])
+                apply (drule spec[of _ 1])
+                apply (drule bspec[of _ _ t])
+                subgoal 
+                  by blast
+                apply (drule frontier_less_equal_le_trans)
+                 apply (rule order.trans[rotated])
+                  apply assumption+
+                done
+              done
+            apply (simp add: cimage_cUn if_distrib[where f=input] SIM1(1,2) outputs_at_target_my_summ inputs_at_target_def)
+            apply (subst (1) cUn_assoc)
+            apply (rule arg_cong2[where f=cUn])
+             apply (simp add: SIM1(12))
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(14)] by auto
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(14)] by auto
+            apply (simp add: SIM1(1,2,9,11))
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(14)] by auto
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(14)] by auto
+            unfolding BULK_BENQ_def
+            apply simp
+            apply (simp add: split_beta cimage_cUn)
+            apply (subst (1) cimage_cfilter_clean; simp)
+            apply (subst (4) cUn_left_commute)
+            apply (subst (1) cUn_left_commute)
+            apply (simp flip: cUn_assoc)
+            apply (simp add:  cimage_cUnion comp_def Countable_Set_Type.cset.map_comp inputs_at_target_def)
+            apply (rule arg_cong2[where f=cUn])
+            subgoal
+              apply (rule arg_cong2[where f=cUn])
+              subgoal
+                apply (rule arg_cong2[where f=cUn])
+                subgoal
+                  apply (subst (1) cset_cfilter_split[where P="\<lambda>(_, t). \<not> (t \<in> set (ocaps (os 1) 1) \<longrightarrow> frontier_less_equal (front (os 1) 1) t)"])
+                  apply (simp add: comp_def split_beta)
+                  apply (rule arg_cong2[where f=cUn])
+                  subgoal
+                    apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                    subgoal for dd t d
+                      apply (rule cBexI[of _ t])
+                       apply auto
+                      apply (subst (asm) (2 3) filter_False)
+                      subgoal
+                        by force
+                      subgoal
+                        by force
+                      apply simp
+                      unfolding coll_def
+                      apply (subst (asm) lfilter_False)
+                      subgoal
+                        by (auto split: event.splits)
+                      apply auto
+                      done
+                    subgoal for dd d t'
+                      apply (rule cBexI[of _ "(d, t')"])
+                       apply simp_all
+                      apply (subst (2 3) filter_False)
+                      subgoal
+                        by force
+                      subgoal
+                        by force
+                      unfolding coll_def
+                      apply (subst lfilter_False)
+                      subgoal
+                        by (auto split: event.splits)
+                      apply auto
+                      done
+                    done
+                  subgoal
+                    apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                    subgoal for dd t d
+                      apply (rule cBexI[of _ t])
+                       apply auto
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    subgoal for dd t d
+                      apply (rule cBexI[of _ t])
+                       apply auto
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    subgoal for dd d t
+                      apply (rule cBexI[of _ "(d, t)"])
+                       apply auto
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    subgoal for dd d t
+                      apply (rule cBexI[of _ "(d, t)"])
+                       apply auto                   
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    done
+                  done
+                subgoal
+                  apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                  subgoal for  t d
+                    apply (rule cBexI[of _ t])
+                     apply auto         
+                    apply (smt (verit, best) filter_cong split_def)
+                    done
+                  subgoal for  t d
+                    apply (rule cBexI[of _ t])
+                     apply auto         
+                    apply (smt (verit, best) filter_cong split_def)
+                    done
+                  done
+                done
+              subgoal
+                apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                subgoal for x  t d
+                  apply (rule cBexI[of _ "(x, t)"])
+                   apply auto         
+                  using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                  done
+                subgoal for x  t d
+                  apply (rule cBexI[of _ "(x, t)"])
+                   apply auto         
+                  using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                  done
+                done
+              done
+            subgoal
+              apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+              subgoal for x  t d
+                apply (rule cBexI[of _ "(x, t)"])
+                 apply auto         
+                using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                done
+              subgoal for x  t d
+                apply (rule cBexI[of _ "(x, t)"])
+                 apply auto         
+                using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                done
+              done
+            done
+          done
           subgoal sorry
           subgoal
             using SIM1(14) by auto
@@ -762,7 +1786,12 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             unfolding obtain_progress_def
              apply (auto simp add: operator_state.defs)
             done
-          subgoal sorry
+          subgoal
+            using SIM1(1,2,9,11-13) by simp
+          subgoal
+            using SIM1(1,2,9,11-13) by simp
+          subgoal
+            using SIM1(13) by simp
           subgoal
             using SIM1(14)
             apply simp
@@ -845,7 +1874,12 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             unfolding obtain_progress_def
              apply (auto simp add: operator_state.defs)
             done
-          subgoal sorry
+          subgoal
+            using SIM1(1,2,9,11-13) by simp
+          subgoal
+            using SIM1(1,2,9,11-13) by simp
+          subgoal
+            using SIM1(13) by simp
           subgoal
             using SIM1(14) apply -
             unfolding obtain_progress_def
@@ -936,7 +1970,16 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               apply (simp add: SIM1)
               done
             done
-          subgoal sorry
+          subgoal
+            apply (subgoal_tac \<open>inputs_at_target (os(1 := os 1\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True\<rparr>)) = inputs_at_target os\<close>)
+            using SIM1(1,2,9,11-13) apply simp
+            apply (simp add: inputs_at_target_def fun_eq_iff)
+            done
+          subgoal
+            apply (subgoal_tac \<open>inputs_at_target (os(1 := os 1\<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True\<rparr>)) = inputs_at_target os\<close>)
+            using SIM1(1,2,9,11-13) apply simp
+            apply (simp add: inputs_at_target_def fun_eq_iff)
+            done
           subgoal
             using SIM1(17,18) apply -
             apply (frule propagate_all_frontier_c_imp_correctness[where loc="Loc 1 (Trg 1)"]; (clarsimp simp add: SIM1)?)
@@ -1018,7 +2061,40 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                apply (auto simp add: SIM1 comp_def)
               done
             done
-          subgoal sorry
+          subgoal
+            using SIM1(1,2,9,11-13)
+            apply (simp add: operator_state.defs)
+            apply (subst cinsert_is_cUn)
+            apply (subst cInt_cUn_distrib2)
+            apply (subgoal_tac \<open>cis_empty (cInt S
+         (cUn (Pair (1, 1) |`| cset_from_list xs)
+           (cUn (cUnion
+                  ((\<lambda>t. (\<lambda>x. ((1, 1), Inr x, t)) |`|
+                         cset_from_list
+                          (f (coll
+                               (map (\<lambda>(x, t). Data t (projl x))
+                                 ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >> inputs_at_target os) (1, 1)) @@-
+                                inps 1)
+                               t))) |`|
+                   ts (inps 1)))
+             (cUnion
+               ((\<lambda>t. (\<lambda>x. ((1, 1), Inr x, t)) |`|
+                      cset_from_list
+                       (f (coll
+                            (map (\<lambda>(x, t). Data t (projl x))
+                              ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >> inputs_at_target os) (1, 1)) @@-
+                             inps 1)
+                            t))) |`|
+                (snd |`|
+                 cset_from_list ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 else []) >> cbufs) >> inputs_at_target os) (1, 1))))))))\<close>)
+             apply (fastforce simp add: cis_empty_def)
+            apply (simp add: cis_empty_def)
+            done
+          subgoal
+            using SIM1(1,2,9,11-13)
+            by (simp add: operator_state.defs cis_empty_def)
+          subgoal
+            using SIM1(13) by (simp add: operator_state.defs)
           subgoal
             using SIM1(17) apply -
             unfolding obtain_progress_def input_ocaps_inv_def
@@ -1093,7 +2169,20 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                apply (auto simp add: SIM1 comp_def)
               done
             done
-          subgoal sorry
+          subgoal
+            apply (subgoal_tac \<open>(\<lambda>p. if p = (1, 1) then xs else []) >> BENQ (1, 1) (x, t) cbufs
+  = (\<lambda>p. if p = (1, 1) then outpu (os 0) 0 else []) >> cbufs\<close>)
+            using SIM1(1,2,9,11-13)
+             apply simp
+            apply (simp add: operator_state.defs BULK_BENQ_def BENQ_def fun_eq_iff)
+            done
+          subgoal
+            apply (subgoal_tac \<open>(\<lambda>p. if p = (1, 1) then xs else []) >> BENQ (1, 1) (x, t) cbufs
+  = (\<lambda>p. if p = (1, 1) then outpu (os 0) 0 else []) >> cbufs\<close>)
+            using SIM1(1,2,9,11-13)
+             apply simp
+            apply (simp add: operator_state.defs BULK_BENQ_def BENQ_def fun_eq_iff)
+            done
           subgoal
             using SIM1(18) apply -
             unfolding consumes_def add_caps_def BENQ_def input_ocaps_inv_def BHD_def BTL_def
@@ -1164,7 +2253,20 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 apply (simp add: SIM1)
                 done
               done
-            subgoal sorry
+            subgoal
+              apply (subgoal_tac \<open>inputs_at_target (os(0 := os 0\<lparr>ocaps := \<lambda>_. [], inter := operator_state.inter (os 0) @ map (\<lambda>t. (1, t, - 1)) (ocaps (os 0) 1)\<rparr>))
+  = inputs_at_target os\<close>)
+              using SIM1(1,2,9,11-13)
+              apply simp
+              apply (simp add: inputs_at_target_def fun_eq_iff)
+              done
+            subgoal
+              apply (subgoal_tac \<open>inputs_at_target (os(0 := os 0\<lparr>ocaps := \<lambda>_. [], inter := operator_state.inter (os 0) @ map (\<lambda>t. (1, t, - 1)) (ocaps (os 0) 1)\<rparr>))
+  = inputs_at_target os\<close>)
+              using SIM1(1,2,9,11-13)
+              apply simp
+              apply (simp add: inputs_at_target_def fun_eq_iff)
+              done
             subgoal
               unfolding timely_input_stream_def
               apply (auto simp add: operator_state.defs zero_enat_def timely_progress_def vacant_def)
@@ -1282,7 +2384,90 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                   by (simp add: SIM1)
                 done
               done
-            subgoal sorry
+            subgoal
+              using SIM1(1,2,9,11-13)
+              apply (subgoal_tac \<open>SP = cUn (cUnion
+                ((\<lambda>ta. (\<lambda>x. ((1, 1), Inr x, ta)) |`|
+                        cset_from_list
+                         (f (coll
+                              (map (\<lambda>(x, t). Data t (projl x))
+                                ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 @ [(Inl d, t)] else []) >>
+                                   cbufs) >>
+                                  inputs_at_target
+                                   (os(0 := os 0
+                                         \<lparr>outpu := (outpu (os 0))(1 := outpu (os 0) 1 @ [(Inl d, t)]),
+                                            produ := produ (os 0) @ [(1, t, 1)]\<rparr>)))
+                                  (1, 1)) @@-
+                               lxs)
+                              ta))) |`|
+                 ts lxs))
+           (cUnion
+             ((\<lambda>ta. (\<lambda>x. ((1, 1), Inr x, ta)) |`|
+                     cset_from_list
+                      (f (coll
+                           (map (\<lambda>(x, t). Data t (projl x))
+                             ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 @ [(Inl d, t)] else []) >> cbufs) >>
+                               inputs_at_target
+                                (os(0 := os 0
+                                      \<lparr>outpu := (outpu (os 0))(1 := outpu (os 0) 1 @ [(Inl d, t)]),
+                                         produ := produ (os 0) @ [(1, t, 1)]\<rparr>)))
+                               (1, 1)) @@-
+                            lxs)
+                           ta))) |`|
+              (snd |`|
+               cset_from_list
+                ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 @ [(Inl d, t)] else []) >> cbufs) >>
+                  inputs_at_target
+                   (os(0 := os 0
+                         \<lparr>outpu := (outpu (os 0))(1 := outpu (os 0) 1 @ [(Inl d, t)]),
+                            produ := produ (os 0) @ [(1, t, 1)]\<rparr>)))
+                  (1, 1)))))\<close>)
+               apply simp
+              apply (simp add:  operator_state.defs inputs_at_target_def BULK_BENQ_def flip: append_assoc)
+              apply blast
+              done
+            subgoal
+              using SIM1(1,2,9,11-13)
+              apply (subgoal_tac \<open>SP = cUn (cUnion
+                ((\<lambda>ta. (\<lambda>x. ((1, 1), Inr x, ta)) |`|
+                        cset_from_list
+                         (f (coll
+                              (map (\<lambda>(x, t). Data t (projl x))
+                                ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 @ [(Inl d, t)] else []) >>
+                                   cbufs) >>
+                                  inputs_at_target
+                                   (os(0 := os 0
+                                         \<lparr>outpu := (outpu (os 0))(1 := outpu (os 0) 1 @ [(Inl d, t)]),
+                                            produ := produ (os 0) @ [(1, t, 1)]\<rparr>)))
+                                  (1, 1)) @@-
+                               lxs)
+                              ta))) |`|
+                 ts lxs))
+           (cUnion
+             ((\<lambda>ta. (\<lambda>x. ((1, 1), Inr x, ta)) |`|
+                     cset_from_list
+                      (f (coll
+                           (map (\<lambda>(x, t). Data t (projl x))
+                             ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 @ [(Inl d, t)] else []) >> cbufs) >>
+                               inputs_at_target
+                                (os(0 := os 0
+                                      \<lparr>outpu := (outpu (os 0))(1 := outpu (os 0) 1 @ [(Inl d, t)]),
+                                         produ := produ (os 0) @ [(1, t, 1)]\<rparr>)))
+                               (1, 1)) @@-
+                            lxs)
+                           ta))) |`|
+              (snd |`|
+               cset_from_list
+                ((((\<lambda>p. if p = (1, 1) then outpu (os 0) 1 @ [(Inl d, t)] else []) >> cbufs) >>
+                  inputs_at_target
+                   (os(0 := os 0
+                         \<lparr>outpu := (outpu (os 0))(1 := outpu (os 0) 1 @ [(Inl d, t)]),
+                            produ := produ (os 0) @ [(1, t, 1)]\<rparr>)))
+                  (1, 1)))))\<close>)
+               apply simp
+              apply (simp add:  operator_state.defs inputs_at_target_def BULK_BENQ_def flip: append_assoc)
+              apply blast
+              done
             subgoal premises temp
               using SIM1(14) temp(4) apply -
               apply (clarsimp simp add: operator_state.defs)
@@ -1378,6 +2563,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 by (simp add: SIM1)
               done
             subgoal sorry
+            subgoal sorry
             subgoal premises temp
               using SIM1(14) temp(4) apply -
               apply (clarsimp simp add: operator_state.defs)
@@ -1464,6 +2650,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               subgoal
                 by auto
               done
+            subgoal sorry
             subgoal sorry
             subgoal
               using SIM1(14) apply -
@@ -1552,7 +2739,7 @@ next
               subgoal
                 using SIM2(6)
                 unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def notifier_op_def
-                apply (simp add: operator_state.defs SIM2(1,2,3,4,5))
+                apply (simp add: operator_state.defs SIM2(1,2,3,4,5) cminsert_cmset_of_cset)
                 sorry
               subgoal
                 using SIM2(7)  apply -
@@ -1595,6 +2782,11 @@ next
                    apply (auto simp add: SIM2 comp_def)
                   done
                 done
+              subgoal
+                using SIM2(11-13)
+                apply (simp add: cis_empty_def cInt_cUn_distrib cInt_cUn_distrib2)
+                apply (intro conjI)
+                sorry
               subgoal
                 by (simp add: cis_empty_def)
               subgoal
@@ -3848,6 +5040,7 @@ next
                                   subgoal
                                     by (auto del: disjCI simp add: SIM2(14) operator_state.defs SIM2(4,5) fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)[1]
                                   done
+                                subgoal sorry
                                 subgoal sorry
                                 subgoal
                                   apply (simp add: operator_state.defs SIM2(4) del: mset_filter to_zmset_correct mset.simps update_zmultiset_simps_more split: event.splits sum.splits)
