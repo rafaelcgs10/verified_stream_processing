@@ -10,9 +10,36 @@ imports
   Dataplane_Core.OCapsReorder
   Dataplane_Core.Init
   Dataplane_Core.Mset_Op
+  "../../Lib/SimulationProofMethods"
+  "HOL-ex.Sketch_and_Explore"
 begin
 no_notation shiftr  (infixl \<open>>>\<close> 55)
 
+definition batch_op_batches where
+  \<open>batch_op_batches f os caps p t =
+  f (map (de1 os \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (caps p)) (input os p)))\<close>
+
+definition batch_op_ts where
+  \<open>batch_op_ts os caps p = remdups (map snd (filter (\<lambda>(d, t). t \<in> set (caps p)) (input os p)))\<close>
+
+definition batch_op_outputs where
+  \<open>batch_op_outputs ps batches batches_ts =
+  concat (map (\<lambda>p. concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t p)) (batches p t)) (batches_ts p))) ps)\<close>
+
+definition batch_op_drops where
+  \<open>batch_op_drops ps caps = concat (map (\<lambda>p. map (\<lambda>t. Cap t p) (caps p)) ps)\<close>
+
+lemma batch_op_logic_alt:
+  \<open>batch_op_logic ps f g os caps =
+  (let caps' = g caps in if \<exists>p. p \<in> set ps \<and> caps' p \<noteq> [] then
+    let os' = os\<lparr>input := (\<lambda>p. filter (\<lambda>(d, t). t \<notin> set (caps' p)) (input os p))\<rparr>;
+        outs = batch_op_outputs ps (batch_op_batches f os caps') (batch_op_ts os caps');
+        drops = batch_op_drops ps caps'
+    in {|trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops))
+      (drop_caps (produces os' (map (\<lambda>(d, cap). (en2 os' d, cap)) outs)) drops)|}
+  else trace (STR ''No capabilities'') {||})\<close>
+  unfolding batch_op_logic_def batch_op_batches_def batch_op_ts_def batch_op_outputs_def
+    batch_op_drops_def by metis
 
 declare if_cong[cong]
 declare filter_True[simp del] filter_False[simp del] list_emb_Nil2[simp del]
@@ -174,6 +201,134 @@ lemma dataplane_tracker_inv_clean2:
   apply (rule dataplane_tracker_inv_clean)
   apply assumption
   done
+
+abbreviation \<open>(comp_wire :: 2 + 2 \<times> 1 \<Rightarrow> (2 + 2 \<times> 1) option) \<equiv>
+  case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 0 then Some (0, 1) else None of
+    None \<Rightarrow> None
+  | Some (offset, q) \<Rightarrow> Some (Inr (1 + offset, q)))\<close>
+
+lemma ran_comp_wire:
+  \<open>ran comp_wire = {Inr (1, 1)}\<close>
+proof -
+  have \<open>comp_wire (Inr (0, 1)) = Some (Inr (1, 1))\<close> by simp
+  moreover have \<open>comp_wire x = None\<close> if \<open>x \<noteq> Inr (0, 1)\<close> for x using that by (simp split: sum.splits)
+  ultimately show ?thesis unfolding ran_def using Collect_cong Set.empty_def insert_Collect
+      option.simps(1,2) by (smt (verit, del_insts))
+qed
+
+lemma correctness_gen:
+  fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
+    and f :: \<open>'d1 buf \<Rightarrow> 'd2 buf\<close>
+    and ip_state :: \<open>(1, 'd1 + 'd2, 'd1, 't) input_state\<close>
+    and bt_state :: \<open>(1, 'd1 + 'd2, 'd1, 'd2, 't) operator_state_ty2\<close>
+    and os :: \<open>2 \<Rightarrow> (1, 'd1 + 'd2, 't) operator_state\<close>
+    and chns :: \<open>2 \<times> 1 \<Rightarrow> (('d1 + 'd2) \<times> 't) list\<close>
+    and sg :: \<open>(2, 1, 't) subgraph\<close>
+  assumes
+    \<open>raw_s = dataflow_tree_to_graph (G_dt f ip_state bt_state)\<close>
+    \<open>summ sg = antichain_from_list oo raw_s\<close>
+    \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+    \<open>ip_state = operator_state.extend (os 0) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl, es = inps\<rparr>\<close>
+    \<open>bt_state = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr\<rparr>\<close>
+    \<open>ty1_check ip_state (curry cbufs 0)\<close>
+    \<open>ty2_check bt_state (curry cbufs 1)\<close>
+    \<open>\<forall> n. intsum (os n) = (\<lambda> p1 p2. raw_s (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
+    \<open>input (os 0) = (\<lambda> _. [])\<close>
+    \<open>initia (os 0)\<close>
+    \<open>input_ocaps_inv (os 1)\<close>
+    \<open>distinct (map snd (outpu (os 1) 1))\<close>
+    \<open>chns = outputs_at_target (summ sg) os >> cbufs >> inputs_at_target os\<close>
+    \<open>cbufs (0, 0) = []\<close>
+    \<open>dataplane_tracker_inv os cbufs sg\<close>
+    \<open>SP = cUnion (cimage 
+      (\<lambda> t. cset_from_list (map (\<lambda> x. ((1, 1), (Inr x, t))) (f (coll ((map (\<lambda> (x, t). Data t (projl x)) (chns (1, 1))) @@- (inps 1)) t))))
+      (cUn (ts (inps 1)) (cset_from_list (map snd (chns (1, 1))))))\<close>
+    \<open>SO = cset_from_list (map (\<lambda> x. ((1, 1), x)) (outpu (os 1) 1))\<close>
+    \<open>cis_empty (cInt (snd \<circ> snd |`| S) (snd \<circ> snd |`| cUn SO SP))\<close>
+    \<open>cis_empty (cInt (snd \<circ> snd |`| SO) (snd \<circ> snd |`| SP))\<close>
+    \<open>timely_input_stream (inps 1) (mset (ocaps (os 0) 1))\<close>
+  shows 
+    \<open>mset_op (cmset_of_cset S) (cmset_of_cset D) (dataflow_op sg (G_op f ip_state bt_state cbufs))
+  \<approx> mset_spec_op (cmset_of_cset (cUn (cUn S SO) SP)) (cmset_of_cset D)\<close>
+  using assms unfolding tscomp_op_wire_eq
+proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D raw_s rule: weakBisimWeakUptoBisimCong)
+  case SIM1
+  note subgraph_inv = SIM1(1-3)
+  note os_inv = SIM1(4-12)
+  note bufs_inv = SIM1(13,14)
+  note dataplane_inv = SIM1(15)
+  note sets_inv = SIM1(16-19)
+  note input_stream_inv = SIM1(20)
+  then show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
+  proof -
+    define R where \<open>R = ?R\<close>
+    have "\<exists>op2'. step (Out (nid, 1) (x, t)) (mset_spec_op (cmset_of_cset (cUn (cUn S SO) SP)) (cmset_of_cset D)) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (mset_op (cmset_of_cset S) (cminsert ((nid, 1), x, t) (cmset_of_cset D)) (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op comp_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (ooo_input_op {|1|} ip_state)) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (batch_op [1] f id bt_state)))))) op2'"
+      if "in_cmset ((nid, 1), x, t) (cmset_of_cset S - cmset_of_cset D)"
+      for nid :: "2"
+        and x :: "'d1 + 'd2"
+        and t :: 't
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (mset_spec_op (cmset_of_cset (cUn (cUn S SO) SP)) (cmset_of_cset D)) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (mset_op (cmset_of_cset S) (cmset_of_cset D) (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op comp_wire (case_sum (\<lambda>x. []) (BENQ (1, 1) (Inr (a, b)) (\<lambda>x. map Inr (cbufs x)))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (ooo_input_op {|1|} (ip_state \<lparr>outpu := (outpu ip_state)(1 := xs)\<rparr>))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} bt_state (\<lambda>os. batch_op_logic [1] f id os (\<lambda>p. filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1))))))))) op2'"
+      if "outpu ip_state 1 = (a, b) # xs"
+      for a :: "'d1 + 'd2"
+        and b :: 't
+        and xs :: "(('d1 + 'd2) \<times> 't) buf"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (mset_spec_op (cmset_of_cset (cUn (cUn S SO) SP)) (cmset_of_cset D)) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (mset_op (cmset_of_cset S) (cmset_of_cset D) (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op comp_wire (case_sum (\<lambda>x. []) (BTL (1, 1) (\<lambda>x. map Inr (cbufs x)))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (ooo_input_op {|1|} ip_state)) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (consumes bt_state 1 t d) (\<lambda>os. batch_op_logic [1] f id os (\<lambda>p. filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1))))))))) op2'"
+      if "cbufs (1, 1) \<noteq> []"
+        and "(d, t) = BHD (1, 1) cbufs"
+      for d :: "'d1 + 'd2"
+        and t :: 't
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (mset_spec_op (cmset_of_cset (cUn (cUn S SO) SP)) (cmset_of_cset D)) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (mset_op (cmset_of_cset S) (cmset_of_cset D) (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op comp_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (ooo_input_op {|1|} (os'\<lparr>front := front ip_state, initia := True\<rparr>))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} bt_state (\<lambda>os. batch_op_logic [1] f id os (\<lambda>p. filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1))))))))) op2'"
+      if "initia ip_state"
+        and "os' \<in> rcset (ooo_input_op_logic {|1|} ip_state)"
+      for os' :: "(1, 'd1 + 'd2, 'd1, 't) input_state"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (mset_spec_op (cmset_of_cset (cUn (cUn S SO) SP)) (cmset_of_cset D)) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (mset_op (cmset_of_cset S) (cmset_of_cset D) (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op comp_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (ooo_input_op {|1|} ip_state)) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (os'\<lparr>front := front bt_state, initia := True\<rparr>) (\<lambda>os. batch_op_logic [1] f id os (\<lambda>p. filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1))))))))) op2'"
+      if "initia bt_state"
+        and "os' \<in> rcset (batch_op_logic [1] f id bt_state (\<lambda>p. filter (\<lambda>t. \<not> frontier_less_equal (front bt_state 1) t) (ocaps bt_state 1)))"
+      for os' :: "(1, 'd1 + 'd2, 'd1, 'd2, 't) operator_state_ty2"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (mset_spec_op (cmset_of_cset (cUn (cUn S SO) SP)) (cmset_of_cset D)) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (mset_op (cmset_of_cset S) (cmset_of_cset D) (dataflow_op (sg\<lparr>pt_tr := change_multiplicities (summ sg) (extract_progress 1 (subgraph.nxt sg) st) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op comp_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (ooo_input_op {|1|} ip_state)) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} os' (\<lambda>os. batch_op_logic [1] f id os (\<lambda>p. filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1))))))))) op2'"
+      if "(os', st) = obtain_progress bt_state"
+      for st :: "(1, 't) shared_state"
+        and os' :: "(1, 'd1 + 'd2, 'd1, 'd2, 't) operator_state_ty2"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (mset_spec_op (cmset_of_cset (cUn (cUn S SO) SP)) (cmset_of_cset D)) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (mset_op (cmset_of_cset S) (cmset_of_cset D) (dataflow_op (sg\<lparr>pt_tr := change_multiplicities (summ sg) (extract_progress 0 (subgraph.nxt sg) st) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op comp_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (ooo_input_op {|1|} os')) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} bt_state (\<lambda>os. batch_op_logic [1] f id os (\<lambda>p. filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1))))))))) op2'"
+      if "(os', st) = obtain_progress ip_state"
+      for st :: "(1, 't) shared_state"
+        and os' :: "(1, 'd1 + 'd2, 'd1, 't) input_state"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (mset_spec_op (cmset_of_cset (cUn (cUn S SO) SP)) (cmset_of_cset D)) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (mset_op (cmset_of_cset S) (cmset_of_cset D) (dataflow_op (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr>pt_tr := conf'\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op comp_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (ooo_input_op {|1|} ip_state)) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state \<lparr>front := frontier \<circ> (\<lambda>p. c_imp (pt_tr (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr>pt_tr := conf'\<rparr>)) (Loc 1 (Trg 1))), initia := True\<rparr>) (\<lambda>os. batch_op_logic [1] f id os (\<lambda>p. filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1))))))))) op2'"
+      sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (mset_spec_op (cmset_of_cset (cUn (cUn S SO) SP)) (cmset_of_cset D)) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (mset_op (cminsert ((1, 1), a, b) (cmset_of_cset S)) (cmset_of_cset D) (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op comp_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (ooo_input_op {|1|} ip_state)) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state\<lparr>outpu := (outpu bt_state)(1 := xs)\<rparr>) (\<lambda>os. batch_op_logic [1] f id os (\<lambda>p. filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1))))))))) op2'"
+      if "outpu bt_state 1 = (a, b) # xs"
+      for a :: "'d1 + 'd2"
+        and b :: 't
+        and xs :: "(('d1 + 'd2) \<times> 't) buf"
+      using that sorry
+    note * = calculation this
+    show ?thesis unfolding R_def[symmetric] wsim_def apply (intro allI impI,
+          sim_cases intros: *
+                    defs: dataflow_tree_to_operator_def batch_op_def notifier_op_def ooo_input_op_def
+                    elims: step_mset_op_elim step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_builder_op_elim
+                    simps: ran_comp_wire)
+                  (* Why is batch_op not "re"folded by auto? *)
+      using *(1) unfolding batch_op_def notifier_op_def apply simp
+      done
+  qed
+next
+  case SIM2
+  then show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
+  proof -
+    define R where \<open>R = ?R\<close>
+    show ?thesis sorry
+  qed
+qed
+
+end
+end
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -1430,12 +1585,8 @@ t)
           subgoal
             apply simp
             sorry
-          
-end                        
-                        
-                        
-                        sorry
-            subgoal premises temp
+end
+  subgoal premises temp
               apply (subgoal_tac "\<forall>x. x \<in> lset (inps 1) \<longrightarrow> is_Data x \<longrightarrow> frontier_less_equal (front (os 1) 1) (event.time x)")
              defer
             subgoal
