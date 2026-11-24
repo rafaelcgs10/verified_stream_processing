@@ -287,7 +287,7 @@ lemma timely_input_stream_advances_frontier:
         apply (induct n arbitrary: lxs C)
         subgoal
           apply (clarsimp split: event.splits)
-          apply (smt (verit) event.exhaust_sel lfilter_eq_LNil list_of_LNil llist.simps(12) vacant_monotone_not_in_lset verit_comp_simplify1(2))
+          apply (smt (verit) event.exhaust_sel lfilter_eq_LNil list_of_LNil llist.simps(12) vacant_monotone_not_in_lset alethe_comp_simplify1(2))
           done
         subgoal for n lxs' C'
           apply (cases lxs'; (clarsimp split: event.splits if_splits))

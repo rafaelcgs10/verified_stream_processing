@@ -2370,7 +2370,7 @@ next
                                             apply simp
                               subgoal
                                 apply (clarsimp simp add: comp_def split: prod.splits sum.splits option.splits if_splits)
-                                apply (smt (verit, ccfv_threshold) case_prod_conv old.sum.simps(6) option.case(2) ranI verit_sum_simplify)
+                                apply (smt (verit, ccfv_threshold) case_prod_conv old.sum.simps(6) option.case(2) ranI alethe_sum_simplify)
                                 done
                               subgoal
                                 unfolding BULK_BENQ_def
@@ -2397,7 +2397,7 @@ next
                                            apply simp
                               subgoal
                                 apply (clarsimp simp add: comp_def split: prod.splits sum.splits option.splits if_splits)
-                                apply (smt (verit, ccfv_threshold) case_prod_conv old.sum.simps(6) option.case(2) ranI verit_sum_simplify)
+                                apply (smt (verit, ccfv_threshold) case_prod_conv old.sum.simps(6) option.case(2) ranI alethe_sum_simplify)
                                 done
                               subgoal
                                 unfolding BULK_BENQ_def
@@ -2423,7 +2423,7 @@ next
                                           apply simp
                               subgoal
                                 apply (clarsimp simp add: comp_def split: prod.splits sum.splits option.splits if_splits)
-                                apply (smt (verit, ccfv_threshold) case_prod_conv old.sum.simps(6) option.case(2) ranI verit_sum_simplify)
+                                apply (smt (verit, ccfv_threshold) case_prod_conv old.sum.simps(6) option.case(2) ranI alethe_sum_simplify)
                                 done
                               subgoal
                                 unfolding BULK_BENQ_def

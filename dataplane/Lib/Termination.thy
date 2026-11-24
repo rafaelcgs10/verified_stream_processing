@@ -350,7 +350,7 @@ proof -
         show "\<forall>loc\<in>UNIV. ?Sum loc c' \<le> ?Sum loc c"
           using C2 C4
           apply -
-          apply(simp only: Ball_def UNIV_I verit_implies_simplify)
+          apply(simp only: Ball_def UNIV_I alethe_implies_simplify)
           apply(rule allI)
           apply(rule sum_mono2; simp?)
           apply(simp only: subset_iff mem_Collect_eq)
@@ -679,7 +679,7 @@ proof -
     using sum_mono2
     by blast
   from H and H1 and A2 have H2 : "sum f A = sum g A"
-    by (metis verit_la_disequality)
+    by (metis alethe_la_disequality)
   from assms and H2 show ?thesis
     by (metis leD less_eq_nat.simps(1) nless_le sum_mono2 sum_strict_mono_strong)
 qed
@@ -1325,7 +1325,7 @@ proof -
           case 1
           have "t \<le> t'"
             using 1 new_workers_are_greater
-            by (metis H1 assms(3) verit_comp_simplify1(1))
+            by (metis H1 assms(3) alethe_comp_simplify1(1))
           then have C: "work_n_repro c' t' \<le> work_n_repro c' t"
             using lower_reproduction'
             by auto

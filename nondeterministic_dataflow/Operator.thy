@@ -1345,7 +1345,7 @@ lemma choices_Choice[simp]: "choices (Choice ops) = cUnion (cimage choices ops)"
     done
   done
 
-declare choices_def[code del]
+declare choices_def[code drop]
 lemmas choices_code[code] = choices_Read choices_Write choices_Silent choices_Choice
 
 lemma no_Choice_in_choices[simplified, simp, dest!]: "Choice ops |\<in>| choices op \<Longrightarrow> False"

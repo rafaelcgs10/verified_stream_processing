@@ -29,16 +29,16 @@ friend_of_corec lappend where
   subgoal by transfer_prover
   done
 
-declare csome_elem_def[code del]
-declare cthe_elem_def[code del]
+declare csome_elem_def[code drop]
+declare cthe_elem_def[code drop]
 
 definition "cnub (C :: (_ :: equal) cset) = C"
-declare cnub_def[code del]
+declare cnub_def[code drop]
 
 definition "ctake (n :: nat) (C :: (_ :: equal) cset) = C"
-declare ctake_def[code del]
+declare ctake_def[code drop]
 
-declare ccard_def[code del]
+declare ccard_def[code drop]
 
 code_printing code_module "Cset" \<rightharpoonup> (Haskell)
 \<open>
@@ -211,7 +211,7 @@ lemma wsteps_exec_Choice[simp]:
   done 
 
 
-declare wsteps_exec_def[code del]
+declare wsteps_exec_def[code drop]
 lemmas wsteps_exec_code[code] = wsteps_exec_Read wsteps_exec_Write wsteps_exec_Silent wsteps_exec_Choice
 
 
@@ -272,7 +272,7 @@ lemma find_output_exec_Choice[simp]:
     done
   done
 
-declare find_output_exec_def[code del]
+declare find_output_exec_def[code drop]
 lemmas find_output_exec_code[code] =
   find_output_exec_Write find_output_exec_Silent find_output_exec_Choice
 

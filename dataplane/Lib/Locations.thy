@@ -214,7 +214,7 @@ proof -
   from H1 interpret A: linorder "(\<lambda>t u. less_t t u \<or> t = u)" less_t by auto
   show ?thesis 
   apply unfold_locales
-  subgoal  by (smt (z3) A.dual_order.asym Pair_inject case_prodE t_loc_linord_def verit_la_disequality)
+  subgoal  by (smt (verit) A.dual_order.asym Pair_inject case_prodE t_loc_linord_def alethe_la_disequality)
   subgoal by (simp add: case_prodI2 t_loc_linord_def)
   subgoal by (smt (z3) A.order.strict_trans1 case_prodE order_trans prod.simps(2) t_loc_linord_def)
   subgoal using \<open>\<And>y x. (t_loc_linord less_t x y \<and> x \<noteq> y) = (t_loc_linord less_t x y \<and> \<not> t_loc_linord less_t y x)\<close> by blast
@@ -239,7 +239,7 @@ proof -
 qed
 
 definition mymin_code :: "('t :: ccompare \<times> 'loc :: linorder) set \<Rightarrow> ('t \<times> 'loc)"
-  where [code del]: "mymin_code = mymin cless"
+  where [code drop]: "mymin_code = mymin cless"
 
 lemma mymin_code[code]: "mymin_code (set ((x :: 't :: ccompare \<times> 'loc :: linorder) # xs)) = (case ID CCOMPARE('t) of
   None \<Rightarrow> Code.abort (STR ''mymin_code: ccompare = None'') (\<lambda>_. mymin_code (set (x # xs)))

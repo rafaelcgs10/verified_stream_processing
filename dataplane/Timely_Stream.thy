@@ -391,7 +391,7 @@ lemma timely_input_stream_ldrop:
       subgoal
         using Suc_ile_eq iless_Suc_eq by blast 
       subgoal
-        by (smt (verit, ccfv_SIG) add.commute add_mset_add_single diff_diff_add_mset dual_order.order_iff_strict enat_eSuc_iff event.disc(8,9) event.distinct(1) event.sel(2) ldropn_Suc_LCons ldropn_eq_LNil linorder_not_less
+        by (smt (verit, ccfv_SIG) add.commute add_single_right_eq_add_mset diff_diff_add_mset dual_order.order_iff_strict enat_eSuc_iff event.disc(8,9) event.distinct(1) event.sel(2) ldropn_Suc_LCons ldropn_eq_LNil linorder_not_less
             llength_LCons nat.inject single_subset_iff subset_mset.add_diff_assoc2 timely_input_stream_DropI timely_input_stream_def timely_monotone_LConsE)
       subgoal
         by (metis Suc_ile_eq iless_Suc_eq timely_input_stream_MintI union_mset_add_mset_left)

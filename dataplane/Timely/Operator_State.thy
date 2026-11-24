@@ -711,7 +711,7 @@ fun delay_nop where
   "delay_nop F 0 xs lxs = xs @@- lxs"
 | "delay_nop F n xs LNil = llist_of xs"
 | "delay_nop F (Suc n) xs (LCons x lxs) = (if F x then LCons x (delay_nop F n xs lxs) else delay_nop F n (xs @ [x]) lxs)"
-declare delay_nop.simps[code del]
+declare delay_nop.simps[code drop]
 declare delay_nop.simps[simp del]
 
 lemma delay_nop_code[code]:
