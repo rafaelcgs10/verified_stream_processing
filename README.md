@@ -364,6 +364,122 @@ The main results are the weak bisimilarity correctness lemmas
 and in
 `dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy`.
 
+
+## Artifact references
+
+Theorems:
+
+| Paper | Section | Placement |
+|---|---|---|
+| builder_op_code | §3 | dataplane/Timely/Builder_Op.thy |
+| set_op_code | §3 | dataplane/Common_Operators/Set_Op.thy |
+| correctness (batch dataflow) | §4.1 | dataplane/Examples/Batch/Batch_Op_Correctness.thy |
+| dataplane_tracker_inv_consumes (Fig. 12) | §4.3 | dataplane/Correctness/Consumes.thy |
+| propagation_termination | §5 | dataplane/Lib/Termination.thy |
+| correctness (WCC) | §6 | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op_Correctness.thy |
+
+Definitions, functions, etc:
+
+§3 Timely Dataflow Infrastructure
+ 
+| Paper | Formalization | Placement |
+|---|---|---|
+| port | port | dataplane/Lib/Locations.thy |
+| location | location | dataplane/Lib/Locations.thy |
+| subgraph | subgraph | dataplane/Timely/Operator_State.thy |
+| shared_state | shared_state | dataplane/Timely/Operator_State.thy |
+| extract_progress | extract_progress | dataplane/Timely/Operator_State.thy |
+| dataflow_op | dataflow_op | dataplane/Timely/Dataflow_Op.thy |
+| operator_state | operator_state | dataplane/Timely/Operator_State.thy |
+| operator_state_ty | operator_state_ty | dataplane/Timely/Operator_State.thy |
+| operator_state_ty2 | operator_state_ty2 | dataplane/Timely/Operator_State.thy |
+| event | event | dataplane/Correctness/Timely_Collections.thy |
+| capability | capability | dataplane/Timely/Operator_State.thy |
+| drop_caps | drop_caps | dataplane/Timely/Operator_State.thy |
+| add_caps | add_caps | dataplane/Timely/Operator_State.thy |
+| consumes | consumes | dataplane/Timely/Operator_State.thy |
+| produces | produces | dataplane/Timely/Operator_State.thy |
+| obtain_progress | obtain_progress | dataplane/Timely/Operator_State.thy |
+| builder_op | builder_op | dataplane/Timely/Builder_Op.thy |
+| ts | ts | dataplane/Correctness/Timely_Collections.thy |
+| coll | coll | dataplane/Correctness/Timely_Collections.thy |
+| icoll | icoll | dataplane/Correctness/Timely_Collections.thy |
+| input_state | input_state | dataplane/Common_Operators/Ooo_Input_Op.thy |
+| input_op_logic | ooo_input_op_logic | dataplane/Common_Operators/Ooo_Input_Op.thy |
+| input_op | ooo_input_op | dataplane/Common_Operators/Ooo_Input_Op.thy |
+| notifier_op | notifier_op | dataplane/Timely/Builder_Op.thy |
+| batch_op_logic | batch_op_logic | dataplane/Examples/Batch/Batch_Op.thy |
+| batch_op | batch_op | dataplane/Examples/Batch/Batch_Op.thy |
+ 
+§3.1 Specification and Reasoning
+ 
+| Paper | Formalization | Placement |
+|---|---|---|
+| set_spec_op | set_spec_op | dataplane/Common_Operators/Set_Op.thy |
+| set_op | set_op | dataplane/Common_Operators/Set_Op.thy |
+| frontier_less_equal | frontier_less_equal | dataplane/Lib/AntichainOrder.thy |
+ 
+§4.3 Dataplane Tracker Invariant
+ 
+| Paper | Formalization | Placement |
+|---|---|---|
+| less_eq_antichain | less_eq_antichain | dataplane/Lib/AntichainOrder.thy |
+| front_inv | front_inv | dataplane/Correctness/General.thy |
+| imp_front_inv | imp_front_inv | dataplane/Correctness/General.thy |
+| chnls_imp_front_inv | chnls_imp_front_inv | dataplane/Correctness/General.thy |
+| dataplane_tracker_inv | dataplane_tracker_inv | dataplane/Correctness/General.thy |
+ 
+§5 Termination of Progress Propagation
+ 
+| Paper | Formalization | Placement |
+|---|---|---|
+| fuel | future_fuel | dataplane/Lib/Termination.thy |
+| active | measure_sum | dataplane/Lib/Termination.thy |
+| repro | total_work_repro | dataplane/Lib/Termination.thy |
+| pos_work | c_work_pos | dataplane/Lib/Termination.thy |
+| #c | neg_order | dataplane/Lib/Termination.thy |
+| neg_intro | future_fuel | dataplane/Lib/Termination.thy |
+| neg_intro c c' | ∃ t'. (t'∈active_work c' ∧ t' ∉ active_work c ∧ measure c' t' > 0) | dataplane/Lib/Termination.thy |
+ 
+§6 Weakly Connected Components
+ 
+| Paper | Formalization | Placement |
+|---|---|---|
+| myprod | myprod | dataplane/Lib/MyProduct_Instances.thy |
+| label_propagation_state | label_propagation_state | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| label_propagation_op | label_propagation_op | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| reachable | reachable | dataplane/Examples/Weakly_Connected_Components/Wcc.thy |
+| is_subcc | is_subcc | dataplane/Examples/Weakly_Connected_Components/Wcc.thy |
+| is_cc | is_cc | dataplane/Examples/Weakly_Connected_Components/Wcc.thy |
+| ccs | ccs | dataplane/Examples/Weakly_Connected_Components/Wcc.thy |
+| cc_of | cc_of | dataplane/Examples/Weakly_Connected_Components/Wcc.thy |
+| labels_inv | labels_inv | dataplane/Examples/Weakly_Connected_Components/Wcc.thy |
+| labels_stable | labels_stable | dataplane/Examples/Weakly_Connected_Components/Wcc.thy |
+ 
+§A Appendix
+ 
+| Paper | Formalization | Placement |
+|---|---|---|
+| td_monotone | timely_monotone | dataplane/Timely_Stream.thy |
+| vacant | vacant | dataplane/Timely_Stream.thy |
+| td_progress | timely_progress | dataplane/Timely_Stream.thy |
+| td_input | timely_input | dataplane/Timely_Stream.thy |
+| input_tl | input_tl | dataplane/Timely/Operator_State.thy |
+| release_caps | release_caps | dataplane/Timely/Operator_State.thy |
+| exit_scope | exit_scope | dataplane/Lib/Bots.thy |
+| label_prop_label_record_update | label_prop_label_record_update | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| label_prop_edge_record_update | label_prop_edge_record_update | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| label_prop_edge_batch | label_prop_edge_batch | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| label_prop_neighbor_batch | label_prop_neighbor_batch | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| label_prop_label_batch | label_prop_label_batch | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| neighbors | neighbors | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| all_vertices | all_vertices | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| all_edges | all_edges | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| components_from_labels | components_from_labels | dataplane/Examples/Weakly_Connected_Components/Wcc.thy |
+| label_prop_output_batch | label_prop_output_batch | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+| label_propagation_op_logic | label_propagation_op_logic | dataplane/Examples/Weakly_Connected_Components/Label_Propagation_Op.thy |
+
+
 ## License
 
 The formalization is distributed under the terms of the `LICENSE` file in this
