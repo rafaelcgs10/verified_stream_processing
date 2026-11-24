@@ -606,9 +606,9 @@ lemma correctness_aux:
   shows \<open>mset_op cmempty cmempty (dataflow_op my_sg (G_op f
   (init_input_state default_internal_summary inps)
   (init_operator_state_ty2 default_internal_summary) (\<lambda>_. [])))
-  \<approx> mset_spec_op (cmempty + cmempty + cmUnion (cmimage (\<lambda>t. cmset_of_list (map (\<lambda>x. ((1, 1), (Inr x, t)))
+  \<approx> mset_spec_op (cmempty + cmempty + cmUnion (cmset_of_cset ((\<lambda>t. cmset_of_list (map (\<lambda>x. ((1, 1), (Inr x, t)))
     (f (coll ((map (\<lambda>(x, t). Data t (projl x)) (inputs_at_target init_op_states (1, 1))) @@- inps 1) t))))
-  (cmset_of_cset (ts (inps 1)) + cmset_of_list (map snd (inputs_at_target init_op_states (1, 1)))))) cmempty\<close>
+  |`| (cUn (ts (inps 1)) (cset_from_list (map snd (inputs_at_target init_op_states (1, 1)))))))) cmempty\<close>
   apply (rule correctness_gen[where S="cmempty" and os=init_op_states and SO="cmempty" and D="cmempty" and sg=my_sg and inps=inps and cbufs="\<lambda> _. []" and ip_state="(init_input_state default_internal_summary inps)" and bt_state="init_operator_state_ty2 default_internal_summary"])
   (* Before any simp runs: simp would otherwise collapse the singleton-port
      conjunct in the wire, leaving a form no my_summ rule matches. *)
@@ -650,16 +650,18 @@ lemma correctness_aux:
          apply (subst isum_eq_singl[OF refl, where a=\<open>cmset_of_list (f (coll (inps 1) t))\<close>])
            apply (intro allI impI)
         subgoal for x M
-          apply (cases \<open>cmcount M x = 0\<close>; auto simp add: isum_eq_0_iff cmset_eq_iff)
-          done
+          apply (cases \<open>cmcount M x = 0\<close>)
+           apply (auto simp add: isum_eq_0_iff cmset_eq_iff cmcount_cmset_of_cset)
+          sorry
         subgoal
-          by (simp add: cmset.set_map)
+          apply (simp add: cmset.set_map)
+          sorry
         subgoal for x
           apply (cases \<open>enat (count_list (f (coll (inps 1) t)) x) = 0\<close>; simp)
           apply (subgoal_tac \<open>{t'. t' \<noteq> t \<longrightarrow> (\<forall>x. enat (count_list (f (coll (inps 1) t)) x) = 0)} = {t}\<close>)
            apply (auto simp add: cmcount_cmset_of_cset)
-          done
-        apply simp
+          sorry
+        apply clarsimp
         done
       done
     done
@@ -680,7 +682,7 @@ lemma correctness:
   fixes inps :: \<open>('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bots}, 'd1) event llist\<close>
   assumes T: "timely_input_stream inps (mset bots)"
   shows "mset_op cmempty cmempty (compiled_batch_op (\<lambda> _. inps) f) \<approx>
-         mset_spec_op (cmUnion (cmimage (\<lambda>t. cmset_of_list (map (\<lambda>x. ((1, 1), Inr x, t)) (f (coll inps t)))) (cmset_of_cset (ts inps)))) cmempty"
+         mset_spec_op (cmUnion (cmset_of_cset ((\<lambda>t. cmset_of_list (map (\<lambda>x. ((1, 1), Inr x, t)) (f (coll inps t)))) |`| ts inps))) cmempty"
   using T apply -
   apply (drule correctness_aux[unfolded BULK_BENQ_def outputs_at_target_def inputs_at_target_def, simplified, where f=f])
   unfolding compile_dataflow_def

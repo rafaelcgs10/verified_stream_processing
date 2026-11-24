@@ -509,6 +509,34 @@ lemma cmset_less:
   unfolding less_cmset_def less_eq_cmset_def cmset_alt using Collect_mono_iff le_zero_eq
   by (metis (mono_tags, lifting))
 
+(* TODO: Move. *)
+lemma isum_eq_singl_Ball: 
+  assumes fx: "f a = x" and f: "\<forall>a' \<in> A. a' \<noteq> a \<longrightarrow> f a' = 0" and a: "a \<in> A"
+  shows "isum f A = x"
+proof -
+  have "isum f A = isum f {a}"
+    by (rule isum_zeros_cong) (use assms in auto)
+  then show ?thesis by (simp add: fx)
+qed
+
+lemma cmUnion_disjoint_in_cmset:
+  assumes \<open>\<And>N N'. in_cmset N M \<Longrightarrow> in_cmset N' M \<Longrightarrow> N \<noteq> N' \<Longrightarrow> N \<sqinter> N' = cmempty\<close>
+    \<open>in_cmset x (cmUnion M)\<close>
+  shows \<open>\<exists>!N. in_cmset N M \<and> cmcount (cmUnion M) x = cmcount N x * cmcount M N\<close>
+proof -
+  let ?P = \<open>\<lambda>N. in_cmset N M \<and> in_cmset x N\<close>
+  define N where \<open>N = (SOME N. ?P N)\<close>
+  have \<open>\<exists>N. ?P N\<close> using assms(2) isum_eq_0_iff unfolding cmset_alt cmcount_cmUnion by force
+  then have N: \<open>in_cmset N M\<close> \<open>in_cmset x N\<close> unfolding N_def using someI_ex[where P=\<open>?P\<close>] by auto
+  then have neq_N_0: \<open>\<forall>N'. in_cmset N' M \<and> N' \<noteq> N \<longrightarrow> cmcount N' x = 0\<close> using assms(1)
+      IntI cmset_alt cmset_cmempty cmset_inf emptyE mem_Collect_eq by (metis (mono_tags, lifting))
+  have cmcount_M_N: \<open>cmcount (cmUnion M) x = cmcount N x * cmcount M N\<close> unfolding cmcount_cmUnion
+    using isum_eq_singl_Ball[OF _ _ N(1)] neq_N_0 by force
+  moreover have \<open>\<forall>N'. in_cmset N' M \<and> cmcount (cmUnion M) x = cmcount N' x * cmcount M N' \<longrightarrow> N' = N\<close>
+    using assms(2) neq_N_0 cmset_alt by fastforce
+  ultimately show ?thesis using N(1) by blast
+qed
+
 section \<open>Conversion from list to countable multiset\<close>
 
 lemma cmcount_cmset_of_list[simp]:
