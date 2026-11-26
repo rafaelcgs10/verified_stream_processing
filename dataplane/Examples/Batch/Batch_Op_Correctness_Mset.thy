@@ -227,10 +227,12 @@ lemma frontier_less_equal_bots[simp]:
   \<open>frontier_less_equal (antichain (set bots)) t\<close>
   using frontier_less_equal_iff2 set_bots_bot_antichain by blast
 
+(* TODO: Move. *)
 lemma filter_const:
   \<open>filter (\<lambda>x. P) xs = (if P then xs else [])\<close>
   by (cases P; simp add: filter_True filter_False)
 
+(* TODO: Move. *)
 lemma dataplane_tracker_inv_produces_drops':
   assumes \<open>os' = os(nid := os nid\<lparr>outpu := noutput, ocaps := nocaps, input := ninput, produ := nprodu, inter := ninter\<rparr>)\<close>
     \<open>dataflow_topology (summ sg) (-+-)\<close>
@@ -249,65 +251,45 @@ lemma dataplane_tracker_inv_produces_drops':
   shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
   unfolding assms(1) using dataplane_tracker_inv_produces_drops[OF assms(2-)] .
 
-(* TODO: Move to Cmset_Utils.thy. *)
+(* TODO: Move. *)
+lemma cfilter_cfilter':
+  \<open>cfilter P (cfilter Q X) = cfilter (\<lambda>x. P x \<and> Q x) X\<close>
+  by force
 
-lemma cmcount_cmsingle:
-  \<open>cmcount (cmsingle x) y = (if y = x then 1 else 0)\<close>
-  unfolding cmcount_cminsert cmcount_cmempty one_eSuc ..
-
-lemma cmimage_plus:
-  \<open>cmimage f (M + N) = cmimage f M + cmimage f N\<close>
-  unfolding cmset_eq_iff cmcount_cmimage cmcount_plus isum_plus by blast
-
-lemma cmimage_cminsert:
-  \<open>cmimage f (cminsert x M) = cminsert (f x) (cmimage f M)\<close> unfolding cmset_eq_iff
-proof
-  fix y
-  have \<open>cmcount (cmimage f (cminsert x M)) y = cmcount (cmimage f (cmsingle x)) y 
-  + cmcount (cmimage f M) y\<close> by (subst cminsert_is_plus) (simp add: cmimage_plus cmcount_plus)
-  also have \<open>\<dots> = cmcount (cmsingle (f x)) y + cmcount (cmimage f M) y\<close>
-    by (subst cmcount_cmimage) (simp add: cmcount_cmsingle isum_eq_singl isum_eq_0_iff)
-  also have \<open>\<dots> = cmcount (cminsert (f x) (cmimage f M)) y\<close> by (subst (2) cminsert_is_plus)
-      (simp add: cmcount_plus)
-  finally show \<open>cmcount (cmimage f (cminsert x M)) y = cmcount (cminsert (f x) (cmimage f M)) y\<close> .
+(* TODO: Move to Cmset_Utils. *)
+lemma cmUnion_cmimage_cmset_of_cset_single:
+  assumes \<open>x |\<in>| X\<close> and f: \<open>\<And>z. z |\<in>| X \<Longrightarrow> z \<noteq> x \<Longrightarrow> cmcount (f z) y = 0\<close>
+  shows \<open>cmcount (cmUnion (cmimage f (cmset_of_cset X))) y = cmcount (f x) y\<close> (is \<open>cmcount (cmUnion ?M) _ = _\<close>)
+proof -
+  have cmcount_M: \<open>cmcount ?M N = isum (cmcount (cmset_of_cset X)) {y. y |\<in>| X \<and> f y = N}\<close> for N
+    unfolding cmcount_cmimage by (rule isum_zeros_congR) (auto simp add: cmcount_cmset_of_cset)
+  show ?thesis
+  proof (cases \<open>cmcount (f x) y = 0\<close>)
+    case True
+    then show ?thesis unfolding cmcount_cmUnion cmcount_M using f by (force simp add: isum_eq_0_iff)
+  next
+    case False
+    then have \<open>{y. y |\<in>| X \<and> f y = f x} = {x}\<close> using assms by fastforce
+    then have \<open>cmcount ?M (f x) = 1\<close> unfolding cmcount_M using \<open>x |\<in>| X\<close>
+      by (simp add: cmcount_cmset_of_cset)
+    moreover have \<open>in_cmset (f x) ?M\<close> using \<open>x |\<in>| X\<close> unfolding cmset.set_map by simp
+    ultimately show ?thesis unfolding cmcount_cmUnion using f
+      by (fastforce simp add: cmset.set_map intro: isum_eq_single[where a=\<open>f x\<close>])
+  qed
 qed
 
-lemma cmfilter_split:
-  \<open>M = cmfilter P M + cmfilter (Not \<circ> P) M\<close>
-  unfolding cmset_eq_iff cmcount_plus cmfilter.rep_eq by simp
+(* TODO: Move to Cmset_Utils. *)
+lemmas cmUnion_cmset_of_cset_single =
+  cmUnion_cmimage_cmset_of_cset_single[where f=id, unfolded cmset.map_id, unfolded id_def]
 
-lemma cmset_disjoint_iff:
-  \<open>M \<sqinter> N = cmempty \<longleftrightarrow> cmset M \<inter> cmset N = {}\<close>
-  using cmcount_cmempty cmcount_less_in_cmset_minus cmcount_minus cmset_cmempty cmset_eq_iff
-    cmset_inf gr_zeroI idiff_0_right inf.commute inf_bot_left insert_disjoint(2) by metis
-
-lemma cmfilter_split_disjoint:
-  \<open>cmfilter P M \<sqinter> cmfilter (Not \<circ> P) M = cmempty\<close>
-  unfolding cmset_disjoint_iff cmset_alt cmfilter.rep_eq by force
-
-lemma cmUnion_plus:
-  assumes \<open>M \<sqinter> N = cmempty\<close>
-  shows \<open>cmUnion (M + N) = cmUnion M + cmUnion N\<close> unfolding cmset_eq_iff
-proof
-  fix x
-  let ?f = \<open>\<lambda>N'. cmcount N' x * cmcount (M + N) N'\<close>
-  let ?g = \<open>\<lambda>N'. cmcount N' x * cmcount M N'\<close>
-  let ?h = \<open>\<lambda>N'. cmcount N' x * cmcount N N'\<close>
-  have f_g: \<open>\<And>N'. in_cmset N' M \<Longrightarrow> ?f N' = ?g N'\<close> and f_h: \<open>\<And>N'. in_cmset N' N \<Longrightarrow> ?f N' = ?h N'\<close>
-    using assms unfolding cmset_disjoint_iff cmcount_plus cmset_alt by force+
-  have \<open>cmcount (cmUnion (M + N)) x = isum ?f (cmset M \<union> cmset N)\<close> unfolding cmcount_cmUnion
-      cmset_plus ..
-  also have \<open>\<dots> = isum ?f (cmset M) + isum ?f (cmset N)\<close> using assms unfolding cmset_disjoint_iff
-    by simp
-  also have \<open>\<dots> = isum ?g (cmset M) + isum ?h (cmset N)\<close> using isum_cong[OF _ f_g]
-      isum_cong[OF _ f_h] by fastforce
-  also have \<open>\<dots> = cmcount (cmUnion M + cmUnion N) x\<close> unfolding cmcount_cmUnion cmcount_plus ..
-  finally show \<open>cmcount (cmUnion (M + N)) x = cmcount (cmUnion M + cmUnion N) x\<close> .
+(* TODO: Move. *)
+lemma sum_eq_single: 
+  assumes \<open>finite A\<close> \<open>a \<in> A\<close> \<open>f a = x\<close> \<open>\<And>a'. a' \<in> A \<Longrightarrow> a' \<noteq> a \<Longrightarrow> f a' = 0\<close>
+  shows \<open>sum f A = x\<close>
+proof -
+  have \<open>sum f A = sum f {a}\<close> by (rule sum.mono_neutral_cong) (use assms in auto)
+  then show ?thesis by (simp add: \<open>f a = x\<close>)
 qed
-
-lemma cmUnion_cmfilter_split:
-  \<open>cmUnion M = cmUnion (cmimage (cmfilter P) M) + cmUnion (cmimage (cmfilter (Not \<circ> P)) M)\<close>
-  by (subst cmfilter_split) (simp add: cmfilter_cmUnion)
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -406,8 +388,8 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
       have SO'_alt: \<open>SO' = SO + cmset_of_list (map (\<lambda>(d, cap). ((1, 1), (Inr d, time cap))) outs)\<close>
         by (simp add: SO'_def sets_inv(2) os'_def os_inv(2) bt_state' bt_state''_def
             operator_state.defs filter_True comp_def split_beta' cmset_of_list_append)
-      have SP_alt: \<open>SP = SP' + cmset_of_list (map (\<lambda>(d, cap). ((1, 1), (Inr d, time cap))) outs)\<close> unfolding cmset_eq_iff
-      proof
+      have SP_alt: \<open>SP = SP' + cmset_of_list (map (\<lambda>(d, cap). ((1, 1), (Inr d, time cap))) outs)\<close>
+      proof (intro cmset_eqI allI)
         fix x :: \<open>(2 \<times> 1) \<times> ('d1 + 'd2) \<times> 't\<close>
         obtain nid p d t where x: \<open>x = ((nid, p), (d, t))\<close> using prod.exhaust by metis
         show \<open>cmcount SP x = cmcount (SP' + cmset_of_list (map (\<lambda>(d, cap). ((1, 1), (Inr d, time cap))) outs)) x\<close>
@@ -417,9 +399,9 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           proof (cases \<open>t |\<in>| cUn (ts (inps 1)) (snd |`| cset_from_list (chns (1, 1)))\<close>)
             case t_cin: True
             let ?ts = \<open>cUn (ts (inps 1)) (snd |`| cset_from_list (chns (1, 1)))\<close>
-            let ?P = \<open>\<lambda>t. t \<notin> set (ocaps (os 1) 1) \<or> frontier_less_equal (front (os 1) 1) t\<close>
+            let ?P = \<open>\<lambda>t. frontier_less_equal (front (os 1) 1) t \<or> t \<notin> set (ocaps (os 1) 1)\<close>
             have Ball_P: \<open>\<forall>t \<in> rcset (ts (inps 1)) \<union> snd ` set ((outputs_at_target (summ sg) os >> cbufs) (1, 1)). ?P t\<close>
-            proof (intro ballI disjI2, erule UnE)
+            proof (intro ballI disjI1, erule UnE)
               fix t'
               assume \<open>t' \<in> rcset (ts (inps 1))\<close>
               have \<open>front (os 1) 1 \<le> ifrontier (summ sg) (-+-) (pt_tr sg) (Loc 1 (Trg 1))\<close>
@@ -459,22 +441,103 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                   frontier_less_equal_le_trans unfolding dataplane_tracker_inv_def front_inv_def
                   imp_front_inv_def chnls_imp_front_inv_def by meson
             qed
-            then have \<open>cfilter ?P ?ts = cUn (ts (inps 1)) (snd |`| cset_from_list (chns' (1, 1)))\<close>
+            then have cfilter_P: \<open>cfilter ?P ?ts = cUn (ts (inps 1)) (snd |`| cset_from_list (chns' (1, 1)))\<close>
               by (auto simp add: subgraph_inv(1,2) os_inv(2) bufs_inv(1) chns'_def os'_def bt_state'
                   bt_state''_def operator_state.defs inputs_at_target_def BULK_BENQ_def caps_def)
-            let ?g = \<open>\<lambda>t. cmset_of_list (map (\<lambda>d. ((1, 1), (Inr d, t)))
-  (f (coll ((map (\<lambda>(d, t'). Data t' (projl d)) (chns (1, 1))) @@- inps 1) t)))\<close>
-            let ?h = \<open>\<lambda>t. cmset_of_list (map (\<lambda>d. ((1, 1), (Inr d, t)))
-  (f (coll ((map (\<lambda>(d, t'). Data t' (projl d)) (chns' (1, 1))) @@- inps 1) t)))\<close>
+            define ts_empty_batch where \<open>ts_empty_batch =
+  cset_from_list (filter (\<lambda>t. \<not>?P t \<and> batch_op_batches f bt_state caps 1 t = []) (map snd (input (os 1) 1)))\<close>
+            have cfilter_not_P: \<open>cfilter (Not \<circ> ?P) ?ts = cUn ts_empty_batch (time \<circ> snd |`| cset_from_list outs)\<close>
+            proof -
+              have \<open>cfilter (Not \<circ> ?P) ?ts = cset_from_list (filter (Not \<circ> ?P) (map snd (input (os 1) 1)))\<close>
+                using Ball_P unfolding bufs_inv(1) BULK_BENQ_def inputs_at_target_def by auto
+              also have \<open>\<dots> = cUn (cfilter (\<lambda>t. \<not>?P t \<and> batch_op_batches f bt_state caps 1 t = [])
+    (cset_from_list (filter (Not \<circ> ?P) (map snd (input (os 1) 1)))))
+  (cfilter (\<lambda>t. batch_op_batches f bt_state caps 1 t \<noteq> [])
+    (cset_from_list (filter (Not \<circ> ?P) (map snd (input (os 1) 1)))))\<close>
+                by (subst cset_cfilter_split) auto
+              also have \<open>\<dots> = cUn ts_empty_batch (time \<circ> snd |`| cset_from_list outs)\<close>
+                by (rule arg_cong2[where f=cUn]) (auto simp add: ts_empty_batch_def comp_def
+                    cfilter_cfilter' outs_def batch_op_outputs_def image_Union batch_op_ts_def
+                    caps_def batch_op_batches_def image_image os_inv(2) operator_state.defs
+                    image_constant_conv)
+              finally show ?thesis .
+            qed
+            then have Ball_not_P: \<open>\<forall>t \<in> rcset ts_empty_batch \<union> time ` snd ` set outs. \<not>?P t\<close>
+              by auto
+            have g_h_cong: \<open>g t' = h t'\<close> if \<open>?P t'\<close> for t'
+              unfolding g_def h_def
+              apply (rule arg_cong[where f=cmset_of_list])
+              apply (rule arg_cong[where f=\<open>map _\<close>])
+              apply (rule arg_cong[where f=f])
+              apply (subst (1 2) coll_lshift[OF timely_input_stream_expires[OF input_stream_inv]])
+              apply (simp add: bufs_inv(1) chns'_def BULK_BENQ_def inputs_at_target_def subgraph_inv(1,2) os'_def bt_state' bt_state''_def os_inv(2) operator_state.defs caps_def)
+              apply (simp add: split_def)
+              using that apply metis
+              done
+            have cmcount_SP: \<open>cmcount SP x = cmcount (g t) x\<close>
+              apply (simp add: sets_inv(1) flip: g_def)
+              apply (subst cmUnion_cmset_of_cset_single[of \<open>g t\<close>])
+              using t_cin apply blast
+              subgoal for M
+                apply (rule ccontr)
+                apply (subgoal_tac \<open>in_cmset x M \<and> (\<exists>t'. M = g t')\<close>)
+                 apply (elim conjE exE)
+                 apply (fastforce simp add: g_def x \<open>nid = 1\<close>)
+                using cmset_alt apply fast
+                done
+              apply (rule refl)
+              done
             show ?thesis
             proof (cases \<open>?P t\<close>)
               case True
-              then show ?thesis sorry
+              have \<open>cmcount SP' x = cmcount (h t) x\<close>
+                apply (simp add: SP'_def)
+                apply (subst cmUnion_cmset_of_cset_single[of \<open>h t\<close>])
+                using insert t_cin True apply (fastforce simp add: bufs_inv(1) chns'_def BULK_BENQ_def subgraph_inv(1,2) os'_def inputs_at_target_def bt_state' bt_state''_def operator_state.defs os_inv(2) caps_def)
+                subgoal for M
+                  apply (rule ccontr)
+                  apply (subgoal_tac \<open>in_cmset x M \<and> (\<exists>t'. M = h t')\<close>)
+                   apply (elim conjE exE)
+                   apply (fastforce simp add: h_def x \<open>nid = 1\<close>)
+                  using cmset_alt apply fast
+                  done
+                 apply (rule refl)
+                done
+              moreover have \<open>cmcount (cmset_of_list (map (\<lambda>(d, cap). ((1, 1), (Inr d, time cap))) outs)) x = 0\<close>
+                using True Ball_not_P by (auto simp add: zero_enat_def count_list_0_iff x \<open>nid = 1\<close>)
+              ultimately show ?thesis unfolding cmcount_plus cmcount_SP g_h_cong[OF True] by fastforce
             next
               case False
-              then have t_input: \<open>t \<in> snd ` set (input (os 1) 1)\<close> using t_cin Ball_P
-                by (auto simp add: bufs_inv(1) BULK_BENQ_def inputs_at_target_def)
-              then show ?thesis sorry
+              then have coll_t: \<open>coll (map (\<lambda>(d, t'). Data t' (projl d)) (chns (1, 1)) @@- inps 1) t
+  = map (projl \<circ> fst) (filter (\<lambda>(_, t'). t' = t) (input (os 1) 1))\<close>
+                using Ball_P
+                apply (simp add: bufs_inv(1) BULK_BENQ_def inputs_at_target_def)
+                apply (subst coll_lshift[OF timely_input_stream_expires[OF input_stream_inv]])
+                apply simp
+                apply (intro conjI)
+                  apply (smt (verit, ccfv_threshold) List.empty_filter_conv UnCI case_prodE rev_image_eqI snd_eqD)
+                  apply (smt (verit, ccfv_threshold) List.empty_filter_conv UnCI case_prodE rev_image_eqI snd_eqD)
+                apply (simp add: coll_def)
+                apply (subgoal_tac \<open>lfilter (\<lambda>e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) (inps 1) = LNil\<close>)
+                 apply simp
+                apply (rule lfilter_False)
+                apply (force split: event.splits)
+                done
+              have \<open>cmcount SP' x = 0\<close> using False Ball_P
+                apply (simp add: SP'_def chns'_def BULK_BENQ_def subgraph_inv(1,2) os'_def inputs_at_target_def bt_state' bt_state''_def operator_state.defs caps_def os_inv(2) x \<open>nid = 1\<close> cmcount_cmUnion isum_eq_0_iff)
+                apply (auto simp add: h_def zero_enat_def count_list_0_iff)
+                done
+              moreover have \<open>cmcount (cmset_of_list (map (\<lambda>(d, cap). ((1, 1), (Inr d, time cap))) outs)) x = cmcount (g t) x\<close>
+                apply (simp add: outs_def batch_op_outputs_def batch_op_ts_def batch_op_batches_def os_inv(2) operator_state.defs x \<open>nid = 1\<close> g_def coll_t map_concat comp_def count_list_concat split_beta flip: sum_code)
+                apply (subst sum_eq_single[OF _ _ refl, where a=t])
+                   apply simp
+                using t_cin Ball_P False apply (simp add: caps_def os_inv(2) operator_state.defs bufs_inv(1) BULK_BENQ_def inputs_at_target_def)
+                apply blast
+                 apply (force simp add: count_list_0_iff)
+                using False
+                 apply (simp add: caps_def os_inv(2) operator_state.defs)
+                done
+              ultimately show ?thesis unfolding cmcount_plus cmcount_SP by simp
             qed
           next
             case False
@@ -600,13 +663,33 @@ section \<open>Correctness\<close>
 
 abbreviation "my_sg \<equiv> init_subgraph (antichain_from_list oo my_summ)"
 
+(* TODO: Move to Cmset_Utils. *)
+
+lemma cmUnion_all_cmempty:
+  \<open>(\<And>N. in_cmset N M \<Longrightarrow> N = cmempty) \<Longrightarrow> cmUnion M = cmempty\<close>
+  by (simp add: cmset_eq_iff cmcount_cmUnion isum_eq_0_iff)
+
+lemma cmset_cmfilter:
+  \<open>cmset (cmfilter P M) = Set.filter P (cmset M)\<close>
+  unfolding cmset_alt cmfilter.rep_eq by auto
+
+lemma cmUnion_cmfilter_not_cmempty:
+  \<open>cmUnion M = cmUnion (cmfilter ((\<noteq>) cmempty) M)\<close>
+  unfolding cmset_eq_iff cmcount_cmUnion cmset_cmfilter cmfilter.rep_eq
+  by (auto intro!: isum_zeros_cong)
+
+(* TODO: Move. *)
+lemma cfilter_cimage:
+  \<open>cfilter P (f |`| X) = (f |`| cfilter (P \<circ> f) X)\<close>
+  by auto
+
 lemma correctness_aux:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bots}, 'd1) event llist\<close>
   assumes T: \<open>timely_input_stream (inps 1) (mset bots)\<close>
   shows \<open>mset_op cmempty cmempty (dataflow_op my_sg (G_op f
   (init_input_state default_internal_summary inps)
   (init_operator_state_ty2 default_internal_summary) (\<lambda>_. [])))
-  \<approx> mset_spec_op (cmempty + cmempty + cmUnion (cmset_of_cset ((\<lambda>t. cmset_of_list (map (\<lambda>x. ((1, 1), (Inr x, t)))
+  \<approx> mset_spec_op (cmempty + cmempty + cmUnion (cmset_of_cset ((\<lambda>t. cmset_of_list (map (\<lambda>x :: 'd2. ((1, 1), (Inr x, t)))
     (f (coll ((map (\<lambda>(x, t). Data t (projl x)) (inputs_at_target init_op_states (1, 1))) @@- inps 1) t))))
   |`| (cUn (ts (inps 1)) (cset_from_list (map snd (inputs_at_target init_op_states (1, 1)))))))) cmempty\<close>
   apply (rule correctness_gen[where S="cmempty" and os=init_op_states and SO="cmempty" and D="cmempty" and sg=my_sg and inps=inps and cbufs="\<lambda> _. []" and ip_state="(init_input_state default_internal_summary inps)" and bt_state="init_operator_state_ty2 default_internal_summary"])
@@ -640,29 +723,28 @@ lemma correctness_aux:
     apply safe
     subgoal for t
       apply (rule exI[of _ \<open>coll (inps 1) t\<close>])
-      apply (simp add: cmfilter_cmUnion cmimage_cmUnion cmset.map_comp comp_def
-          cmfilter_cmset_of_list filter_map filter_const if_distrib cmimage_cmset_of_list cmset_cmUnion map_replicate_const cmset.set_map)
-      apply (elim exE conjE)
-      subgoal for e
-        apply (subgoal_tac \<open>t |\<in>| ts (inps 1)\<close>)
-         apply (simp add: cmset_eq_iff cmcount_cmUnion)
-         apply (rule allI)
-         apply (subst isum_eq_singl[OF refl, where a=\<open>cmset_of_list (f (coll (inps 1) t))\<close>])
-           apply (intro allI impI)
-        subgoal for x M
-          apply (cases \<open>cmcount M x = 0\<close>)
-           apply (auto simp add: isum_eq_0_iff cmset_eq_iff cmcount_cmset_of_cset)
-          sorry
-        subgoal
-          apply (simp add: cmset.set_map)
-          sorry
-        subgoal for x
-          apply (cases \<open>enat (count_list (f (coll (inps 1) t)) x) = 0\<close>; simp)
-          apply (subgoal_tac \<open>{t'. t' \<noteq> t \<longrightarrow> (\<forall>x. enat (count_list (f (coll (inps 1) t)) x) = 0)} = {t}\<close>)
-           apply (auto simp add: cmcount_cmset_of_cset)
-          sorry
-        apply clarsimp
+      apply (subgoal_tac \<open>t |\<in>| ts (inps 1)\<close>)
+       apply (simp add: cmfilter_cmUnion cmimage_cmUnion cmset.map_comp comp_def)
+       apply (unfold cmset_eq_iff)
+       apply (rule allI)
+      subgoal for d
+        apply (subst cmUnion_cmimage_cmset_of_cset_single[where x=\<open>cmset_of_list (map (\<lambda>d. ((1, 1), (Inr d, t))) (f (coll (inps 1) t)))\<close>])
+          apply simp
+        subgoal for M
+          apply (subgoal_tac \<open>\<exists>t'. M = cmset_of_list (map (\<lambda>d. ((1, 1), (Inr d, t'))) (f (coll (inps 1) t')))\<close>)
+           apply (erule exE)
+          subgoal for t'
+            apply (rule ccontr)
+            apply (subgoal_tac \<open>t' = t\<close>)
+             apply fast
+            apply (simp add: cmfilter_cmset_of_list filter_map comp_def filter_const isum_eq_0_iff split: if_splits)
+            apply (simp add: zero_enat_def)
+            done
+          apply blast
+          done
+        apply (simp add: cmfilter_cmset_of_list filter_map comp_def filter_True cmimage_cmset_of_list)
         done
+      apply (force simp add: cmset_cmUnion cmset.set_map)
       done
     done
   subgoal
