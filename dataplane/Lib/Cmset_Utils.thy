@@ -22,6 +22,39 @@ proof (cases x)
   qed
 qed simp
 
+(* TODO: Move. *)
+lemma enat_Sup_mult_right:
+  fixes c :: enat
+  assumes \<open>S \<noteq> {}\<close>
+  shows \<open>\<Squnion> S * c = (\<Squnion>x \<in> S. x * c)\<close>
+proof (cases \<open>c = 0\<close>)
+  case False
+  then have \<open>x \<le> x * c\<close> for x :: enat
+    by (metis enat_0_less_mult_iff ileI1 mult.right_neutral mult_left_mono not_gr_zero one_eSuc zero_le)
+  show ?thesis
+  proof (cases \<open>finite S\<close>)
+    case True
+    then show ?thesis using assms unfolding Sup_enat_def
+      by (auto simp add: mono_Max_commute[symmetric] mono_def mult_right_mono)
+  next
+    case False
+    then have \<open>\<Squnion> S = \<infinity>\<close> unfolding Sup_enat_def by auto
+    moreover have \<open>\<Squnion> S \<le> (\<Squnion>x \<in> S. x * c)\<close>
+      by (rule Sup_least) (use \<open>\<And>x. x \<le> x * c\<close> in \<open>auto intro: SUP_upper2\<close>)
+    ultimately show ?thesis using \<open>c \<noteq> 0\<close> by (simp add: imult_is_infinity)
+  qed
+qed (use assms in simp)
+
+(* TODO: Move. *)
+lemma isum_mult_right:
+  \<open>isum f A * (c :: enat) = isum (\<lambda>a. f a * c) A\<close>
+  unfolding isum_def by (subst enat_Sup_mult_right) (auto simp add: image_image sum_distrib_right)
+
+(* TODO: Move. *)
+lemma isum_mult_left:
+  \<open>(c :: enat) * isum f A = isum (\<lambda>a. c * f a) A\<close>
+  using isum_mult_right[of f A c] by (simp add: mult.commute)
+
 (*
 (* TODO: Move. *)
 lemma mult_Sup_commute:
@@ -290,20 +323,38 @@ lemma (in cmset_as_Quotient) cset_of_cmset_transfer[transfer_rule]:
 context begin
 interpretation cmset_as_Quotient .
 
-(* TODO *)
 lemma cmcount_cmUnion:
   \<open>cmcount (cmUnion M) x = isum (\<lambda>N. cmcount N x * cmcount M N) (cmset M)\<close>
-  apply (simp add: cmUnion_def cmcount.abs_eq count_llist_lmerge)
-  apply (subst LSUM_extend_lenats)
-  apply (subst LSUM_isum)
-   apply (simp add: lset_lupt)
-  apply (subst isum_zeros_congR[where S=\<open>{n \<in> lset lenats. enat n < llength (rep_cmset M)}\<close>])
-    apply fast
-   apply simp
-  apply (subst isum_cong[OF refl, where h=\<open>\<lambda>n. count_llist (rep_cmset (lnth (rep_cmset M) n)) x\<close>])
-   apply simp
-  apply (simp add: Quotient3_abs_rep[OF Quotient3_cmset] flip: cmcount.abs_eq)
-  sorry
+proof -
+  define xs where \<open>xs = rep_cmset M\<close>
+  have cmset_M: \<open>cmset M = lset xs\<close>
+    unfolding xs_def cmset_alt cmcount.rep_eq by (auto simp add: in_lset_iff_count_llist)
+  have \<open>cmcount (cmUnion M) x = LSUM (lmap rep_cmset xs) (\<lambda>z. count_llist z x)\<close>
+    by (simp add: xs_def cmUnion_def cmcount.abs_eq count_llist_lmerge)
+  also have \<open>\<dots> = isum (\<lambda>i. if enat i < llength xs then cmcount (lnth xs i) x else 0) UNIV\<close>
+    by (subst LSUM_extend_lenats, subst LSUM_isum[OF ldistinct_lupt])
+      (auto simp add: lset_lupt cmcount.rep_eq intro: isum_cong)
+  also have \<open>\<dots> = isum (\<lambda>i. isum (\<lambda>N. if enat i < llength xs \<and> lnth xs i = N then cmcount N x else 0)
+    (cmset M)) UNIV\<close>
+  proof (rule isum_cong[OF refl])
+    fix i
+    show \<open>(if enat i < llength xs then cmcount (lnth xs i) x else 0) =
+      isum (\<lambda>N. if enat i < llength xs \<and> lnth xs i = N then cmcount N x else 0) (cmset M)\<close>
+    proof (cases \<open>enat i < llength xs\<close>)
+      case True
+      then have \<open>lnth xs i \<in> cmset M\<close> unfolding cmset_M by (auto simp add: in_lset_conv_lnth)
+      then show ?thesis using True by (intro isum_eq_singl[symmetric, where a=\<open>lnth xs i\<close>]) auto
+    qed (simp add: isum_eq_0_iff)
+  qed
+  also have \<open>\<dots> = isum (\<lambda>N. isum (\<lambda>i. if enat i < llength xs \<and> lnth xs i = N then cmcount N x else 0)
+    UNIV) (cmset M)\<close>
+    by (rule isum_swap)
+  also have \<open>\<dots> = isum (\<lambda>N. cmcount N x * cmcount M N) (cmset M)\<close>
+    by (rule isum_cong[OF refl])
+      (simp add: cmcount.rep_eq[of M] flip: xs_def, simp add: count_llist_isum isum_mult_left
+        if_distrib[of \<open>(*) _\<close>] cong: if_cong)
+  finally show ?thesis .
+qed
 
 lemma cmset_cmUnion:
   \<open>cmset (cmUnion M) = \<Union> (cmset ` cmset M)\<close>
@@ -311,9 +362,9 @@ lemma cmset_cmUnion:
 
 end
 
-(* TODO *)
 lemma (in cmset_as_typedef) cmUnion_transfer[transfer_rule]:
-  \<open>rel_fun (pcr_cmset cr_cmset) cr_cmset (\<lambda>M x. isum (\<lambda>N. N x * M N) {N. M N \<noteq> 0}) cmUnion\<close>
+  \<open>rel_fun (pcr_cmset cr_cmset) cr_cmset
+    (\<lambda>M x. isum (\<lambda>N. N x * M N) {N. M N \<noteq> 0 \<and> countable {y. N y \<noteq> 0}}) cmUnion\<close>
   apply (clarsimp simp add: rel_fun_def pcr_cmset_def cr_cmset_def relcompp_apply)
   apply (rule ext)
   subgoal for M M' x
@@ -322,8 +373,12 @@ lemma (in cmset_as_typedef) cmUnion_transfer[transfer_rule]:
     using inj_cmcount unfolding inj_on_def apply blast
      apply (intro equalityI subsetI)
     subgoal for N
-      sorry
-     apply fastforce
+      apply (rule image_eqI)
+       apply (rule type_definition.Abs_inverse[OF type_definition_cmset, symmetric])
+       apply simp
+      by (drule spec[of _ \<open>inv cmcount N\<close>])
+        (simp add: type_definition.Abs_inverse[OF type_definition_cmset])
+     apply (fastforce simp add: countable_nonzero_cmcount)
     apply simp
     done
   done
@@ -381,30 +436,45 @@ lemma cmcount_cmsingle:
   \<open>cmcount (cmsingle x) y = (if y = x then 1 else 0)\<close>
   unfolding cmcount_cminsert cmcount_cmempty one_eSuc ..
 
+lemma cmcount_cmUnion_cmimage:
+  \<open>cmcount (cmUnion (cmimage g M)) x = isum (\<lambda>N. cmcount (g N) x * cmcount M N) (cmset M)\<close>
+proof -
+  have \<open>cmcount (cmUnion (cmimage g M)) x =
+    isum (\<lambda>N'. cmcount N' x * isum (cmcount M) {N. g N = N'}) (g ` cmset M)\<close>
+    by (simp add: cmcount_cmUnion cmset.set_map)
+  also have \<open>\<dots> = isum (\<lambda>N'. isum (\<lambda>N. cmcount (g N) x * cmcount M N) {N \<in> cmset M. g N = N'})
+    (g ` cmset M)\<close>
+    by (rule isum_cong[OF refl], unfold isum_mult_left, rule isum_zeros_cong)
+      (auto simp add: cmset_alt)
+  also have \<open>\<dots> = isum (\<lambda>N. cmcount (g N) x * cmcount M N)
+    (\<Union>N' \<in> g ` cmset M. {N \<in> cmset M. g N = N'})\<close>
+    by (rule isum_UNION[symmetric]) auto
+  also have \<open>\<dots> = isum (\<lambda>N. cmcount (g N) x * cmcount M N) (cmset M)\<close>
+    by (rule arg_cong[where f=\<open>isum _\<close>]) auto
+  finally show ?thesis .
+qed
+
 lemma cmimage_cmUnion:
-  \<open>cmimage f (cmUnion M) = cmUnion (cmimage (cmimage f) M)\<close> unfolding cmset_eq_iff
-proof
+  \<open>cmimage f (cmUnion M) = cmUnion (cmimage (cmimage f) M)\<close>
+proof (rule cmset_eqI)
   fix x
-  have \<open>cmcount (cmimage f (cmUnion M)) x = isum (cmcount (cmUnion M)) {y. f y = x}\<close> by simp
-  also have \<open>\<dots> = isum (\<lambda>y. isum (\<lambda>N. cmcount N y * cmcount M N) (cmset M)) {y. f y = x}\<close>
-    unfolding cmcount_cmUnion ..
-  show \<open>cmcount (cmimage f (cmUnion M)) x = cmcount (cmUnion (cmimage (cmimage f) M)) x\<close> sorry
+  have \<open>cmcount (cmimage f (cmUnion M)) x =
+    isum (\<lambda>y. isum (\<lambda>N. cmcount N y * cmcount M N) (cmset M)) {y. f y = x}\<close>
+    unfolding cmcount_cmimage by (rule isum_cong) (simp_all add: cmcount_cmUnion)
+  also have \<open>\<dots> = isum (\<lambda>N. isum (\<lambda>y. cmcount N y) {y. f y = x} * cmcount M N) (cmset M)\<close>
+    by (subst isum_swap) (simp add: isum_mult_right)
+  also have \<open>\<dots> = cmcount (cmUnion (cmimage (cmimage f) M)) x\<close>
+    by (simp add: cmcount_cmUnion_cmimage)
+  finally show \<open>cmcount (cmimage f (cmUnion M)) x = cmcount (cmUnion (cmimage (cmimage f) M)) x\<close> .
 qed
 
 lemma cmfilter_cmUnion:
-  \<open>cmfilter P (cmUnion M) = cmUnion (cmimage (cmfilter P) M)\<close> unfolding cmset_eq_iff
-proof
+  \<open>cmfilter P (cmUnion M) = cmUnion (cmimage (cmfilter P) M)\<close>
+proof (rule cmset_eqI)
   fix x
   show \<open>cmcount (cmfilter P (cmUnion M)) x = cmcount (cmUnion (cmimage (cmfilter P) M)) x\<close>
-  proof (cases \<open>P x\<close>)
-    case True
-    then have \<open>cmcount (cmfilter P (cmUnion M)) x = cmcount (cmUnion M) x\<close> unfolding cmfilter.rep_eq
-      by force
-    also have \<open>\<dots> = isum (\<lambda>N. cmcount N x * cmcount M N) (cmset M)\<close> unfolding cmcount_cmUnion ..
-    show ?thesis sorry
-  qed (simp add: cmfilter.rep_eq cmcount_cmUnion isum_eq_0_iff cmset.set_map)
+    by (subst cmcount_cmUnion_cmimage) (simp add: cmfilter.rep_eq isum_eq_0_iff cmcount_cmUnion)
 qed
-
 lemma cmcount_plus:
   \<open>cmcount (M + N) x = cmcount M x + cmcount N x\<close>
   unfolding plus_cmset_def cmcount_cmadd ..
