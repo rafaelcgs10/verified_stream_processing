@@ -55,58 +55,6 @@ lemma isum_mult_left:
   \<open>(c :: enat) * isum f A = isum (\<lambda>a. c * f a) A\<close>
   using isum_mult_right[of f A c] by (simp add: mult.commute)
 
-(*
-(* TODO: Move. *)
-lemma mult_Sup_commute:
-  \<open>\<Squnion> {f1 b1 :: enat |b1. \<phi>1 b1} * \<Squnion> {f2 b2 |b2. \<phi>2 b2}
-  = \<Squnion> {f1 b1 * f2 b2 |b1 b2. \<phi>1 b1 \<and> \<phi>2 b2}\<close> (is \<open>?L1 * ?L2 = ?R\<close>)
-proof (rule order.antisym)
-  show \<open>?L1 * ?L2 \<le> ?R\<close> 
-  proof (cases \<open>?L1 = 0 \<or> ?L2 = 0\<close>)
-    case False
-    show ?thesis sorry
-  qed fastforce
-next
-  have \<open>\<forall>x \<in> {f1 b1 * f2 b2 |b1 b2. \<phi>1 b1 \<and> \<phi>2 b2}. x \<le> ?L1 * ?L2\<close> using Sup_upper[of \<open>f1 _\<close>]
-      Sup_upper[of \<open>f2 _\<close>] Sup_upper mem_Collect_eq mult_mono zero_le by (smt (verit, del_insts))
-  then show \<open>?R \<le> ?L1 * ?L2\<close> using Sup_le_iff by blast
-qed
-
-lemma mult_Sup_commute':
-  \<open>A1 \<noteq> {} \<Longrightarrow> A2 \<noteq> {} \<Longrightarrow> \<Squnion> A1 * \<Squnion> A2 = \<Squnion> {(a1 :: enat) * a2 |a1 a2. a1 \<in> A1 \<and> a2 \<in> A2}\<close>  
-  using mult_Sup_commute[of id \<open>\<lambda>a1. a1 \<in> A1\<close> id \<open>\<lambda>a2. a2 \<in> A2\<close>] by simp 
-
-lemma isum_product_Times:
-  \<open>isum f A * isum g B = isum (\<lambda>(a, b). f a * g b) (A \<times> B)\<close>
-proof -
-  have \<open>isum f A * isum g B =
-  \<Squnion> (sum f ` {C |C. C \<subseteq> A \<and> finite C}) * \<Squnion> (sum g ` {C |C. C \<subseteq> B \<and> finite C})\<close>
-    unfolding isum_def ..
-  also have \<open>\<dots> = \<Squnion> {n * m |n m. n \<in> sum f ` {C |C. C \<subseteq> A \<and> finite C}
-  \<and> m \<in> sum g ` {C |C. C \<subseteq> B \<and> finite C}}\<close> by (subst mult_Sup_commute') auto
-  also have \<open>\<dots> = \<Squnion> (sum (\<lambda>(a, b). f a * g b) ` {AB |AB. AB \<subseteq> A \<times> B \<and> finite AB})\<close>
-  proof (rule Sup_cong; safe; (intro bexI)?)
-    fix A' B'
-    show \<open>sum f A' * sum g B' \<le> sum (\<lambda>(a, b). f a * g b) (A' \<times> B')\<close>
-      by (subst sum_product, subst sum.cartesian_product) auto
-  next
-    fix AB
-    assume \<open>AB \<subseteq> A \<times> B\<close> \<open>finite AB\<close>
-    then show \<open>sum f (fst ` AB) * sum g (snd ` AB) \<in> {n * m |n m.
-  n \<in> sum f ` {C |C. C \<subseteq> A \<and> finite C} \<and> m \<in> sum g ` {C |C. C \<subseteq> B \<and> finite C}}\<close> by fastforce
-    show \<open>(\<Sum>(a, b) \<in> AB. f a * g b) \<le> sum f (fst ` AB) * sum g (snd ` AB)\<close>
-      by (subst sum_product, subst sum.cartesian_product) (metis (lifting) \<open>finite AB\<close>
-          subset_fst_snd Sigma_cong order.refl finite_SigmaI finite_imageI sum_mono3)
-  qed blast+
-  also have \<open>\<dots> = isum (\<lambda>(a, b). f a * g b) (A \<times> B)\<close> unfolding isum_def ..
-  finally show ?thesis .
-qed
-
-lemma isum_product:
-  \<open>isum f A * isum g B = isum (\<lambda>a. isum (\<lambda>b. f a * g b) B) A\<close>
-   by (simp add: isum_Times isum_product_Times)
-*)
-
 lemma cmset_eq_iff:
   \<open>M = N \<longleftrightarrow> (\<forall>x. cmcount M x = cmcount N x)\<close>
   using UNIV_I cmcount.abs_eq cmcount.rep_eq cmset.abs_eq_iff eq_cmset_def inj_cmcount inv_into_f_f
