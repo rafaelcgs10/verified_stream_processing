@@ -256,32 +256,6 @@ lemma cfilter_cfilter':
   \<open>cfilter P (cfilter Q X) = cfilter (\<lambda>x. P x \<and> Q x) X\<close>
   by force
 
-(* TODO: Move to Cmset_Utils. *)
-lemma cmUnion_cmimage_cmset_of_cset_single:
-  assumes \<open>x |\<in>| X\<close> and f: \<open>\<And>z. z |\<in>| X \<Longrightarrow> z \<noteq> x \<Longrightarrow> cmcount (f z) y = 0\<close>
-  shows \<open>cmcount (cmUnion (cmimage f (cmset_of_cset X))) y = cmcount (f x) y\<close> (is \<open>cmcount (cmUnion ?M) _ = _\<close>)
-proof -
-  have cmcount_M: \<open>cmcount ?M N = isum (cmcount (cmset_of_cset X)) {y. y |\<in>| X \<and> f y = N}\<close> for N
-    unfolding cmcount_cmimage by (rule isum_zeros_congR) (auto simp add: cmcount_cmset_of_cset)
-  show ?thesis
-  proof (cases \<open>cmcount (f x) y = 0\<close>)
-    case True
-    then show ?thesis unfolding cmcount_cmUnion cmcount_M using f by (force simp add: isum_eq_0_iff)
-  next
-    case False
-    then have \<open>{y. y |\<in>| X \<and> f y = f x} = {x}\<close> using assms by fastforce
-    then have \<open>cmcount ?M (f x) = 1\<close> unfolding cmcount_M using \<open>x |\<in>| X\<close>
-      by (simp add: cmcount_cmset_of_cset)
-    moreover have \<open>in_cmset (f x) ?M\<close> using \<open>x |\<in>| X\<close> unfolding cmset.set_map by simp
-    ultimately show ?thesis unfolding cmcount_cmUnion using f
-      by (fastforce simp add: cmset.set_map intro: isum_eq_single[where a=\<open>f x\<close>])
-  qed
-qed
-
-(* TODO: Move to Cmset_Utils. *)
-lemmas cmUnion_cmset_of_cset_single =
-  cmUnion_cmimage_cmset_of_cset_single[where f=id, unfolded cmset.map_id, unfolded id_def]
-
 (* TODO: Move. *)
 lemma sum_eq_single: 
   assumes \<open>finite A\<close> \<open>a \<in> A\<close> \<open>f a = x\<close> \<open>\<And>a'. a' \<in> A \<Longrightarrow> a' \<noteq> a \<Longrightarrow> f a' = 0\<close>
@@ -662,21 +636,6 @@ qed
 section \<open>Correctness\<close>
 
 abbreviation "my_sg \<equiv> init_subgraph (antichain_from_list oo my_summ)"
-
-(* TODO: Move to Cmset_Utils. *)
-
-lemma cmUnion_all_cmempty:
-  \<open>(\<And>N. in_cmset N M \<Longrightarrow> N = cmempty) \<Longrightarrow> cmUnion M = cmempty\<close>
-  by (simp add: cmset_eq_iff cmcount_cmUnion isum_eq_0_iff)
-
-lemma cmset_cmfilter:
-  \<open>cmset (cmfilter P M) = Set.filter P (cmset M)\<close>
-  unfolding cmset_alt cmfilter.rep_eq by auto
-
-lemma cmUnion_cmfilter_not_cmempty:
-  \<open>cmUnion M = cmUnion (cmfilter ((\<noteq>) cmempty) M)\<close>
-  unfolding cmset_eq_iff cmcount_cmUnion cmset_cmfilter cmfilter.rep_eq
-  by (auto intro!: isum_zeros_cong)
 
 (* TODO: Move. *)
 lemma cfilter_cimage:

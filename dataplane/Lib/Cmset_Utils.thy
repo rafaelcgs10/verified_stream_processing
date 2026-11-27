@@ -293,21 +293,17 @@ interpretation cmset_as_Quotient .
 (* TODO *)
 lemma cmcount_cmUnion:
   \<open>cmcount (cmUnion M) x = isum (\<lambda>N. cmcount N x * cmcount M N) (cmset M)\<close>
-  apply (simp add: cmUnion_def)
-  apply transfer
-  apply (simp add: count_llist_lmerge cmcount.rep_eq)
-  subgoal for M x
-    apply (subst LSUM_extend_lenats)
-    apply (subst LSUM_isum)
-     apply (simp add: lset_lupt)
-    apply (subst isum_zeros_congR[where S=\<open>{n \<in> lset lenats. enat n < llength (rep_cmset M)}\<close>])
-      apply fast
-     apply simp
-    apply (subst isum_cong[OF refl, where h=\<open>\<lambda>n. count_llist (lnth (lmap rep_cmset (rep_cmset M)) n) x\<close>])
-     apply simp
-    apply (subst count_llist_isum)
-    sorry
-  done
+  apply (simp add: cmUnion_def cmcount.abs_eq count_llist_lmerge)
+  apply (subst LSUM_extend_lenats)
+  apply (subst LSUM_isum)
+   apply (simp add: lset_lupt)
+  apply (subst isum_zeros_congR[where S=\<open>{n \<in> lset lenats. enat n < llength (rep_cmset M)}\<close>])
+    apply fast
+   apply simp
+  apply (subst isum_cong[OF refl, where h=\<open>\<lambda>n. count_llist (rep_cmset (lnth (rep_cmset M) n)) x\<close>])
+   apply simp
+  apply (simp add: Quotient3_abs_rep[OF Quotient3_cmset] flip: cmcount.abs_eq)
+  sorry
 
 lemma cmset_cmUnion:
   \<open>cmset (cmUnion M) = \<Union> (cmset ` cmset M)\<close>
@@ -326,9 +322,6 @@ lemma (in cmset_as_typedef) cmUnion_transfer[transfer_rule]:
     using inj_cmcount unfolding inj_on_def apply blast
      apply (intro equalityI subsetI)
     subgoal for N
-      apply (simp add: image_def)
-      apply (drule spec[of _ \<open>inv cmcount N\<close>])
-      apply (rule exI[of _ \<open>inv cmcount N\<close>])
       sorry
      apply fastforce
     apply simp
@@ -528,6 +521,10 @@ lemma cmset_less:
   unfolding less_cmset_def less_eq_cmset_def cmset_alt using Collect_mono_iff le_zero_eq
   by (metis (mono_tags, lifting))
 
+lemma cmUnion_all_cmempty:
+  \<open>(\<And>N. in_cmset N M \<Longrightarrow> N = cmempty) \<Longrightarrow> cmUnion M = cmempty\<close>
+  by (simp add: cmset_eq_iff cmcount_cmUnion isum_eq_0_iff)
+
 (* TODO: Move. *)
 lemma isum_eq_single: 
   assumes \<open>a \<in> A\<close> \<open>f a = x\<close> \<open>\<And>a'. a' \<in> A \<Longrightarrow> a' \<noteq> a \<Longrightarrow> f a' = 0\<close>
@@ -573,6 +570,10 @@ proof
   finally show \<open>cmcount (cmimage f (cminsert x M)) y = cmcount (cminsert (f x) (cmimage f M)) y\<close> .
 qed
 
+lemma cmset_cmfilter:
+  \<open>cmset (cmfilter P M) = Set.filter P (cmset M)\<close>
+  unfolding cmset_alt cmfilter.rep_eq by auto
+
 lemma cmfilter_split:
   \<open>M = cmfilter P M + cmfilter (Not \<circ> P) M\<close>
   unfolding cmset_eq_iff cmcount_plus cmfilter.rep_eq by simp
@@ -609,6 +610,11 @@ qed
 lemma cmUnion_cmfilter_split:
   \<open>cmUnion M = cmUnion (cmimage (cmfilter P) M) + cmUnion (cmimage (cmfilter (Not \<circ> P)) M)\<close>
   by (subst cmfilter_split) (simp add: cmfilter_cmUnion)
+
+lemma cmUnion_cmfilter_not_cmempty:
+  \<open>cmUnion M = cmUnion (cmfilter ((\<noteq>) cmempty) M)\<close>
+  unfolding cmset_eq_iff cmcount_cmUnion cmset_cmfilter cmfilter.rep_eq
+  by (auto intro!: isum_zeros_cong)
 
 section \<open>Conversion from list to countable multiset\<close>
 
@@ -729,5 +735,29 @@ lemma cmfilter_cmset_of_cset:
   by (auto simp add: cmset_eq_iff cmfilter.rep_eq cmcount_cmset_of_cset)
 
 end
+
+lemma cmUnion_cmimage_cmset_of_cset_single:
+  assumes \<open>x |\<in>| X\<close> and f: \<open>\<And>z. z |\<in>| X \<Longrightarrow> z \<noteq> x \<Longrightarrow> cmcount (f z) y = 0\<close>
+  shows \<open>cmcount (cmUnion (cmimage f (cmset_of_cset X))) y = cmcount (f x) y\<close> (is \<open>cmcount (cmUnion ?M) _ = _\<close>)
+proof -
+  have cmcount_M: \<open>cmcount ?M N = isum (cmcount (cmset_of_cset X)) {y. y |\<in>| X \<and> f y = N}\<close> for N
+    unfolding cmcount_cmimage by (rule isum_zeros_congR) (auto simp add: cmcount_cmset_of_cset)
+  show ?thesis
+  proof (cases \<open>cmcount (f x) y = 0\<close>)
+    case True
+    then show ?thesis unfolding cmcount_cmUnion cmcount_M using f by (force simp add: isum_eq_0_iff)
+  next
+    case False
+    then have \<open>{y. y |\<in>| X \<and> f y = f x} = {x}\<close> using assms by fastforce
+    then have \<open>cmcount ?M (f x) = 1\<close> unfolding cmcount_M using \<open>x |\<in>| X\<close>
+      by (simp add: cmcount_cmset_of_cset)
+    moreover have \<open>in_cmset (f x) ?M\<close> using \<open>x |\<in>| X\<close> unfolding cmset.set_map cin.rep_eq by simp
+    ultimately show ?thesis unfolding cmcount_cmUnion using f
+      by (fastforce simp add: cmset.set_map cin.rep_eq intro: isum_eq_single[where a=\<open>f x\<close>])
+  qed
+qed
+
+lemmas cmUnion_cmset_of_cset_single =
+  cmUnion_cmimage_cmset_of_cset_single[where f=id, unfolded cmset.map_id, unfolded id_def]
 
 end
